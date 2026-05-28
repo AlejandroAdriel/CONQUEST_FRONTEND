@@ -4,6 +4,67 @@
 
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-200 overflow-hidden m-0 p-0;
+    @apply bg-slate-950 text-slate-200 overflow-hidden m-0 p-0 font-sans;
   }
+}
+
+/* Scanlines and radar grid */
+.bg-tactical {
+  background-color: #020617; /* slate-950 */
+  background-image: 
+    linear-gradient(rgba(15, 23, 42, 0.4) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.4) 1px, transparent 1px);
+  background-size: 30px 30px;
+  position: relative;
+}
+.bg-tactical::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(circle at center, transparent 30%, #020617 90%);
+  pointer-events: none;
+  z-index: 0;
+}
+.bg-tactical::after {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  z-index: 2;
+  background-size: 100% 2px, 3px 100%;
+  pointer-events: none;
+}
+
+/* Animations */
+@keyframes flicker {
+  0% { opacity: 0.9; }
+  5% { opacity: 0.5; }
+  10% { opacity: 0.95; }
+  15% { opacity: 0.8; }
+  20% { opacity: 1; }
+  50% { opacity: 0.95; }
+  55% { opacity: 0.5; }
+  60% { opacity: 1; }
+  100% { opacity: 0.9; }
+}
+
+.text-digital {
+  font-family: 'Courier New', Courier, monospace;
+  animation: flicker 3s infinite;
+  text-shadow: 0 0 5px currentColor;
+}
+
+/* Scrollbar dark tactical */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #334155; }
+
+/* SVG Map Tooltip */
+.map-container {
+  z-index: 1;
 }
