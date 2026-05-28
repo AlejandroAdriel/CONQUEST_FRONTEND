@@ -4,7 +4,8 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { 
   Play, Pause, FastForward, Activity,
   ShieldAlert, ShieldCheck, Info,
-  Atom, Flag, Swords, Hexagon, Zap, Skull, Map as MapIcon
+  Atom, Flag, Swords, Hexagon, Zap, Skull, Map as MapIcon,
+  ChevronsRight
 } from "lucide-react";
 import { initialHabilidades } from "./TechTreeData";
 
@@ -114,7 +115,7 @@ const eventosAleatorios = [
 export default function App() {
   const [fechaVirtual, setFechaVirtual] = useState(new Date(2027, 4, 1)); // 1 de Mayo de 2027
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isFastForward, setIsFastForward] = useState(false);
+  const [speedLevel, setSpeedLevel] = useState<1 | 2 | 3>(1);
 
   // El estado de los países es un diccionario para acceso rápido. Se hidrata de manera lazy.
   const [paises, setPaises] = useState<Record<string, Pais>>({});
@@ -150,7 +151,7 @@ export default function App() {
   // Loop principal del tiempo
   useEffect(() => {
     if (!isPlaying) return;
-    const intervalTime = isFastForward ? 250 : 1000;
+    const intervalTime = speedLevel === 1 ? 1000 : speedLevel === 2 ? 250 : 80;
     
     const interval = setInterval(() => {
       setFechaVirtual(prev => {
@@ -161,7 +162,7 @@ export default function App() {
     }, intervalTime);
     
     return () => clearInterval(interval);
-  }, [isPlaying, isFastForward]);
+  }, [isPlaying, speedLevel]);
 
   // Lógica de avance por día (Eventos, Ataques)
   useEffect(() => {
@@ -316,8 +317,15 @@ export default function App() {
           {/* Status Indicator */}
           <div className="text-xs font-bold tracking-widest text-slate-400 flex items-center gap-2">
             STATUS: 
-            <span className={isPlaying ? (isFastForward ? "text-amber-500" : "text-emerald-500") : "text-rose-500"}>
-              {isPlaying ? (isFastForward ? "SIMULATING [>>]" : "SIMULATING [>]") : "PAUSED [||]"}
+            <span className={
+              isPlaying 
+                ? (speedLevel === 1 ? "text-emerald-500" : speedLevel === 2 ? "text-amber-500" : "text-cyan-400") 
+                : "text-rose-500"
+            }>
+              {isPlaying 
+                ? (speedLevel === 1 ? "SIMULATING [>]" : speedLevel === 2 ? "SIMULATING [>>]" : "SIMULATING [>>>]") 
+                : "PAUSED [||]"
+              }
             </span>
           </div>
 
@@ -331,22 +339,32 @@ export default function App() {
           {/* Controls */}
           <div className="flex bg-slate-900 rounded-sm p-0.5 border border-slate-700/80 shadow-inner">
             <button 
-              onClick={() => { setIsPlaying(false); setIsFastForward(false); }}
+              onClick={() => { setIsPlaying(false); }}
               className={`p-2 transition-all ${!isPlaying ? 'bg-slate-800 text-amber-500 shadow-[inset_0_0_8px_rgba(0,0,0,0.5)]' : 'text-slate-500 hover:text-slate-300'}`}
+              title="Pausar"
             >
               <Pause className="w-4 h-4 fill-current" />
             </button>
             <button 
-              onClick={() => { setIsPlaying(true); setIsFastForward(false); }}
-              className={`p-2 transition-all ${isPlaying && !isFastForward ? 'bg-slate-800 text-emerald-500 shadow-[inset_0_0_8px_rgba(0,0,0,0.5)]' : 'text-slate-500 hover:text-slate-300'}`}
+              onClick={() => { setIsPlaying(true); setSpeedLevel(1); }}
+              className={`p-2 transition-all ${isPlaying && speedLevel === 1 ? 'bg-slate-800 text-emerald-500 shadow-[inset_0_0_8px_rgba(0,0,0,0.5)]' : 'text-slate-500 hover:text-slate-300'}`}
+              title="Velocidad normal x1"
             >
               <Play className="w-4 h-4 fill-current" />
             </button>
             <button 
-              onClick={() => { setIsPlaying(true); setIsFastForward(true); }}
-              className={`p-2 transition-all ${isPlaying && isFastForward ? 'bg-slate-800 text-amber-500 shadow-[inset_0_0_8px_rgba(0,0,0,0.5)]' : 'text-slate-500 hover:text-slate-300'}`}
+              onClick={() => { setIsPlaying(true); setSpeedLevel(2); }}
+              className={`p-2 transition-all ${isPlaying && speedLevel === 2 ? 'bg-slate-800 text-amber-500 shadow-[inset_0_0_8px_rgba(0,0,0,0.5)]' : 'text-slate-500 hover:text-slate-300'}`}
+              title="Velocidad rápida x2"
             >
               <FastForward className="w-4 h-4 fill-current" />
+            </button>
+            <button 
+              onClick={() => { setIsPlaying(true); setSpeedLevel(3); }}
+              className={`p-2 transition-all ${isPlaying && speedLevel === 3 ? 'bg-slate-800 text-cyan-400 shadow-[inset_0_0_8px_rgba(0,0,0,0.5)]' : 'text-slate-500 hover:text-slate-300'}`}
+              title="Velocidad hiper x3"
+            >
+              <ChevronsRight className="w-4.5 h-4.5 fill-current" />
             </button>
           </div>
         </div>
