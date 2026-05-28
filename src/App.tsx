@@ -46,6 +46,7 @@ type AtaqueEnCola = {
 type Evento = {
   id: string;
   fecha: Date;
+  titulo: string;
   mensaje: string;
   tipo: "success" | "alert" | "info";
 };
@@ -79,11 +80,36 @@ const initialHabilidades: Habilidad[] = [
 ];
 
 const eventosAleatorios = [
-  { mensaje: "Tormenta de Arena en Medio Oriente: -500 Oro", tipo: "alert", efecto: (oro: number, tropas: Tropas) => ({ oro: Math.max(0, oro - 500), tropas }) },
-  { mensaje: "Discurso Inspirador: +200 Infantería", tipo: "success", efecto: (oro: number, tropas: Tropas) => ({ oro, tropas: { ...tropas, infanteria: tropas.infanteria + 200 } }) },
-  { mensaje: "Descubrimiento de Minas de Oro: +1000 Oro", tipo: "success", efecto: (oro: number, tropas: Tropas) => ({ oro: oro + 1000, tropas }) },
-  { mensaje: "Deserción Menor: -100 Caballería", tipo: "alert", efecto: (oro: number, tropas: Tropas) => ({ oro, tropas: { ...tropas, caballeria: Math.max(0, tropas.caballeria - 100) } }) },
-  { mensaje: "Tregua Temporal: Sin cambios", tipo: "info", efecto: (oro: number, tropas: Tropas) => ({ oro, tropas }) }
+  { 
+    titulo: "SABOTAJE EN LA RED CLIMÁTICA",
+    mensaje: "Una tormenta de arena ionizada inducida por hackeo interrumpe los canales de extracción en los yacimientos de Medio Oriente. La infraestructura táctica reporta daños severos en los nodos. Impacto: -500 Créditos de Oro globales.", 
+    tipo: "alert" as const, 
+    efecto: (oro: number, tropas: Tropas) => ({ oro: Math.max(0, oro - 500), tropas }) 
+  },
+  { 
+    titulo: "CAMPAÑA DE CONCRIPCIÓN SATELITAL",
+    mensaje: "Nuestra señal de propaganda de alta frecuencia ha sorteado los cortafuegos del hemisferio sur, motivando a reservistas locales. Se reporta un flujo de refuerzo táctico. Impacto: +200 Infantería en la reserva.", 
+    tipo: "success" as const, 
+    efecto: (oro: number, tropas: Tropas) => ({ oro, tropas: { ...tropas, infanteria: tropas.infanteria + 200 } }) 
+  },
+  { 
+    titulo: "EXTRACCIÓN DE CRIPTOMINAS SIBERIANAS",
+    mensaje: "Nuestras sondas autónomas reactivaron una granja de servidores de la ex-megacorporación siberiana en desuso, liquidando activos protegidos. Impacto: +1000 Créditos de Oro globales transferidos a tesorería.", 
+    tipo: "success" as const, 
+    efecto: (oro: number, tropas: Tropas) => ({ oro: oro + 1000, tropas }) 
+  },
+  { 
+    titulo: "DESERCIÓN MASIVA EN FRONTERA",
+    mensaje: "Un ciberataque de pulso electromagnético del enemigo desactiva los chips neurales de obediencia de un regimiento fronterizo, provocando su desconexión y retirada. Impacto: -100 Unidades de Caballería táctica.", 
+    tipo: "alert" as const, 
+    efecto: (oro: number, tropas: Tropas) => ({ oro, tropas: { ...tropas, caballeria: Math.max(0, tropas.caballeria - 100) } }) 
+  },
+  { 
+    titulo: "TREGUA DIGITAL ESTABLECIDA",
+    mensaje: "Los sistemas de cifrado de la megacorporación rival detectaron nuestras sondas de escaneo en los frentes fronterizos. Se firma una tregua digital temporal automática mientras se reconfiguran los firewalls. Sin cambios militares reportados.", 
+    tipo: "info" as const, 
+    efecto: (oro: number, tropas: Tropas) => ({ oro, tropas }) 
+  }
 ];
 
 export default function App() {
@@ -99,7 +125,7 @@ export default function App() {
   const [habilidades, setHabilidades] = useState<Habilidad[]>(initialHabilidades);
   const [ataquesEnCola, setAtaquesEnCola] = useState<AtaqueEnCola[]>([]);
   const [diarioGuerra, setDiarioGuerra] = useState<Evento[]>([
-    { id: "inicio", fecha: new Date(2027, 4, 1), mensaje: "Sistema táctico en línea. Iniciando simulación...", tipo: "info" }
+    { id: "inicio", fecha: new Date(2027, 4, 1), titulo: "SISTEMA TÁCTICO INICIADO", mensaje: "Núcleo de inteligencia y comunicaciones satelitales en línea. Iniciando simulación y mapeo geopolítico...", tipo: "info" }
   ]);
 
   const [paisSeleccionado, setPaisSeleccionado] = useState<Pais | null>(null);
@@ -150,6 +176,7 @@ export default function App() {
         setDiarioGuerra(prevDiario => [{
           id: Math.random().toString(),
           fecha: fechaVirtual,
+          titulo: eventoAzar.titulo,
           mensaje: eventoAzar.mensaje,
           tipo: eventoAzar.tipo as "success" | "alert" | "info"
         }, ...prevDiario]);
@@ -181,9 +208,10 @@ export default function App() {
           setDiarioGuerra(prevDiario => [{
             id: Math.random().toString(),
             fecha: fechaVirtual,
+            titulo: victoria ? "VICTORIA EN CAMPAÑA" : "DERROTA OPERACIONAL",
             mensaje: victoria 
-              ? `Victoria en ${paisDestino.nombre}! Enemigo aniquilado. Bajas: ${bajasJugador}. Sobreviven: ${Math.floor(fuerzaJugador)} tropas que vuelven a reserva.`
-              : `Derrota en ${paisDestino.nombre}. Nuestras fuerzas fueron destruidas.`,
+              ? `Victoria en ${paisDestino.nombre}! Las defensas de la IA enemiga colapsaron tras una ofensiva implacable de infantería. Bajas: ${bajasJugador}. Sobreviven: ${Math.floor(fuerzaJugador)} tropas que retornan a la reserva militar.`
+              : `Falla táctica en ${paisDestino.nombre}. Nuestras fuerzas desplegadas fueron neutralizadas por contramedidas enemigas de alta frecuencia.`,
             tipo: victoria ? "success" : "alert"
           }, ...prevDiario]);
 
@@ -230,7 +258,8 @@ export default function App() {
     setDiarioGuerra(prev => [{
       id: Math.random().toString(),
       fecha: fechaVirtual,
-      mensaje: `Invasión hacia ${paisSeleccionado.nombre} en progreso... Llegada estimada: ${fechaImpacto.toLocaleDateString()}`,
+      titulo: "DESPLIEGUE DE INVASIÓN",
+      mensaje: `Un convoy táctico con destino a ${paisSeleccionado.nombre} ha salido de los silos de transporte. Desplegadas ${tropasAEnviar} unidades de infantería. Impacto satelital estimado en T-5 días (${fechaImpacto.toLocaleDateString()}).`,
       tipo: "info"
     }, ...prev]);
 
@@ -260,7 +289,8 @@ export default function App() {
     setDiarioGuerra(prev => [{
       id: Math.random().toString(),
       fecha: fechaVirtual,
-      mensaje: `Habilidad desbloqueada: ${habilidad.nombre}`,
+      titulo: "INTEGRACIÓN I+D EXITOSA",
+      mensaje: `La red de investigación ha descifrado y asimilado la patente táctica: ${habilidad.nombre}. Atributos actualizados en la base de datos del teatro de operaciones global.`,
       tipo: "success"
     }, ...prev]);
   };
@@ -319,7 +349,7 @@ export default function App() {
       {/* CUERPO PRINCIPAL */}
       <div className="flex-1 flex overflow-hidden z-10">
         {/* PANEL IZQUIERDO: Diario de Guerra */}
-        <div className="w-[30%] shrink-0 border-r border-slate-800/80 bg-slate-950/60 flex flex-col relative backdrop-blur-sm">
+        <div className="w-[35%] shrink-0 border-r border-slate-800/80 bg-slate-950/60 flex flex-col relative backdrop-blur-sm">
           <div className="p-4 border-b border-slate-800/50 bg-slate-900/90 shadow-md">
             <h2 className="text-sm font-bold text-slate-300 tracking-[0.2em] uppercase flex items-center gap-2">
               <Activity className="w-4 h-4 text-blue-500" />
@@ -334,10 +364,10 @@ export default function App() {
               return (
                 <div 
                   key={ev.id} 
-                  className={`relative p-4 rounded-sm border backdrop-blur-md overflow-hidden transition-all hover:scale-[1.01] ${
-                    isSuccess ? 'bg-emerald-950/40 border-emerald-900/50 shadow-[0_0_15px_rgba(16,185,129,0.05)]' : 
-                    isAlert ? 'bg-red-950/40 border-red-900/50 shadow-[0_0_15px_rgba(225,29,72,0.05)]' : 
-                    'bg-slate-900/50 border-slate-800/80'
+                  className={`relative p-4 rounded-sm border-t border-r border-b backdrop-blur-md overflow-hidden transition-all hover:scale-[1.01] border-l-4 ${
+                    isSuccess ? 'bg-emerald-950/40 border-t-emerald-900/50 border-r-emerald-900/50 border-b-emerald-900/50 border-l-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.05)]' : 
+                    isAlert ? 'bg-red-950/40 border-t-red-900/50 border-r-red-900/50 border-b-red-900/50 border-l-rose-600 shadow-[0_0_15px_rgba(225,29,72,0.05)]' : 
+                    'bg-slate-900/50 border-t-slate-800/80 border-r-slate-800/80 border-b-slate-800/80 border-l-blue-600'
                   }`}
                 >
                   {/* Decorative Texture/Pattern */}
@@ -349,18 +379,20 @@ export default function App() {
                     <div className="absolute right-0 top-0 w-32 h-32 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
                   )}
 
-                  <div className="relative z-10">
-                    <div className={`text-xs opacity-80 mb-2 font-mono flex items-center gap-2 ${isAlert ? 'text-rose-400' : isSuccess ? 'text-emerald-400' : 'text-blue-400'}`}>
-                      {isAlert ? <ShieldAlert className="w-3 h-3" /> : isSuccess ? <ShieldCheck className="w-3 h-3" /> : <Info className="w-3 h-3" />}
-                      [{ev.fecha.toLocaleDateString('es-ES')}]
+                  <div className="relative z-10 font-mono">
+                    <div className="flex items-center justify-between gap-2 mb-1.5 text-[10px]">
+                      <div className={`flex items-center gap-1.5 font-bold uppercase tracking-wider ${isAlert ? 'text-rose-400' : isSuccess ? 'text-emerald-400' : 'text-blue-400'}`}>
+                        {isAlert ? <ShieldAlert className="w-3.5 h-3.5" /> : isSuccess ? <ShieldCheck className="w-3.5 h-3.5" /> : <Info className="w-3.5 h-3.5" />}
+                        {ev.titulo}
+                      </div>
+                      <span className="text-amber-500/90 font-semibold">
+                        [{ev.fecha.toLocaleDateString('es-ES')}]
+                      </span>
                     </div>
-                    <div className={`font-medium text-sm leading-relaxed ${isAlert ? 'text-rose-200' : isSuccess ? 'text-emerald-100' : 'text-slate-300'}`}>
+                    <p className="text-[11px] leading-relaxed text-slate-300">
                       {ev.mensaje}
-                    </div>
+                    </p>
                   </div>
-                  
-                  {/* Glowing border effect */}
-                  <div className={`absolute left-0 top-0 bottom-0 w-1 ${isAlert ? 'bg-rose-600' : isSuccess ? 'bg-emerald-500' : 'bg-blue-600'}`} />
                 </div>
               );
             })}
@@ -368,7 +400,7 @@ export default function App() {
         </div>
 
         {/* PANEL DERECHO: Mapa Global (react-simple-maps) */}
-        <div className="w-[70%] h-[calc(100vh-154px)] relative map-container bg-transparent flex items-center justify-center">
+        <div className="w-[65%] h-[calc(100vh-154px)] relative map-container bg-transparent flex items-center justify-center">
           <TransformWrapper
             initialScale={1}
             minScale={1}
@@ -421,9 +453,10 @@ export default function App() {
                   contentClass="flex items-center justify-center"
                 >
                   <ComposableMap 
+                    projection="geoMercator"
                     width={800}
                     height={450}
-                    projectionConfig={{ scale: 145, center: [0, -5] }} 
+                    projectionConfig={{ scale: 115, center: [0, 20] }} 
                     className="w-full h-full block drop-shadow-[0_0_25px_rgba(0,0,0,0.8)]"
                     style={{ width: "100%", height: "100%", display: "block" }}
                   >
