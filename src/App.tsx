@@ -6,6 +6,7 @@ import {
   ShieldAlert, ShieldCheck, Info,
   Atom, Flag, Swords, Hexagon, Zap, Skull, Map as MapIcon
 } from "lucide-react";
+import { initialHabilidades } from "./TechTreeData";
 
 // Geometría del mapa del mundo (TopoJSON)
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
@@ -25,15 +26,18 @@ type Tropas = {
   artilleria: number;
 };
 
-type Habilidad = {
+export type Habilidad = {
   id: string;
   nombre: string;
   costo: number;
   desbloqueada: boolean;
   prerrequisito_id: string | null;
   tipo_bono: string;
-  x?: number;
-  y?: number;
+  categoria: "desarrollo" | "militar";
+  rama: string;
+  nivel: number;
+  x: number;
+  y: number;
 };
 
 type AtaqueEnCola = {
@@ -72,12 +76,7 @@ const generarStatsPais = (geo: any): Pais => {
   };
 };
 
-const initialHabilidades: Habilidad[] = [
-  { id: "H1", nombre: "Tácticas de Infantería", costo: 500, desbloqueada: false, prerrequisito_id: null, tipo_bono: "+10% Defensa Infantería", x: 100, y: 100 },
-  { id: "H2", nombre: "Caballería Pesada", costo: 800, desbloqueada: false, prerrequisito_id: "H1", tipo_bono: "+15% Ataque Caballería", x: 250, y: 50 },
-  { id: "H3", nombre: "Artillería de Asedio", costo: 1200, desbloqueada: false, prerrequisito_id: "H1", tipo_bono: "+20% Daño Artillería", x: 250, y: 150 },
-  { id: "H4", nombre: "Logística Avanzada", costo: 2000, desbloqueada: false, prerrequisito_id: "H2", tipo_bono: "+50% Velocidad de Movimiento", x: 450, y: 100 }
-];
+
 
 const eventosAleatorios = [
   { 
@@ -134,6 +133,7 @@ export default function App() {
   
   const [tropasAEnviar, setTropasAEnviar] = useState(0);
   const [mostrarArbol, setMostrarArbol] = useState(false);
+  const [tabIyd, setTabIyd] = useState<"desarrollo" | "militar">("desarrollo");
   const [, setDiasParaEvento] = useState(10 + Math.floor(Math.random() * 6));
   const isPanningRef = useRef(false);
 
@@ -279,7 +279,13 @@ export default function App() {
       alert("No hay suficiente presupuesto.");
       return;
     }
-    if (habilidad.prerrequisito_id && !habilidades.find(h => h.id === habilidad.prerrequisito_id)?.desbloqueada) {
+    if (habilidad.id === "M_SEC") {
+      const finalesMilitares = habilidades.filter(h => ["M_13", "M_23", "M_33"].includes(h.id) && h.desbloqueada);
+      if (finalesMilitares.length < 2) {
+        alert("Cibernética de Vanguardia requiere al menos DOS tecnologías militares finales (Nivel 3).");
+        return;
+      }
+    } else if (habilidad.prerrequisito_id && !habilidades.find(h => h.id === habilidad.prerrequisito_id)?.desbloqueada) {
       alert("Prerrequisito no desbloqueado.");
       return;
     }
@@ -699,7 +705,7 @@ export default function App() {
       {/* MODAL ÁRBOL DE HABILIDADES */}
       {mostrarArbol && (
         <div className="fixed inset-0 bg-slate-950/95 z-50 flex flex-col backdrop-blur-xl p-8 animate-in fade-in">
-          <div className="flex justify-between items-center mb-8 border-b border-slate-800 pb-6">
+          <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4 shrink-0">
             <div>
               <h2 className="text-3xl font-black tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400 flex items-center gap-4">
                 <Atom className="w-8 h-8 text-purple-500" />
@@ -717,52 +723,105 @@ export default function App() {
             </button>
           </div>
 
-          <div className="flex-1 relative border border-slate-800 rounded-sm bg-slate-900/30 overflow-auto shadow-inner">
-            <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ minWidth: 800, minHeight: 600 }}>
-              {habilidades.map(hab => {
-                if (!hab.prerrequisito_id) return null;
-                const pre = habilidades.find(h => h.id === hab.prerrequisito_id);
-                if (!pre) return null;
-                return (
-                  <line 
-                    key={`line-${hab.id}`}
-                    x1={pre.x! + 80} 
-                    y1={pre.y! + 40} 
-                    x2={hab.x! - 20} 
-                    y2={hab.y! + 40} 
-                    stroke={hab.desbloqueada ? "#a855f7" : "#334155"} 
-                    strokeWidth="2"
-                    strokeDasharray={hab.desbloqueada ? "none" : "4,4"}
-                  />
-                );
-              })}
-            </svg>
+          <div className="flex gap-4 mb-4 shrink-0">
+            <button 
+              onClick={() => setTabIyd("desarrollo")}
+              className={`px-6 py-3 font-bold text-xs uppercase tracking-widest border rounded-sm transition-all ${tabIyd === "desarrollo" ? "bg-purple-900/50 border-purple-500 text-purple-200 shadow-[0_0_15px_rgba(168,85,247,0.3)]" : "bg-slate-900/50 border-slate-800 text-slate-500 hover:border-purple-900 hover:text-slate-300"}`}
+            >
+              [ ⚙ DESARROLLO INDUSTRIAL Y CIBERNÉTICO ]
+            </button>
+            <button 
+              onClick={() => setTabIyd("militar")}
+              className={`px-6 py-3 font-bold text-xs uppercase tracking-widest border rounded-sm transition-all ${tabIyd === "militar" ? "bg-rose-900/50 border-rose-500 text-rose-200 shadow-[0_0_15px_rgba(225,29,72,0.3)]" : "bg-slate-900/50 border-slate-800 text-slate-500 hover:border-rose-900 hover:text-slate-300"}`}
+            >
+              [ ⚔ DOCTRINA MILITAR GLOBAL ]
+            </button>
+          </div>
 
-            <div className="relative w-full h-full" style={{ minWidth: 800, minHeight: 600 }}>
-              {habilidades.map(hab => {
-                const canUnlock = !hab.desbloqueada && (!hab.prerrequisito_id || habilidades.find(h => h.id === hab.prerrequisito_id)?.desbloqueada);
+          <div className="flex-1 w-full relative border border-slate-800/80 rounded-lg bg-slate-950/90 overflow-auto shadow-inner p-12 custom-scrollbar">
+            <div className="relative min-w-[1500px] min-h-[600px]">
+              {/* SVG Connectors */}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
+                {habilidades.filter(h => h.categoria === tabIyd).map(hab => {
+                  let pre: Habilidad | undefined;
+                  
+                  if (hab.id === "M_SEC") {
+                     // For M_SEC, draw lines from the level 3 military tech
+                     const m13 = habilidades.find(h => h.id === "M_13");
+                     const m23 = habilidades.find(h => h.id === "M_23");
+                     const m33 = habilidades.find(h => h.id === "M_33");
+                     return [m13, m23, m33].map((p, i) => {
+                       if (!p) return null;
+                       const isActive = p.desbloqueada;
+                       return (
+                        <line 
+                          key={`line-sec-${i}`}
+                          x1={p.x + 208} 
+                          y1={p.y + 45} 
+                          x2={hab.x} 
+                          y2={hab.y + 45} 
+                          stroke={hab.desbloqueada ? "#10b981" : isActive ? "#06b6d4" : "#1e293b"} 
+                          strokeWidth="2"
+                          strokeDasharray={hab.desbloqueada ? "none" : "4,4"}
+                          style={hab.desbloqueada ? { filter: "drop-shadow(0 0 5px #10b981)" } : {}}
+                        />
+                       );
+                     });
+                  } else {
+                    if (!hab.prerrequisito_id) return null;
+                    pre = habilidades.find(h => h.id === hab.prerrequisito_id);
+                    if (!pre) return null;
+                    const isAvailable = pre.desbloqueada;
+
+                    return (
+                      <line 
+                        key={`line-${hab.id}`}
+                        x1={pre.x + 208} 
+                        y1={pre.y + 45} 
+                        x2={hab.x} 
+                        y2={hab.y + 45} 
+                        stroke={hab.desbloqueada ? "#10b981" : isAvailable ? "#06b6d4" : "#1e293b"} 
+                        strokeWidth="2"
+                        strokeDasharray={hab.desbloqueada ? "none" : "4,4"}
+                        style={hab.desbloqueada ? { filter: "drop-shadow(0 0 5px #10b981)" } : {}}
+                      />
+                    );
+                  }
+                })}
+              </svg>
+
+              {/* Cards */}
+              {habilidades.filter(h => h.categoria === tabIyd).map(hab => {
+                let canUnlock = false;
+                if (hab.id === "M_SEC") {
+                  const finalesMilitares = habilidades.filter(h => ["M_13", "M_23", "M_33"].includes(h.id) && h.desbloqueada);
+                  canUnlock = !hab.desbloqueada && finalesMilitares.length >= 2;
+                } else {
+                  canUnlock = !hab.desbloqueada && (!hab.prerrequisito_id || habilidades.find(h => h.id === hab.prerrequisito_id)?.desbloqueada === true);
+                }
+
                 return (
                   <div 
                     key={hab.id}
-                    className={`absolute p-4 w-56 rounded-sm border backdrop-blur-sm transition-all ${
+                    className={`absolute p-3 w-52 rounded border backdrop-blur-sm transition-all text-xs font-mono z-10 ${
                       hab.desbloqueada 
-                        ? 'bg-purple-950/40 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.2)]' 
+                        ? 'bg-emerald-950/40 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]' 
                         : canUnlock 
-                          ? 'bg-slate-800/80 border-slate-500 hover:border-slate-300 hover:bg-slate-700 cursor-pointer'
-                          : 'bg-slate-950/80 border-slate-800 opacity-50 grayscale'
+                          ? 'bg-slate-800/80 border-cyan-500 hover:border-cyan-300 hover:bg-slate-700 hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] cursor-pointer'
+                          : 'bg-slate-950/80 border-slate-800 opacity-60 grayscale pointer-events-none'
                     }`}
                     style={{ left: hab.x, top: hab.y }}
                     onClick={() => canUnlock && handleDesbloquearHabilidad(hab)}
                   >
-                    <div className="font-bold text-sm mb-1 text-slate-200">{hab.nombre}</div>
-                    <div className="text-xs text-purple-300 mb-4">{hab.tipo_bono}</div>
-                    <div className="flex justify-between items-center text-xs border-t border-slate-700/50 pt-2">
+                    <div className="font-bold mb-1 text-slate-100 truncate" title={hab.nombre}>{hab.nombre}</div>
+                    <div className="text-[10px] text-cyan-300 mb-3">{hab.tipo_bono}</div>
+                    <div className="flex justify-between items-center text-[10px] border-t border-slate-700/50 pt-2">
                       {hab.desbloqueada ? (
-                        <span className="text-emerald-400 font-bold uppercase tracking-wider">Desarrollado</span>
+                        <span className="text-emerald-400 font-bold uppercase tracking-wider">Investigado</span>
                       ) : (
                         <>
-                          <span className="text-slate-400 font-mono">${hab.costo}</span>
-                          {canUnlock ? <span className="text-blue-400 font-bold uppercase tracking-wider">Investigar</span> : <span className="text-slate-600 uppercase tracking-wider">Bloqueado</span>}
+                          <span className="text-amber-400/80 font-mono">${hab.costo}</span>
+                          {canUnlock ? <span className="text-cyan-400 font-bold uppercase tracking-wider">Investigar</span> : <span className="text-slate-600 uppercase tracking-wider">Bloqueado</span>}
                         </>
                       )}
                     </div>
