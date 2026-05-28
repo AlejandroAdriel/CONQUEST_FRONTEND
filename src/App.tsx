@@ -407,6 +407,7 @@ export default function App() {
             maxScale={8}
             centerOnInit
             doubleClick={{ disabled: true }}
+            limitToBounds={false}
             onPanningStart={() => {
               isPanningRef.current = true;
             }}
@@ -448,17 +449,16 @@ export default function App() {
 
                 <TransformComponent 
                   wrapperStyle={{ width: "100%", height: "100%" }} 
-                  contentStyle={{ width: "100%", height: "100%" }} 
                   wrapperClass="bg-transparent cursor-grab active:cursor-grabbing" 
                   contentClass="flex items-center justify-center"
                 >
                   <ComposableMap 
                     projection="geoMercator"
-                    width={800}
-                    height={450}
-                    projectionConfig={{ scale: 115, center: [0, 20] }} 
-                    className="w-full h-full block drop-shadow-[0_0_25px_rgba(0,0,0,0.8)]"
-                    style={{ width: "100%", height: "100%", display: "block" }}
+                    width={1000}
+                    height={600}
+                    projectionConfig={{ scale: 155, center: [0, 0] }} 
+                    className="drop-shadow-[0_0_25px_rgba(0,0,0,0.8)] block"
+                    style={{ width: "1000px", height: "600px", display: "block" }}
                   >
                     <Geographies geography={geoUrl}>
                       {({ geographies }) =>
