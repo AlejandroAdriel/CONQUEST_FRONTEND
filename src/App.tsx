@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps";
+import { useState, useEffect, useRef } from "react";
+import { ComposableMap, Geographies, Geography } from "react-simple-maps";
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { 
   Play, Pause, FastForward, Activity,
   ShieldAlert, ShieldCheck, Info,
@@ -108,6 +109,7 @@ export default function App() {
   const [tropasAEnviar, setTropasAEnviar] = useState(0);
   const [mostrarArbol, setMostrarArbol] = useState(false);
   const [, setDiasParaEvento] = useState(10 + Math.floor(Math.random() * 6));
+  const isPanningRef = useRef(false);
 
   // Función auxiliar para obtener un país (del estado o generado)
   const getPais = (geo: any): Pais => {
@@ -317,7 +319,7 @@ export default function App() {
       {/* CUERPO PRINCIPAL */}
       <div className="flex-1 flex overflow-hidden z-10">
         {/* PANEL IZQUIERDO: Diario de Guerra */}
-        <div className="w-[450px] border-r border-slate-800/80 bg-slate-950/60 flex flex-col relative backdrop-blur-sm">
+        <div className="w-[30%] shrink-0 border-r border-slate-800/80 bg-slate-950/60 flex flex-col relative backdrop-blur-sm">
           <div className="p-4 border-b border-slate-800/50 bg-slate-900/90 shadow-md">
             <h2 className="text-sm font-bold text-slate-300 tracking-[0.2em] uppercase flex items-center gap-2">
               <Activity className="w-4 h-4 text-blue-500" />
@@ -366,95 +368,157 @@ export default function App() {
         </div>
 
         {/* PANEL DERECHO: Mapa Global (react-simple-maps) */}
-        <div className="flex-1 relative map-container bg-transparent flex items-center justify-center p-4">
-          <ComposableMap 
-            projectionConfig={{ scale: 180 }} 
-            className="w-full h-full drop-shadow-[0_0_25px_rgba(0,0,0,0.8)]"
-            style={{ width: "100%", height: "100%" }}
+        <div className="w-[70%] h-[calc(100vh-154px)] relative map-container bg-transparent flex items-center justify-center">
+          <TransformWrapper
+            initialScale={1}
+            minScale={1}
+            maxScale={8}
+            centerOnInit
+            doubleClick={{ disabled: true }}
+            onPanningStart={() => {
+              isPanningRef.current = true;
+            }}
+            onPanning={() => {
+              isPanningRef.current = true;
+            }}
+            onPanningStop={() => {
+              setTimeout(() => {
+                isPanningRef.current = false;
+              }, 50);
+            }}
           >
-            <ZoomableGroup center={[0, 0]} zoom={1} minZoom={1} maxZoom={4}>
-              <Geographies geography={geoUrl}>
-                {({ geographies }) =>
-                  geographies.map((geo) => {
-                    const pais = getPais(geo);
-                    const isHovered = hoveredPais?.id === pais.id;
-                    const isSelected = paisSeleccionado?.id === pais.id;
-                    const isAttacked = ataquesEnCola.some(a => a.pais_destino_id === pais.id);
-                    
-                    // Lógica de colores Dark Tactical
-                    let fill = pais.conquistado ? "#1e3a8a" : "#4c1d95"; // azul oscuro vs violeta oscuro default
-                    if (!pais.conquistado) fill = "#3f1a28"; // rose-950 tone for AI
-                    
-                    if (isHovered && !pais.conquistado) fill = "#701a2e"; // brighter red on hover
-                    if (isHovered && pais.conquistado) fill = "#1d4ed8"; // brighter blue on hover
-                    if (isSelected) fill = pais.conquistado ? "#2563eb" : "#9f1239"; 
+            {({ zoomIn, zoomOut, resetTransform }) => (
+              <>
+                {/* Mini-HUD táctico (abajo a la izquierda) */}
+                <div className="absolute bottom-6 left-6 z-20 flex flex-col gap-2">
+                  <button 
+                    onClick={() => zoomIn()} 
+                    className="w-10 h-10 bg-slate-950/80 hover:bg-slate-900 border border-slate-700/50 hover:border-slate-500 text-slate-300 hover:text-white font-bold flex items-center justify-center rounded-sm transition backdrop-blur-md shadow-lg text-lg select-none animate-in fade-in"
+                    title="Acercar (Zoom In)"
+                  >
+                    +
+                  </button>
+                  <button 
+                    onClick={() => zoomOut()} 
+                    className="w-10 h-10 bg-slate-950/80 hover:bg-slate-900 border border-slate-700/50 hover:border-slate-500 text-slate-300 hover:text-white font-bold flex items-center justify-center rounded-sm transition backdrop-blur-md shadow-lg text-lg select-none animate-in fade-in"
+                    title="Alejar (Zoom Out)"
+                  >
+                    -
+                  </button>
+                  <button 
+                    onClick={() => resetTransform()} 
+                    className="w-10 h-10 bg-slate-950/80 hover:bg-slate-900 border border-slate-700/50 hover:border-slate-500 text-slate-300 hover:text-white font-bold flex items-center justify-center rounded-sm transition backdrop-blur-md shadow-lg text-lg select-none animate-in fade-in"
+                    title="Resetear vista"
+                  >
+                    ⟲
+                  </button>
+                </div>
 
-                    return (
-                      <Geography
-                        key={geo.rsmKey}
-                        geography={geo}
-                        onClick={() => {
-                          setPaisSeleccionado(pais);
-                        }}
-                        onMouseEnter={() => {
-                          setHoveredPais(pais);
-                        }}
-                        onMouseLeave={() => {
-                          setHoveredPais(null);
-                        }}
-                        style={{
-                          default: {
-                            fill: fill,
-                            stroke: isAttacked ? "#ef4444" : "#1e293b",
-                            strokeWidth: isAttacked ? 1.5 : 0.5,
-                            outline: "none",
-                            transition: "all 250ms"
-                          },
-                          hover: {
-                            fill: fill,
-                            stroke: pais.conquistado ? "#60a5fa" : "#fb7185",
-                            strokeWidth: 1,
-                            outline: "none",
-                            cursor: "crosshair"
-                          },
-                          pressed: {
-                            fill: fill,
-                            stroke: "#fff",
-                            strokeWidth: 1.5,
-                            outline: "none"
-                          }
-                        }}
-                      />
-                    );
-                  })
-                }
-              </Geographies>
-            </ZoomableGroup>
-          </ComposableMap>
+                <TransformComponent 
+                  wrapperStyle={{ width: "100%", height: "100%" }} 
+                  contentStyle={{ width: "100%", height: "100%" }} 
+                  wrapperClass="bg-transparent cursor-grab active:cursor-grabbing" 
+                  contentClass="flex items-center justify-center"
+                >
+                  <ComposableMap 
+                    width={800}
+                    height={450}
+                    projectionConfig={{ scale: 145, center: [0, -5] }} 
+                    className="w-full h-full block drop-shadow-[0_0_25px_rgba(0,0,0,0.8)]"
+                    style={{ width: "100%", height: "100%", display: "block" }}
+                  >
+                    <Geographies geography={geoUrl}>
+                      {({ geographies }) =>
+                        geographies.map((geo) => {
+                          const pais = getPais(geo);
+                          const isHovered = hoveredPais?.id === pais.id;
+                          const isSelected = paisSeleccionado?.id === pais.id;
+                          const isAttacked = ataquesEnCola.some(a => a.pais_destino_id === pais.id);
+                          
+                          // Lógica de colores Dark Tactical
+                          let fill = pais.conquistado ? "#1e3a8a" : "#4c1d95"; // azul oscuro vs violeta oscuro default
+                          if (!pais.conquistado) fill = "#3f1a28"; // rose-950 tone for AI
+                          
+                          if (isHovered && !pais.conquistado) fill = "#701a2e"; // brighter red on hover
+                          if (isHovered && pais.conquistado) fill = "#1d4ed8"; // brighter blue on hover
+                          if (isSelected) fill = pais.conquistado ? "#2563eb" : "#9f1239"; 
+
+                          return (
+                            <Geography
+                              key={geo.rsmKey}
+                              geography={geo}
+                              onClick={() => {
+                                if (isPanningRef.current) return;
+                                setPaisSeleccionado(pais);
+                              }}
+                              onMouseEnter={() => {
+                                setHoveredPais(pais);
+                              }}
+                              onMouseLeave={() => {
+                                setHoveredPais(null);
+                              }}
+                              style={{
+                                default: {
+                                  fill: fill,
+                                  stroke: isAttacked ? "#ef4444" : "#1e293b",
+                                  strokeWidth: isAttacked ? 1.5 : 0.5,
+                                  outline: "none",
+                                  transition: "all 250ms"
+                                },
+                                hover: {
+                                  fill: fill,
+                                  stroke: pais.conquistado ? "#60a5fa" : "#fb7185",
+                                  strokeWidth: 1,
+                                  outline: "none",
+                                  cursor: "crosshair"
+                                },
+                                pressed: {
+                                  fill: fill,
+                                  stroke: "#fff",
+                                  strokeWidth: 1.5,
+                                  outline: "none"
+                                }
+                              }}
+                            />
+                          );
+                        })
+                      }
+                    </Geographies>
+                  </ComposableMap>
+                </TransformComponent>
+              </>
+            )}
+          </TransformWrapper>
 
           {/* TOOLTIP FLOTANTE (Hover) */}
-          {hoveredPais && !paisSeleccionado && (
-            <div 
-              className="fixed z-50 pointer-events-none bg-slate-900/95 border border-slate-700/80 p-3 rounded-sm shadow-2xl backdrop-blur-md min-w-[200px]"
-              style={{ left: mousePos.x + 20, top: mousePos.y + 20 }}
-            >
-              <div className="text-slate-400 text-xs font-mono mb-2 uppercase tracking-widest border-b border-slate-800 pb-1">
-                Datos Geométricos
+          {hoveredPais && !paisSeleccionado && (() => {
+            const isNearBottom = window.innerHeight - mousePos.y < 280;
+            const isNearRight = window.innerWidth - mousePos.x < 240;
+            const topStyle = isNearBottom ? mousePos.y - 190 : mousePos.y + 20;
+            const leftStyle = isNearRight ? mousePos.x - 220 : mousePos.x + 20;
+            return (
+              <div 
+                className="fixed z-50 pointer-events-none bg-slate-900/95 border border-slate-700/80 p-3 rounded-sm shadow-2xl backdrop-blur-md min-w-[200px] transition-all duration-100 ease-out"
+                style={{ left: leftStyle, top: topStyle }}
+              >
+                <div className="text-slate-400 text-xs font-mono mb-2 uppercase tracking-widest border-b border-slate-800 pb-1">
+                  Datos Geométricos
+                </div>
+                <div className="font-bold text-slate-100 text-sm mb-1 truncate">{hoveredPais.nombre}</div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mt-2">
+                  <span className="text-slate-500">Población:</span>
+                  <span className="text-slate-300 text-right font-mono">{hoveredPais.poblacion.toLocaleString()}</span>
+                  <span className="text-slate-500">Economía:</span>
+                  <span className="text-emerald-400 text-right font-mono">${hoveredPais.economia.toLocaleString()}</span>
+                  <span className="text-slate-500">Fuerza:</span>
+                  <span className="text-rose-400 text-right font-mono">{hoveredPais.conquistado ? '-' : hoveredPais.ejercito_ia.toLocaleString()}</span>
+                </div>
+                <div className={`mt-3 text-[10px] font-bold text-center py-1 uppercase tracking-widest ${hoveredPais.conquistado ? 'bg-blue-900/30 text-blue-400' : 'bg-rose-900/30 text-rose-400'}`}>
+                  {hoveredPais.conquistado ? 'ALIADO' : 'HOSTIL'}
+                </div>
               </div>
-              <div className="font-bold text-slate-100 text-sm mb-1 truncate">{hoveredPais.nombre}</div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mt-2">
-                <span className="text-slate-500">Población:</span>
-                <span className="text-slate-300 text-right font-mono">{hoveredPais.poblacion.toLocaleString()}</span>
-                <span className="text-slate-500">Economía:</span>
-                <span className="text-emerald-400 text-right font-mono">${hoveredPais.economia.toLocaleString()}</span>
-                <span className="text-slate-500">Fuerza:</span>
-                <span className="text-rose-400 text-right font-mono">{hoveredPais.conquistado ? '-' : hoveredPais.ejercito_ia.toLocaleString()}</span>
-              </div>
-              <div className={`mt-3 text-[10px] font-bold text-center py-1 uppercase tracking-widest ${hoveredPais.conquistado ? 'bg-blue-900/30 text-blue-400' : 'bg-rose-900/30 text-rose-400'}`}>
-                {hoveredPais.conquistado ? 'ALIADO' : 'HOSTIL'}
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ATAQUES EN CAMINO OVERLAY */}
           <div className="absolute top-6 right-6 pointer-events-none flex flex-col gap-3">
