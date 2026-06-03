@@ -125,8 +125,7 @@ export default function App() {
     const name = geo.properties.name || "Unknown";
     const seed = id.charCodeAt(0) + (id.length > 1 ? id.charCodeAt(1) : 0);
     
-    const inicialesAliados = ["USA", "840", "United States of America", "MEX", "484", "Mexico"];
-    const isAliado = inicialesAliados.includes(name) || inicialesAliados.includes(id);
+    const isAliado = playerHQ !== null && (id === playerHQ.id || name === playerHQ.nombre);
 
     const poblacion = getRealPopulation(name, seed, countryStatsRef.current);
     const economia = getRealEconomy(name, poblacion, seed);
