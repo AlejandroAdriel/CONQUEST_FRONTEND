@@ -303,7 +303,7 @@ export default function App() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-tactical text-slate-200 overflow-hidden select-none" onMouseMove={handleMouseMove}>
+    <div className="h-screen w-screen flex flex-col bg-tactical text-slate-200 overflow-hidden select-none" onMouseMove={handleMouseMove}>
       {/* TOPBAR TÁCTICO */}
       <header className="h-16 border-b border-slate-800/80 bg-slate-950/80 flex items-center justify-between px-6 shrink-0 z-20 shadow-[0_4px_30px_rgba(0,0,0,0.5)] backdrop-blur-md">
         <div className="flex items-center gap-4">
@@ -371,9 +371,9 @@ export default function App() {
       </header>
 
       {/* CUERPO PRINCIPAL */}
-      <div className="flex-1 flex overflow-hidden z-10">
+      <div className="flex-1 min-h-0 flex overflow-hidden z-10">
         {/* PANEL IZQUIERDO: Diario de Guerra */}
-        <div className="w-[35%] shrink-0 border-r border-slate-800/80 bg-slate-950/60 flex flex-col relative backdrop-blur-sm">
+        <div className="w-[380px] shrink-0 border-r border-slate-800/80 bg-slate-950/60 flex flex-col relative backdrop-blur-sm">
           <div className="p-4 border-b border-slate-800/50 bg-slate-900/90 shadow-md">
             <h2 className="text-sm font-bold text-slate-300 tracking-[0.2em] uppercase flex items-center gap-2">
               <Activity className="w-4 h-4 text-blue-500" />
@@ -424,7 +424,7 @@ export default function App() {
         </div>
 
         {/* PANEL DERECHO: Mapa Global (react-simple-maps) */}
-        <div className="w-[65%] h-[calc(100vh-154px)] relative map-container bg-transparent flex items-center justify-center">
+        <div className="flex-1 h-full relative map-container bg-transparent flex items-center justify-center">
           <TransformWrapper
             initialScale={1}
             minScale={1}
