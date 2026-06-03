@@ -98,17 +98,17 @@ export default function SaveFilesMenu({ onClose, onLoadSave, onNewGame }: SaveFi
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 overflow-y-auto">
-      <div className="relative w-full max-w-4xl bg-[#050915]/95 border-t border-b border-cyan-500/30 p-1">
+    <div className="fixed inset-0 z-50 flex flex-col p-6 md:p-12 bg-[#030712]/95 backdrop-blur-xl overflow-hidden">
+      <div className="relative w-full max-w-4xl mx-auto flex flex-col bg-[#050915]/95 border-t border-b border-cyan-500/30 p-1 flex-1 min-h-0">
         {/* Adornos esquinas HUD */}
         <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-cyan-400" />
         <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-cyan-400" />
         <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-cyan-400" />
         <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-cyan-400" />
 
-        <div className="bg-[#050915] border border-slate-900 px-8 py-8 flex flex-col font-mono text-slate-300 uppercase tracking-widest">
+        <div className="bg-[#050915] border border-slate-900 px-8 py-8 flex flex-col flex-1 min-h-0 font-mono text-slate-300 uppercase tracking-widest overflow-hidden">
           {/* CABECERA */}
-          <div className="flex justify-between items-center border-b border-slate-800 pb-6 mb-8">
+          <div className="shrink-0 flex justify-between items-center mb-6 pb-4 border-b border-cyan-900/50">
             <div className="flex items-center gap-3">
               <Database className="w-6 h-6 text-cyan-400" />
               <div>
@@ -131,13 +131,13 @@ export default function SaveFilesMenu({ onClose, onLoadSave, onNewGame }: SaveFi
           </div>
 
           {/* LISTA DE ARCHIVOS DE GUARDADO */}
-          <div className="flex flex-col gap-6">
+          <div className="flex-1 overflow-y-auto min-h-0 flex flex-col gap-4 pr-2 custom-scrollbar">
             {saves.map((save, index) => {
               if (!save) {
                 return (
                   <div 
                     key={`empty-${index}`} 
-                    className="relative group flex flex-col md:flex-row items-center justify-between p-6 border border-dashed border-slate-800 hover:border-cyan-500/30 bg-slate-950/40 opacity-60 hover:opacity-100 transition-all duration-300 min-h-[140px]"
+                    className="shrink-0 relative group flex flex-col md:flex-row items-center justify-between p-6 border border-dashed border-slate-800 hover:border-cyan-500/30 bg-slate-950/40 opacity-60 hover:opacity-100 transition-all duration-300 min-h-[140px]"
                   >
                     <div className="flex items-center gap-4 mb-4 md:mb-0">
                       <div className="w-10 h-10 border border-dashed border-slate-800 flex items-center justify-center text-slate-600 group-hover:text-cyan-500/50 transition-colors">
@@ -166,7 +166,7 @@ export default function SaveFilesMenu({ onClose, onLoadSave, onNewGame }: SaveFi
               return (
                 <div 
                   key={save.id}
-                  className="flex flex-col border border-slate-800/80 bg-slate-900/10 hover:border-slate-700/80 transition-all p-5 gap-4"
+                  className="shrink-0 flex flex-col border border-slate-800/80 bg-slate-900/10 hover:border-slate-700/80 transition-all p-5 gap-4"
                 >
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
                     {/* IZQUIERDA: Identidad Comandante */}
