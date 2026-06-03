@@ -12,6 +12,7 @@ import type { Habilidad } from "./database/mockAPI";
 import Login from "./components/Login";
 import StartMenu from "./components/StartMenu";
 import SaveFilesMenu from "./components/SaveFilesMenu";
+import SelectHQ from "./components/SelectHQ";
 // Geometría del mapa del mundo (TopoJSON)
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
@@ -88,7 +89,8 @@ const getRealEjercito = (isAliado: boolean, population: number, seed: number): n
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentScreen, setCurrentScreen] = useState<'start' | 'login' | 'game'>('start');
+  const [currentScreen, setCurrentScreen] = useState<'start' | 'login' | 'select_hq' | 'game'>('start');
+  const [playerHQ, setPlayerHQ] = useState<{id: string, nombre: string} | null>(null);
   const [showSaves, setShowSaves] = useState(false);
   const [isSystemMenuOpen, setIsSystemMenuOpen] = useState(false);
   const [fechaVirtual, setFechaVirtual] = useState(new Date(2027, 4, 1));
@@ -328,7 +330,7 @@ export default function App() {
     return (
       <>
         <StartMenu 
-          onStartGame={() => setCurrentScreen('game')} 
+          onStartGame={() => setCurrentScreen('select_hq')} 
           onOpenLogin={() => setCurrentScreen('login')} 
           onOpenSaves={() => setShowSaves(true)}
           isLoggedIn={isAuthenticated} 
@@ -362,6 +364,18 @@ export default function App() {
     );
   }
 
+  if (currentScreen === 'select_hq') {
+    return (
+      <SelectHQ
+        onDeploy={(pais) => {
+          setPlayerHQ(pais);
+          setCurrentScreen('game');
+        }}
+        onCancel={() => setCurrentScreen('start')}
+      />
+    );
+  }
+
   return (
     <div className="h-[100dvh] w-screen flex flex-col bg-[#030712] text-slate-200 overflow-hidden select-none" onMouseMove={handleMouseMove}>
       {/* TOPBAR TÁCTICO - Con shrink-0 para evitar deformaciones */}
@@ -383,6 +397,9 @@ export default function App() {
 
           <div className="text-xs font-mono tracking-widest text-slate-400 border-l border-slate-800 pl-4 ml-2">
             OPERARIO: [ <span className="text-cyan-400 font-bold">{isAuthenticated ? "ALEJANDRO" : "INVITADO"}</span> ]
+          </div>
+          <div className="ml-4 pl-4 border-l border-slate-800 text-xs font-mono text-slate-400">
+            SEDE: [ <span className="text-emerald-400 font-bold">{playerHQ ? playerHQ.nombre.toUpperCase() : "DESCONOCIDA"}</span> ]
           </div>
         </div>
         
