@@ -319,15 +319,15 @@ export default function App() {
       {/* SECCIÓN CENTRAL FLEXIBLE (Diario + Mapa) - Uso de flex-1 y min-h-0 */}
       <div className="flex-1 flex min-h-0 overflow-hidden z-10">
         {/* PANEL IZQUIERDO: Diario de Guerra */}
-        <div className="w-[35%] shrink-0 border-r border-slate-800/80 bg-slate-950/60 flex flex-col relative backdrop-blur-sm">
+        <div className="w-[35%] shrink-0 border-r border-slate-800/80 bg-slate-950/60 flex flex-col h-full max-h-full overflow-hidden relative backdrop-blur-sm">
           <div className="p-4 border-b border-slate-800/50 bg-slate-900/90 shadow-md shrink-0">
             <h2 className="text-sm font-bold text-slate-300 tracking-[0.2em] uppercase flex items-center gap-2">
               <Activity className="w-4 h-4 text-blue-500" />
               Diario de Guerra
             </h2>
           </div>
-          
-          <div className="flex-1 p-5 overflow-y-auto space-y-4 pb-8 custom-scrollbar relative">
+          {/* Scrollable Alerts Container */}
+          <div className="flex-1 p-5 overflow-y-auto min-h-0 space-y-4 pb-8 custom-scrollbar relative">
             {diarioGuerra.map(ev => {
               const isAlert = ev.tipo === 'alert';
               const isSuccess = ev.tipo === 'success';
@@ -364,7 +364,7 @@ export default function App() {
         </div>
 
         {/* PANEL DERECHO: Mapa Global - Eliminación del h-[calc(100vh-154px)] problemático */}
-        <div className="w-[65%] h-full relative map-container bg-transparent flex items-center justify-center overflow-hidden">
+        <div className="h-full flex-1 min-h-0 relative flex items-center justify-center overflow-hidden bg-transparent map-container">
           <TransformWrapper
             initialScale={1}
             minScale={1}
@@ -384,8 +384,8 @@ export default function App() {
                   <button onClick={() => resetTransform()} className="w-10 h-10 bg-slate-950/80 hover:bg-slate-900 border border-slate-700/50 hover:border-slate-500 text-slate-300 hover:text-white font-bold flex items-center justify-center rounded-sm transition backdrop-blur-md shadow-lg text-lg select-none" title="Resetear vista">⟲</button>
                 </div>
 
-                <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }} wrapperClass="bg-transparent cursor-grab active:cursor-grabbing" contentClass="flex items-center justify-center">
-                  <ComposableMap projection="geoMercator" width={1000} height={600} projectionConfig={{ scale: 155, center: [0, 0] }} className="drop-shadow-[0_0_25px_rgba(0,0,0,0.8)] block" style={{ width: "1000px", height: "600px", display: "block" }}>
+                <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }} wrapperClass="bg-transparent cursor-grab active:cursor-grabbing" contentClass="flex items-center justify-center w-full h-full">
+                  <ComposableMap projection="geoMercator" viewBox="0 0 1000 600" projectionConfig={{ scale: 155, center: [0, 0] }} className="w-full h-full max-h-full object-contain drop-shadow-[0_0_25px_rgba(0,0,0,0.8)] block" style={{ width: "100%", height: "100%" }}>
                     <Geographies geography={geoUrl}>
                       {({ geographies }) =>
                         geographies.map((geo) => {
