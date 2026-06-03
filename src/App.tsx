@@ -4,7 +4,7 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { 
   Play, Pause, FastForward, Activity,
   ShieldAlert, ShieldCheck, Info,
-  Atom, Flag, Swords, Hexagon, Zap, Skull, Map as MapIcon,
+  Flag, Swords, Hexagon, Zap, Skull, Map as MapIcon,
   ChevronsRight, Globe, Cpu
 } from "lucide-react";
 import { fetchInitialGameState, fetchRandomEvents, fetchTechTree, fetchCountryStats } from "./database/mockAPI";
@@ -111,7 +111,7 @@ export default function App() {
 
   const [paisSeleccionado, setPaisSeleccionado] = useState<Pais | null>(null);
   const [hoveredPais, setHoveredPais] = useState<Pais | null>(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [, setMousePos] = useState({ x: 0, y: 0 });
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const timeoutRef = useRef<any>(null);
   const [tropasAEnviar, setTropasAEnviar] = useState(0);
@@ -299,7 +299,7 @@ export default function App() {
         alert("Cibernética de Vanguardia requiere al menos DOS tecnologías militares finales (Nivel 3).");
         return;
       }
-    } else if (habilidad.prerrequisito_id && !habilidades.find(h => h.id === habilidad.prerrequisito_id)?.desbloqueada) {
+    } else if (habilidad.prerrequisitos.length > 0 && !habilidad.prerrequisitos.every(preId => habilidades.find(h => h.id === preId)?.desbloqueada)) {
       alert("Prerrequisito no desbloqueado.");
       return;
     }
@@ -337,7 +337,7 @@ export default function App() {
         {showSaves && (
           <SaveFilesMenu 
             onClose={() => setShowSaves(false)} 
-            onLoadSave={(saveId) => {
+            onLoadSave={() => {
               setCurrentScreen('game');
               setShowSaves(false);
             }}
@@ -759,40 +759,45 @@ export default function App() {
             <button onClick={() => setTabIyd("militar")} className={`px-6 py-3 font-bold text-xs uppercase tracking-widest border rounded-sm transition-all ${tabIyd === "militar" ? "bg-rose-900/50 border-rose-500 text-rose-200" : "bg-slate-900/50 border-slate-800 text-slate-500 hover:text-slate-300"}`}>[ ⚔ DOCTRINA DE ANIQUILACIÓN ]</button>
           </div>
 
-          <div className="flex-1 w-full relative border border-slate-800/80 rounded-lg bg-slate-950/90 shadow-inner overflow-hidden cursor-move">
+          <div className="flex-1 w-full relative overflow-hidden bg-[#02040a] rounded-lg border border-cyan-900/30 shadow-inner">
             <TransformWrapper
-              initialScale={1}
-              minScale={0.3}
+              minScale={0.2}
               maxScale={2}
+              initialScale={0.6}
               centerOnInit={true}
+              limitToBounds={false}
               wheel={{ step: 0.1 }}
+              panning={{ disabled: false }}
             >
-              <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }} contentStyle={{ width: "100%", height: "100%" }}>
-                <div className="relative min-w-[2500px] min-h-[1500px]">
+              <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }}>
+                <div className="relative w-[6000px] h-[4000px] bg-transparent">
                   <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
-                    {habilidades.filter(h => h.categoria === tabIyd).map(hab => {
-                      if (!hab.prerrequisito_id) return null;
-                      const pre = habilidades.find(h => h.id === hab.prerrequisito_id);
-                      if (!pre) return null;
-                      const isAvailable = pre.desbloqueada;
-                      return (
-                        <line 
-                          key={`line-${hab.id}`} 
-                          x1={pre.x + 208} 
-                          y1={pre.y + 45} 
-                          x2={hab.x} 
-                          y2={hab.y + 45} 
-                          stroke={hab.desbloqueada ? "#06b6d4" : isAvailable ? "#0891b2" : "#1e293b"} 
-                          strokeWidth={hab.desbloqueada ? "3" : "2"} 
-                          strokeDasharray={hab.desbloqueada ? "none" : isAvailable ? "none" : "8,8"} 
-                          style={hab.desbloqueada ? { filter: "drop-shadow(0 0 8px #06b6d4)", transition: "all 0.5s ease" } : { transition: "all 0.5s ease" }}
-                        />
-                      );
+                    {habilidades.filter(h => h.categoria === tabIyd).flatMap(hab => {
+                      return (hab.prerrequisitos || []).map(preId => {
+                        const pre = habilidades.find(h => h.id === preId);
+                        if (!pre) return null;
+                        const isAvailable = pre.desbloqueada;
+                        return (
+                          <line 
+                            key={`line-${pre.id}-${hab.id}`} 
+                            x1={pre.x + 208} 
+                            y1={pre.y + 45} 
+                            x2={hab.x} 
+                            y2={hab.y + 45} 
+                            stroke={hab.desbloqueada ? "#06b6d4" : isAvailable ? "#0891b2" : "#1e293b"} 
+                            strokeWidth={hab.desbloqueada ? "3" : "2"} 
+                            strokeDasharray={hab.desbloqueada ? "none" : isAvailable ? "none" : "8,8"} 
+                            style={hab.desbloqueada ? { filter: "drop-shadow(0 0 8px #06b6d4)", transition: "all 0.5s ease" } : { transition: "all 0.5s ease" }}
+                          />
+                        );
+                      });
                     })}
                   </svg>
 
                   {habilidades.filter(h => h.categoria === tabIyd).map(hab => {
-                    const canUnlock = !hab.desbloqueada && (!hab.prerrequisito_id || habilidades.find(h => h.id === hab.prerrequisito_id)?.desbloqueada === true);
+                    const canUnlock = !hab.desbloqueada && 
+                      (hab.prerrequisitos.length === 0 || 
+                       hab.prerrequisitos.every(preId => habilidades.find(h => h.id === preId)?.desbloqueada === true));
                     
                     return (
                       <div 
@@ -837,7 +842,7 @@ export default function App() {
       {showSaves && (
         <SaveFilesMenu 
           onClose={() => setShowSaves(false)} 
-          onLoadSave={(saveId) => {
+          onLoadSave={() => {
             setCurrentScreen('game');
             setShowSaves(false);
           }}

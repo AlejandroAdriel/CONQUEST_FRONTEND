@@ -13,15 +13,14 @@ interface SaveFilesMenuProps {
 
 export default function SaveFilesMenu({ onClose, onLoadSave, onNewGame }: SaveFilesMenuProps) {
   const [saves, setSaves] = useState<(SaveFile | null)[]>([null]);
-  const [isLoadingSaves, setIsLoadingSaves] = useState(true);
 
   useEffect(() => {
     const loadSaves = async () => {
       try {
         const data = await fetchSavedGames();
         setSaves([...data, null]);
-      } finally {
-        setIsLoadingSaves(false);
+      } catch (err) {
+        console.error(err);
       }
     };
     loadSaves();

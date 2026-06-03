@@ -11,7 +11,7 @@ export type Habilidad = {
   nombre: string;
   costo: number;
   desbloqueada: boolean;
-  prerrequisito_id: string | null;
+  prerrequisitos: string[];
   tipo_bono: string;
   categoria: "desarrollo" | "militar";
   rama: string;
@@ -212,46 +212,61 @@ const eventosAleatorios = [
 
 const initialHabilidades: Habilidad[] = [
   // ===================== INFRAESTRUCTURA (DESARROLLO) =====================
-  { id: "D_ROOT", nombre: "Protocolo de Enlace Neuronal", costo: 300, desbloqueada: false, prerrequisito_id: null, tipo_bono: "+5% Eficiencia Global", categoria: "desarrollo", rama: "raiz", nivel: 0, x: 100, y: 500 },
-  
-  // Logística y Producción
-  { id: "D_A1", nombre: "IA de Logística", costo: 600, desbloqueada: false, prerrequisito_id: "D_ROOT", tipo_bono: "-10% Costo Unidades", categoria: "desarrollo", rama: "A", nivel: 1, x: 450, y: 250 },
-  { id: "D_A2", nombre: "Cadenas de Suministro Auto", costo: 1200, desbloqueada: false, prerrequisito_id: "D_A1", tipo_bono: "-20% Costo Construcción", categoria: "desarrollo", rama: "A", nivel: 2, x: 800, y: 150 },
-  { id: "D_A3", nombre: "Megacorporación Sintética", costo: 3500, desbloqueada: false, prerrequisito_id: "D_A2", tipo_bono: "+50% Eficiencia Total", categoria: "desarrollo", rama: "A", nivel: 3, x: 1200, y: 150 },
-  { id: "D_A4", nombre: "Reciclaje Molecular", costo: 1500, desbloqueada: false, prerrequisito_id: "D_A1", tipo_bono: "+15% Ingresos Base", categoria: "desarrollo", rama: "A", nivel: 2, x: 800, y: 350 },
-  { id: "D_A5", nombre: "Enjambres Constructores", costo: 2800, desbloqueada: false, prerrequisito_id: "D_A4", tipo_bono: "-40% Tiempo Despliegue", categoria: "desarrollo", rama: "A", nivel: 3, x: 1200, y: 350 },
-  
-  // Energía y Recursos
-  { id: "D_B1", nombre: "Minería Asteroide", costo: 800, desbloqueada: false, prerrequisito_id: "D_ROOT", tipo_bono: "+20% Ingresos Oro", categoria: "desarrollo", rama: "B", nivel: 1, x: 450, y: 500 },
-  { id: "D_B2", nombre: "Plantas de Fusión Quiral", costo: 1800, desbloqueada: false, prerrequisito_id: "D_B1", tipo_bono: "+35% Ingresos Oro", categoria: "desarrollo", rama: "B", nivel: 2, x: 800, y: 500 },
-  { id: "D_B3", nombre: "Economía de Esfera Dyson", costo: 5000, desbloqueada: false, prerrequisito_id: "D_B2", tipo_bono: "Recursos Ilimitados", categoria: "desarrollo", rama: "B", nivel: 3, x: 1200, y: 500 },
-  
-  // Cibernética y Control Redes
-  { id: "D_C1", nombre: "Redes Cuánticas", costo: 700, desbloqueada: false, prerrequisito_id: "D_ROOT", tipo_bono: "+10% Sabotaje", categoria: "desarrollo", rama: "C", nivel: 1, x: 450, y: 750 },
-  { id: "D_C2", nombre: "Hackeo de Bolsas Globales", costo: 1600, desbloqueada: false, prerrequisito_id: "D_C1", tipo_bono: "Robar Fondos Enemigos", categoria: "desarrollo", rama: "C", nivel: 2, x: 800, y: 650 },
-  { id: "D_C3", nombre: "Singularidad Financiera", costo: 4000, desbloqueada: false, prerrequisito_id: "D_C2", tipo_bono: "+100% Retorno Inversión", categoria: "desarrollo", rama: "C", nivel: 3, x: 1200, y: 650 },
-  { id: "D_C4", nombre: "Manipulación de Información", costo: 1400, desbloqueada: false, prerrequisito_id: "D_C1", tipo_bono: "Reducir Moral Enemiga", categoria: "desarrollo", rama: "C", nivel: 2, x: 800, y: 850 },
+  // Origen (X=200, Y=2000): 1 nodo raíz principal
+  { id: "D_ROOT", nombre: "Protocolo de Despertar", costo: 150, desbloqueada: false, prerrequisitos: [], tipo_bono: "Activación del Núcleo Táctico", categoria: "desarrollo", rama: "Origen", nivel: 1, x: 200, y: 2000 },
+
+  // Primera Bifurcación (X=600): 3 nodos
+  { id: "D_B1_1", nombre: "Extracción Profunda", costo: 300, desbloqueada: false, prerrequisitos: ["D_ROOT"], tipo_bono: "+5% Ingresos Oro", categoria: "desarrollo", rama: "Bifurcacion", nivel: 2, x: 600, y: 1500 },
+  { id: "D_B1_2", nombre: "Redes Neuronales Básicas", costo: 400, desbloqueada: false, prerrequisitos: ["D_ROOT"], tipo_bono: "+5% Eficiencia Global", categoria: "desarrollo", rama: "Bifurcacion", nivel: 2, x: 600, y: 2000 },
+  { id: "D_B1_3", nombre: "Gestión de Flotas Auto", costo: 350, desbloqueada: false, prerrequisitos: ["D_ROOT"], tipo_bono: "-5% Costo Despliegue", categoria: "desarrollo", rama: "Bifurcacion", nivel: 2, x: 600, y: 2500 },
+
+  // Expansión (X=1100): 5 nodos
+  { id: "D_EXP_1", nombre: "Minería Suboceánica", costo: 700, desbloqueada: false, prerrequisitos: ["D_B1_1"], tipo_bono: "+10% Ingresos Oro", categoria: "desarrollo", rama: "Expansion", nivel: 3, x: 1100, y: 1000 },
+  { id: "D_EXP_2", nombre: "Procesadores Cuánticos", costo: 800, desbloqueada: false, prerrequisitos: ["D_B1_1", "D_B1_2"], tipo_bono: "+10% Eficiencia Global", categoria: "desarrollo", rama: "Expansion", nivel: 3, x: 1100, y: 1500 },
+  { id: "D_EXP_3", nombre: "Sabotaje Financiero", costo: 1000, desbloqueada: false, prerrequisitos: ["D_B1_2"], tipo_bono: "+10% Robo de Fondos", categoria: "desarrollo", rama: "Expansion", nivel: 3, x: 1100, y: 2000 },
+  { id: "D_EXP_4", nombre: "Nodos Logísticos Subterráneos", costo: 750, desbloqueada: false, prerrequisitos: ["D_B1_2", "D_B1_3"], tipo_bono: "-10% Costo Despliegue", categoria: "desarrollo", rama: "Expansion", nivel: 3, x: 1100, y: 2500 },
+  { id: "D_EXP_5", nombre: "Lanzamiento de Microsatélites", costo: 600, desbloqueada: false, prerrequisitos: ["D_B1_3"], tipo_bono: "+10% Visión Táctica", categoria: "desarrollo", rama: "Expansion", nivel: 3, x: 1100, y: 3000 },
+
+  // Convergencia Parcial (X=1600): 3 nodos mayores
+  { id: "D_CONV_1", nombre: "Perforación Mantélica", costo: 1500, desbloqueada: false, prerrequisitos: ["D_EXP_1", "D_EXP_2"], tipo_bono: "+20% Ingresos Oro", categoria: "desarrollo", rama: "Convergencia", nivel: 4, x: 1600, y: 1500 },
+  { id: "D_CONV_2", nombre: "IA Directiva de Producción", costo: 2000, desbloqueada: false, prerrequisitos: ["D_EXP_2", "D_EXP_4"], tipo_bono: "+20% Velocidad Construcción", categoria: "desarrollo", rama: "Convergencia", nivel: 4, x: 1600, y: 2000 },
+  { id: "D_CONV_3", nombre: "Trenes Maglev Transcontinentales", costo: 1600, desbloqueada: false, prerrequisitos: ["D_EXP_4", "D_EXP_5"], tipo_bono: "+15% Reserva Máxima", categoria: "desarrollo", rama: "Convergencia", nivel: 4, x: 1600, y: 2500 },
+
+  { id: "D_SUPER_1", nombre: "Mente Enjambre de Servidores", costo: 5000, desbloqueada: false, prerrequisitos: ["D_CONV_1", "D_CONV_2"], tipo_bono: "-30% Costo Total", categoria: "desarrollo", rama: "SuperNodos", nivel: 5, x: 2200, y: 1750 },
+  { id: "D_SUPER_2", nombre: "Singularidad Tecnológica", costo: 8000, desbloqueada: false, prerrequisitos: ["D_CONV_2", "D_CONV_3"], tipo_bono: "Desbloquea Todo Nivel Máximo", categoria: "desarrollo", rama: "SuperNodos", nivel: 5, x: 2200, y: 2250 },
+  { id: "D_ULTIMATE", nombre: "Asimilación Planetaria Total", costo: 25000, desbloqueada: false, prerrequisitos: ["D_SUPER_1", "D_SUPER_2"], tipo_bono: "Conquista Instantánea Sutil", categoria: "desarrollo", rama: "Definitiva", nivel: 6, x: 2800, y: 2000 },
 
   // ===================== DOCTRINA MILITAR =====================
-  { id: "M_ROOT", nombre: "Protocolo de Aniquilación", costo: 400, desbloqueada: false, prerrequisito_id: null, tipo_bono: "+5% Ataque Global", categoria: "militar", rama: "raiz", nivel: 0, x: 100, y: 500 },
-  
-  // Infantería y Tácticas
-  { id: "M_A1", nombre: "Infantería Cibernética", costo: 700, desbloqueada: false, prerrequisito_id: "M_ROOT", tipo_bono: "+15% HP Infantería", categoria: "militar", rama: "A", nivel: 1, x: 450, y: 250 },
-  { id: "M_A2", nombre: "Exoesqueletos Pesados", costo: 1300, desbloqueada: false, prerrequisito_id: "M_A1", tipo_bono: "+25% Def Infantería", categoria: "militar", rama: "A", nivel: 2, x: 800, y: 150 },
-  { id: "M_A3", nombre: "Supersoldados Genéticos", costo: 3200, desbloqueada: false, prerrequisito_id: "M_A2", tipo_bono: "+50% Ataque Infantería", categoria: "militar", rama: "A", nivel: 3, x: 1200, y: 150 },
-  { id: "M_A4", nombre: "Guerra Psicológica", costo: 1100, desbloqueada: false, prerrequisito_id: "M_A1", tipo_bono: "Deserción Enemiga", categoria: "militar", rama: "A", nivel: 2, x: 800, y: 350 },
-  { id: "M_A5", nombre: "Control Mental Masivo", costo: 3000, desbloqueada: false, prerrequisito_id: "M_A4", tipo_bono: "Conversión de Tropas", categoria: "militar", rama: "A", nivel: 3, x: 1200, y: 350 },
-  
-  // Movilidad y Vehículos
-  { id: "M_B1", nombre: "Enjambres de Drones", costo: 900, desbloqueada: false, prerrequisito_id: "M_ROOT", tipo_bono: "+20% Vel Movimiento", categoria: "militar", rama: "B", nivel: 1, x: 450, y: 500 },
-  { id: "M_B2", nombre: "Blindaje de Nanotubos", costo: 1700, desbloqueada: false, prerrequisito_id: "M_B1", tipo_bono: "+30% Resistencia Total", categoria: "militar", rama: "B", nivel: 2, x: 800, y: 500 },
-  { id: "M_B3", nombre: "Tanques Levitadores", costo: 4200, desbloqueada: false, prerrequisito_id: "M_B2", tipo_bono: "+60% Daño Caballería", categoria: "militar", rama: "B", nivel: 3, x: 1200, y: 500 },
-  
-  // Artillería y Orbital
-  { id: "M_C1", nombre: "Artillería Orbital Gauss", costo: 1000, desbloqueada: false, prerrequisito_id: "M_ROOT", tipo_bono: "+20% Daño de Área", categoria: "militar", rama: "C", nivel: 1, x: 450, y: 750 },
-  { id: "M_C2", nombre: "Satélites EMP", costo: 2000, desbloqueada: false, prerrequisito_id: "M_C1", tipo_bono: "Inutilizar Defensas", categoria: "militar", rama: "C", nivel: 2, x: 800, y: 650 },
-  { id: "M_C3", nombre: "Cañones de Antimateria", costo: 5500, desbloqueada: false, prerrequisito_id: "M_C2", tipo_bono: "Destrucción Instantánea", categoria: "militar", rama: "C", nivel: 3, x: 1200, y: 650 },
-  { id: "M_C4", nombre: "Escudos Planetarios", costo: 2500, desbloqueada: false, prerrequisito_id: "M_C1", tipo_bono: "Inmunidad Orbital", categoria: "militar", rama: "C", nivel: 2, x: 800, y: 850 }
+  { id: "M_L1_1", nombre: "Entrenamiento Básico Alterado", costo: 300, desbloqueada: false, prerrequisitos: [], tipo_bono: "+5% HP Infantería", categoria: "militar", rama: "L1", nivel: 1, x: 100, y: 200 },
+  { id: "M_L1_2", nombre: "Armaduras Tácticas de Grafeno", costo: 700, desbloqueada: false, prerrequisitos: ["M_L1_1"], tipo_bono: "+10% Def Infantería", categoria: "militar", rama: "L1", nivel: 2, x: 450, y: 200 },
+  { id: "M_L1_3", nombre: "Implantes Neuronales de Combate", costo: 1500, desbloqueada: false, prerrequisitos: ["M_L1_2"], tipo_bono: "+20% Ataque Infantería", categoria: "militar", rama: "L1", nivel: 3, x: 800, y: 200 },
+  { id: "M_L1_4", nombre: "Exoesqueletos de Asalto", costo: 3000, desbloqueada: false, prerrequisitos: ["M_L1_3"], tipo_bono: "+35% HP Infantería", categoria: "militar", rama: "L1", nivel: 4, x: 1150, y: 200 },
+  { id: "M_L1_5", nombre: "Supersoldados Quiméricos", costo: 6000, desbloqueada: false, prerrequisitos: ["M_L1_4"], tipo_bono: "+50% Ataque Infantería", categoria: "militar", rama: "L1", nivel: 5, x: 1500, y: 200 },
+  { id: "M_L1_6", nombre: "Legiones de Infantería Ciborg", costo: 12000, desbloqueada: false, prerrequisitos: ["M_L1_5"], tipo_bono: "Infantería Indestructible", categoria: "militar", rama: "L1", nivel: 6, x: 1850, y: 200 },
+  { id: "M_L2_1", nombre: "Motores de Combustión Óptima", costo: 400, desbloqueada: false, prerrequisitos: [], tipo_bono: "+5% Vel Vehículos", categoria: "militar", rama: "L2", nivel: 1, x: 100, y: 450 },
+  { id: "M_L2_2", nombre: "Blindaje Reactivo Inteligente", costo: 800, desbloqueada: false, prerrequisitos: ["M_L2_1"], tipo_bono: "+10% Def Blindados", categoria: "militar", rama: "L2", nivel: 2, x: 450, y: 450 },
+  { id: "M_L2_3", nombre: "Tanques de Asalto Automáticos", costo: 1600, desbloqueada: false, prerrequisitos: ["M_L2_2"], tipo_bono: "+20% Ataque Blindados", categoria: "militar", rama: "L2", nivel: 3, x: 800, y: 450 },
+  { id: "M_L2_4", nombre: "Aerodeslizadores Magnéticos", costo: 3200, desbloqueada: false, prerrequisitos: ["M_L2_3"], tipo_bono: "+35% Evasión Vehículos", categoria: "militar", rama: "L2", nivel: 4, x: 1150, y: 450 },
+  { id: "M_L2_5", nombre: "Mechas de Artillería Bípedos", costo: 7000, desbloqueada: false, prerrequisitos: ["M_L2_4"], tipo_bono: "+50% Daño Devastador", categoria: "militar", rama: "L2", nivel: 5, x: 1500, y: 450 },
+  { id: "M_L2_6", nombre: "Titanes de Combate Terrestre", costo: 15000, desbloqueada: false, prerrequisitos: ["M_L2_5"], tipo_bono: "Vehículos Arrasan Todo", categoria: "militar", rama: "L2", nivel: 6, x: 1850, y: 450 },
+  { id: "M_L3_1", nombre: "Radares de Focalización Temprana", costo: 500, desbloqueada: false, prerrequisitos: [], tipo_bono: "+5% Precisión", categoria: "militar", rama: "L3", nivel: 1, x: 100, y: 700 },
+  { id: "M_L3_2", nombre: "Obuses de Munición Inteligente", costo: 1000, desbloqueada: false, prerrequisitos: ["M_L3_1"], tipo_bono: "+10% Daño Artillería", categoria: "militar", rama: "L3", nivel: 2, x: 450, y: 700 },
+  { id: "M_L3_3", nombre: "Lanzacohetes Térmicos Múltiples", costo: 2000, desbloqueada: false, prerrequisitos: ["M_L3_2"], tipo_bono: "+20% Daño de Área", categoria: "militar", rama: "L3", nivel: 3, x: 800, y: 700 },
+  { id: "M_L3_4", nombre: "Baterías de Misiles Hipersónicos", costo: 4000, desbloqueada: false, prerrequisitos: ["M_L3_3"], tipo_bono: "+35% Perforación Blindaje", categoria: "militar", rama: "L3", nivel: 4, x: 1150, y: 700 },
+  { id: "M_L3_5", nombre: "Cañones de Iones Atmosféricos", costo: 8000, desbloqueada: false, prerrequisitos: ["M_L3_4"], tipo_bono: "+50% Daño de Área", categoria: "militar", rama: "L3", nivel: 5, x: 1500, y: 700 },
+  { id: "M_L3_6", nombre: "Bombardeo Cinético de Tungsteno", costo: 16000, desbloqueada: false, prerrequisitos: ["M_L3_5"], tipo_bono: "Destruye Fortalezas de 1 Golpe", categoria: "militar", rama: "L3", nivel: 6, x: 1850, y: 700 },
+  { id: "M_L4_1", nombre: "Campañas de Desinformación", costo: 450, desbloqueada: false, prerrequisitos: [], tipo_bono: "-5% Moral Enemiga", categoria: "militar", rama: "L4", nivel: 1, x: 100, y: 950 },
+  { id: "M_L4_2", nombre: "Hackeo de Transmisiones", costo: 900, desbloqueada: false, prerrequisitos: ["M_L4_1"], tipo_bono: "Causa Deserción Ligera", categoria: "militar", rama: "L4", nivel: 2, x: 450, y: 950 },
+  { id: "M_L4_3", nombre: "Sondas Holo-Terror", costo: 1800, desbloqueada: false, prerrequisitos: ["M_L4_2"], tipo_bono: "-15% Moral Enemiga", categoria: "militar", rama: "L4", nivel: 3, x: 800, y: 950 },
+  { id: "M_L4_4", nombre: "Drones de Frecuencia Pánica", costo: 3600, desbloqueada: false, prerrequisitos: ["M_L4_3"], tipo_bono: "Retirada Forzosa Probable", categoria: "militar", rama: "L4", nivel: 4, x: 1150, y: 950 },
+  { id: "M_L4_5", nombre: "Neuro-Virus Auditivos", costo: 7500, desbloqueada: false, prerrequisitos: ["M_L4_4"], tipo_bono: "Tropas Enemigas se Atacan", categoria: "militar", rama: "L4", nivel: 5, x: 1500, y: 950 },
+  { id: "M_L4_6", nombre: "Proyección de Falso Dios", costo: 18000, desbloqueada: false, prerrequisitos: ["M_L4_5"], tipo_bono: "Sumisión Automática", categoria: "militar", rama: "L4", nivel: 6, x: 1850, y: 950 },
+  { id: "M_L5_1", nombre: "Fuerzas de Infiltración", costo: 600, desbloqueada: false, prerrequisitos: [], tipo_bono: "+5% Ataque Sorpresa", categoria: "militar", rama: "L5", nivel: 1, x: 100, y: 1200 },
+  { id: "M_L5_2", nombre: "Camuflaje Óptico Activo", costo: 1200, desbloqueada: false, prerrequisitos: ["M_L5_1"], tipo_bono: "+10% Evasión Global", categoria: "militar", rama: "L5", nivel: 2, x: 450, y: 1200 },
+  { id: "M_L5_3", nombre: "Escuadrones de Asesinato Auto", costo: 2500, desbloqueada: false, prerrequisitos: ["M_L5_2"], tipo_bono: "Eliminar Oficiales Enemigos", categoria: "militar", rama: "L5", nivel: 3, x: 800, y: 1200 },
+  { id: "M_L5_4", nombre: "Sabotaje de Instalaciones Nivel 4", costo: 5000, desbloqueada: false, prerrequisitos: ["M_L5_3"], tipo_bono: "-30% Prod. Enemiga", categoria: "militar", rama: "L5", nivel: 4, x: 1150, y: 1200 },
+  { id: "M_L5_5", nombre: "Red de Topos Durmientes", costo: 10000, desbloqueada: false, prerrequisitos: ["M_L5_4"], tipo_bono: "Revelar Tácticas Ocultas", categoria: "militar", rama: "L5", nivel: 5, x: 1500, y: 1200 },
+  { id: "M_L5_6", nombre: "Comando Espectro Fantasma", costo: 22000, desbloqueada: false, prerrequisitos: ["M_L5_5"], tipo_bono: "Ataque Silencioso Mortal", categoria: "militar", rama: "L5", nivel: 6, x: 1850, y: 1200 },
 ];
 
 const initialSaves: SaveFile[] = [
