@@ -237,36 +237,40 @@ const initialHabilidades: Habilidad[] = [
   { id: "D_ULTIMATE", nombre: "Asimilación Planetaria Total", costo: 25000, desbloqueada: false, prerrequisitos: ["D_SUPER_1", "D_SUPER_2"], tipo_bono: "Conquista Instantánea Sutil", categoria: "desarrollo", rama: "Definitiva", nivel: 6, x: 2800, y: 2000 },
 
   // ===================== DOCTRINA MILITAR =====================
-  { id: "M_L1_1", nombre: "Entrenamiento Básico Alterado", costo: 300, desbloqueada: false, prerrequisitos: [], tipo_bono: "+5% HP Infantería", categoria: "militar", rama: "L1", nivel: 1, x: 100, y: 200 },
-  { id: "M_L1_2", nombre: "Armaduras Tácticas de Grafeno", costo: 700, desbloqueada: false, prerrequisitos: ["M_L1_1"], tipo_bono: "+10% Def Infantería", categoria: "militar", rama: "L1", nivel: 2, x: 450, y: 200 },
-  { id: "M_L1_3", nombre: "Implantes Neuronales de Combate", costo: 1500, desbloqueada: false, prerrequisitos: ["M_L1_2"], tipo_bono: "+20% Ataque Infantería", categoria: "militar", rama: "L1", nivel: 3, x: 800, y: 200 },
-  { id: "M_L1_4", nombre: "Exoesqueletos de Asalto", costo: 3000, desbloqueada: false, prerrequisitos: ["M_L1_3"], tipo_bono: "+35% HP Infantería", categoria: "militar", rama: "L1", nivel: 4, x: 1150, y: 200 },
-  { id: "M_L1_5", nombre: "Supersoldados Quiméricos", costo: 6000, desbloqueada: false, prerrequisitos: ["M_L1_4"], tipo_bono: "+50% Ataque Infantería", categoria: "militar", rama: "L1", nivel: 5, x: 1500, y: 200 },
-  { id: "M_L1_6", nombre: "Legiones de Infantería Ciborg", costo: 12000, desbloqueada: false, prerrequisitos: ["M_L1_5"], tipo_bono: "Infantería Indestructible", categoria: "militar", rama: "L1", nivel: 6, x: 1850, y: 200 },
-  { id: "M_L2_1", nombre: "Motores de Combustión Óptima", costo: 400, desbloqueada: false, prerrequisitos: [], tipo_bono: "+5% Vel Vehículos", categoria: "militar", rama: "L2", nivel: 1, x: 100, y: 450 },
-  { id: "M_L2_2", nombre: "Blindaje Reactivo Inteligente", costo: 800, desbloqueada: false, prerrequisitos: ["M_L2_1"], tipo_bono: "+10% Def Blindados", categoria: "militar", rama: "L2", nivel: 2, x: 450, y: 450 },
-  { id: "M_L2_3", nombre: "Tanques de Asalto Automáticos", costo: 1600, desbloqueada: false, prerrequisitos: ["M_L2_2"], tipo_bono: "+20% Ataque Blindados", categoria: "militar", rama: "L2", nivel: 3, x: 800, y: 450 },
-  { id: "M_L2_4", nombre: "Aerodeslizadores Magnéticos", costo: 3200, desbloqueada: false, prerrequisitos: ["M_L2_3"], tipo_bono: "+35% Evasión Vehículos", categoria: "militar", rama: "L2", nivel: 4, x: 1150, y: 450 },
-  { id: "M_L2_5", nombre: "Mechas de Artillería Bípedos", costo: 7000, desbloqueada: false, prerrequisitos: ["M_L2_4"], tipo_bono: "+50% Daño Devastador", categoria: "militar", rama: "L2", nivel: 5, x: 1500, y: 450 },
-  { id: "M_L2_6", nombre: "Titanes de Combate Terrestre", costo: 15000, desbloqueada: false, prerrequisitos: ["M_L2_5"], tipo_bono: "Vehículos Arrasan Todo", categoria: "militar", rama: "L2", nivel: 6, x: 1850, y: 450 },
-  { id: "M_L3_1", nombre: "Radares de Focalización Temprana", costo: 500, desbloqueada: false, prerrequisitos: [], tipo_bono: "+5% Precisión", categoria: "militar", rama: "L3", nivel: 1, x: 100, y: 700 },
-  { id: "M_L3_2", nombre: "Obuses de Munición Inteligente", costo: 1000, desbloqueada: false, prerrequisitos: ["M_L3_1"], tipo_bono: "+10% Daño Artillería", categoria: "militar", rama: "L3", nivel: 2, x: 450, y: 700 },
-  { id: "M_L3_3", nombre: "Lanzacohetes Térmicos Múltiples", costo: 2000, desbloqueada: false, prerrequisitos: ["M_L3_2"], tipo_bono: "+20% Daño de Área", categoria: "militar", rama: "L3", nivel: 3, x: 800, y: 700 },
-  { id: "M_L3_4", nombre: "Baterías de Misiles Hipersónicos", costo: 4000, desbloqueada: false, prerrequisitos: ["M_L3_3"], tipo_bono: "+35% Perforación Blindaje", categoria: "militar", rama: "L3", nivel: 4, x: 1150, y: 700 },
-  { id: "M_L3_5", nombre: "Cañones de Iones Atmosféricos", costo: 8000, desbloqueada: false, prerrequisitos: ["M_L3_4"], tipo_bono: "+50% Daño de Área", categoria: "militar", rama: "L3", nivel: 5, x: 1500, y: 700 },
-  { id: "M_L3_6", nombre: "Bombardeo Cinético de Tungsteno", costo: 16000, desbloqueada: false, prerrequisitos: ["M_L3_5"], tipo_bono: "Destruye Fortalezas de 1 Golpe", categoria: "militar", rama: "L3", nivel: 6, x: 1850, y: 700 },
-  { id: "M_L4_1", nombre: "Campañas de Desinformación", costo: 450, desbloqueada: false, prerrequisitos: [], tipo_bono: "-5% Moral Enemiga", categoria: "militar", rama: "L4", nivel: 1, x: 100, y: 950 },
-  { id: "M_L4_2", nombre: "Hackeo de Transmisiones", costo: 900, desbloqueada: false, prerrequisitos: ["M_L4_1"], tipo_bono: "Causa Deserción Ligera", categoria: "militar", rama: "L4", nivel: 2, x: 450, y: 950 },
-  { id: "M_L4_3", nombre: "Sondas Holo-Terror", costo: 1800, desbloqueada: false, prerrequisitos: ["M_L4_2"], tipo_bono: "-15% Moral Enemiga", categoria: "militar", rama: "L4", nivel: 3, x: 800, y: 950 },
-  { id: "M_L4_4", nombre: "Drones de Frecuencia Pánica", costo: 3600, desbloqueada: false, prerrequisitos: ["M_L4_3"], tipo_bono: "Retirada Forzosa Probable", categoria: "militar", rama: "L4", nivel: 4, x: 1150, y: 950 },
-  { id: "M_L4_5", nombre: "Neuro-Virus Auditivos", costo: 7500, desbloqueada: false, prerrequisitos: ["M_L4_4"], tipo_bono: "Tropas Enemigas se Atacan", categoria: "militar", rama: "L4", nivel: 5, x: 1500, y: 950 },
-  { id: "M_L4_6", nombre: "Proyección de Falso Dios", costo: 18000, desbloqueada: false, prerrequisitos: ["M_L4_5"], tipo_bono: "Sumisión Automática", categoria: "militar", rama: "L4", nivel: 6, x: 1850, y: 950 },
-  { id: "M_L5_1", nombre: "Fuerzas de Infiltración", costo: 600, desbloqueada: false, prerrequisitos: [], tipo_bono: "+5% Ataque Sorpresa", categoria: "militar", rama: "L5", nivel: 1, x: 100, y: 1200 },
-  { id: "M_L5_2", nombre: "Camuflaje Óptico Activo", costo: 1200, desbloqueada: false, prerrequisitos: ["M_L5_1"], tipo_bono: "+10% Evasión Global", categoria: "militar", rama: "L5", nivel: 2, x: 450, y: 1200 },
-  { id: "M_L5_3", nombre: "Escuadrones de Asesinato Auto", costo: 2500, desbloqueada: false, prerrequisitos: ["M_L5_2"], tipo_bono: "Eliminar Oficiales Enemigos", categoria: "militar", rama: "L5", nivel: 3, x: 800, y: 1200 },
-  { id: "M_L5_4", nombre: "Sabotaje de Instalaciones Nivel 4", costo: 5000, desbloqueada: false, prerrequisitos: ["M_L5_3"], tipo_bono: "-30% Prod. Enemiga", categoria: "militar", rama: "L5", nivel: 4, x: 1150, y: 1200 },
-  { id: "M_L5_5", nombre: "Red de Topos Durmientes", costo: 10000, desbloqueada: false, prerrequisitos: ["M_L5_4"], tipo_bono: "Revelar Tácticas Ocultas", categoria: "militar", rama: "L5", nivel: 5, x: 1500, y: 1200 },
-  { id: "M_L5_6", nombre: "Comando Espectro Fantasma", costo: 22000, desbloqueada: false, prerrequisitos: ["M_L5_5"], tipo_bono: "Ataque Silencioso Mortal", categoria: "militar", rama: "L5", nivel: 6, x: 1850, y: 1200 },
+  { id: "M_ROOT", nombre: "Doctrina de Guerra Total", costo: 400, desbloqueada: false, prerrequisitos: [], tipo_bono: "Activación del Comando Supremo", categoria: "militar", rama: "Origen", nivel: 1, x: 200, y: 2000 },
+
+  // Primera Bifurcación (X=600): 4 Nodos
+  { id: "M_B1_1", nombre: "Infantería Mecanizada", costo: 800, desbloqueada: false, prerrequisitos: ["M_ROOT"], tipo_bono: "+10% Movilidad Terrestre", categoria: "militar", rama: "Bifurcacion", nivel: 2, x: 600, y: 1250 },
+  { id: "M_B1_2", nombre: "Blindaje Reactivo", costo: 900, desbloqueada: false, prerrequisitos: ["M_ROOT"], tipo_bono: "+15% HP Vehículos", categoria: "militar", rama: "Bifurcacion", nivel: 2, x: 600, y: 1750 },
+  { id: "M_B1_3", nombre: "Balística Avanzada", costo: 850, desbloqueada: false, prerrequisitos: ["M_ROOT"], tipo_bono: "+15% Daño Artillería", categoria: "militar", rama: "Bifurcacion", nivel: 2, x: 600, y: 2250 },
+  { id: "M_B1_4", nombre: "Guerra Electrónica", costo: 1000, desbloqueada: false, prerrequisitos: ["M_ROOT"], tipo_bono: "+10% Evasión Global", categoria: "militar", rama: "Bifurcacion", nivel: 2, x: 600, y: 2750 },
+
+  // Expansión y Especialización (X=1100): 6 Nodos
+  { id: "M_EXP_1", nombre: "Implantes de Reflejos Neurales", costo: 1500, desbloqueada: false, prerrequisitos: ["M_B1_1"], tipo_bono: "+20% Daño Infantería", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 1000 },
+  { id: "M_EXP_2", nombre: "Chasis de Combate Exo", costo: 1800, desbloqueada: false, prerrequisitos: ["M_B1_1", "M_B1_2"], tipo_bono: "+15% HP Infantería", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 1400 },
+  { id: "M_EXP_3", nombre: "Nanocapas Autoreparables", costo: 2000, desbloqueada: false, prerrequisitos: ["M_B1_2"], tipo_bono: "+20% Armadura Blindados", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 1800 },
+  { id: "M_EXP_4", nombre: "Cargas de Plasma Térmico", costo: 2200, desbloqueada: false, prerrequisitos: ["M_B1_3"], tipo_bono: "+20% Perforación Artillería", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 2200 },
+  { id: "M_EXP_5", nombre: "Inhibidores de Espectro", costo: 2100, desbloqueada: false, prerrequisitos: ["M_B1_3", "M_B1_4"], tipo_bono: "-15% Precisión Enemiga", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 2600 },
+  { id: "M_EXP_6", nombre: "Algoritmos de Ciberataque", costo: 2500, desbloqueada: false, prerrequisitos: ["M_B1_4"], tipo_bono: "Sabotaje de Sistemas IA", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 3000 },
+
+  // Convergencia Táctica (X=1600): 4 Nodos Mayores
+  { id: "M_CONV_1", nombre: "Exoesqueletos de Asalto", costo: 4000, desbloqueada: false, prerrequisitos: ["M_EXP_1", "M_EXP_2", "M_EXP_3"], tipo_bono: "+25% Ataque Terrestre", categoria: "militar", rama: "Convergencia", nivel: 4, x: 1600, y: 1250 },
+  { id: "M_CONV_2", nombre: "Blindados de Fusión Pesada", costo: 4500, desbloqueada: false, prerrequisitos: ["M_EXP_2", "M_EXP_3", "M_EXP_4"], tipo_bono: "+30% Armadura Vehículos", categoria: "militar", rama: "Convergencia", nivel: 4, x: 1600, y: 1750 },
+  { id: "M_CONV_3", nombre: "Artillería Termobárica", costo: 4200, desbloqueada: false, prerrequisitos: ["M_EXP_4", "M_EXP_5"], tipo_bono: "+35% Daño de Área", categoria: "militar", rama: "Convergencia", nivel: 4, x: 1600, y: 2250 },
+  { id: "M_CONV_4", nombre: "Ciberguerra de Enjambres", costo: 5000, desbloqueada: false, prerrequisitos: ["M_EXP_5", "M_EXP_6"], tipo_bono: "Desactiva Defensas Fronterizas", categoria: "militar", rama: "Convergencia", nivel: 4, x: 1600, y: 2750 },
+
+  // Tecnología Orbital y Super-Armas (X=2100): 4 Nodos
+  { id: "M_ORB_1", nombre: "Silos de Lanzamiento Suborbital", costo: 7500, desbloqueada: false, prerrequisitos: ["M_CONV_1"], tipo_bono: "Lanzamiento Rápido de Tropas", categoria: "militar", rama: "Orbital", nivel: 5, x: 2100, y: 1250 },
+  { id: "M_ORB_2", nombre: "Escudo Deflector de Energía", costo: 8500, desbloqueada: false, prerrequisitos: ["M_CONV_1", "M_CONV_2"], tipo_bono: "Inmunidad Temporal a Ofensivas", categoria: "militar", rama: "Orbital", nivel: 5, x: 2100, y: 1750 },
+  { id: "M_ORB_3", nombre: "Láseres de Precisión Orbital", costo: 9000, desbloqueada: false, prerrequisitos: ["M_CONV_2", "M_CONV_3"], tipo_bono: "+40% Daño de Precisión", categoria: "militar", rama: "Orbital", nivel: 5, x: 2100, y: 2250 },
+  { id: "M_ORB_4", nombre: "Drones de Reconocimiento Estratosférico", costo: 8000, desbloqueada: false, prerrequisitos: ["M_CONV_3", "M_CONV_4"], tipo_bono: "Revelado Total de Niebla", categoria: "militar", rama: "Orbital", nivel: 5, x: 2100, y: 2750 },
+
+  // Prototipos Finales (X=2700): 2 Super-nodos
+  { id: "M_PROTO_1", nombre: "Enjambres de Drones Autónomos", costo: 12000, desbloqueada: false, prerrequisitos: ["M_ORB_1", "M_ORB_2", "M_ORB_3"], tipo_bono: "Ataque Múltiple Saturado", categoria: "militar", rama: "Prototipos", nivel: 6, x: 2700, y: 1750 },
+  { id: "M_PROTO_2", nombre: "Artillería Orbital de Iones", costo: 13000, desbloqueada: false, prerrequisitos: ["M_ORB_2", "M_ORB_3", "M_ORB_4"], tipo_bono: "Desintegración de Nodos Defensivos", categoria: "militar", rama: "Prototipos", nivel: 6, x: 2700, y: 2250 },
+
+  // El Arma Definitiva (X=3300, Y=2000): 1 Nodo ultra-caro
+  { id: "M_ULTIMATE", nombre: "Iniciativa de Destrucción Mutua / Proyecto Némesis", costo: 30000, desbloqueada: false, prerrequisitos: ["M_PROTO_1", "M_PROTO_2"], tipo_bono: "Aniquilación Táctica Instantánea", categoria: "militar", rama: "Definitiva", nivel: 7, x: 3300, y: 2000 },
 ];
 
 const initialSaves: SaveFile[] = [
