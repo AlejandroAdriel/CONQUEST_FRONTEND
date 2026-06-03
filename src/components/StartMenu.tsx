@@ -4,11 +4,12 @@ import {
 } from "lucide-react";
 
 interface StartMenuProps {
-  onStart?: () => void;
+  onStartGame: () => void;
+  onOpenLogin: () => void;
+  isLoggedIn: boolean;
 }
 
-export default function StartMenu({ onStart }: StartMenuProps) {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+export default function StartMenu({ onStartGame, onOpenLogin, isLoggedIn }: StartMenuProps) {
   const [alertMessage, setAlertMessage] = useState("");
   const [alertType, setAlertType] = useState<"success" | "error" | null>(null);
   const [isStartHovered, setIsStartHovered] = useState(false);
@@ -144,7 +145,7 @@ export default function StartMenu({ onStart }: StartMenuProps) {
         </div>
 
         <button 
-          onClick={onStart}
+          onClick={onStartGame}
           onMouseEnter={() => setIsStartHovered(true)}
           onMouseLeave={() => setIsStartHovered(false)}
           className="group relative flex items-center justify-center gap-6 px-12 py-6 bg-slate-950/80 hover:bg-cyan-950/30 border border-cyan-500/30 hover:border-cyan-400 rounded-sm transition-all duration-300 transform hover:scale-105 active:scale-98 shadow-[0_0_20px_rgba(0,0,0,0.8)] hover:shadow-[0_0_35px_rgba(6,182,212,0.25)] min-w-[340px]"
@@ -195,11 +196,7 @@ export default function StartMenu({ onStart }: StartMenuProps) {
         </div>
 
         <button 
-          onClick={() => {
-            setIsLoggedIn(true);
-            setAlertMessage("ACCESO AUTORIZADO: Operario autenticado en la red militar Conquest.");
-            setAlertType("success");
-          }}
+          onClick={onOpenLogin}
           className={`group flex items-center gap-2 text-xs font-bold tracking-widest transition-all py-2 px-4 border rounded-sm ${
             isLoggedIn 
               ? "text-emerald-400 border-emerald-500/20 bg-emerald-950/10 hover:bg-emerald-900/10" 

@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Hexagon, Terminal, ShieldAlert, Cpu, Lock, User, ChevronRight } from 'lucide-react';
 
 interface LoginProps {
-  onLogin: () => void;
+  onLoginSuccess: () => void;
+  onCancel: () => void;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin }) => {
+const Login: React.FC<LoginProps> = ({ onLoginSuccess, onCancel }) => {
   const [operatorId, setOperatorId] = useState('');
   const [cipherKey, setCipherKey] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -41,7 +42,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
     setTimeout(() => {
       setLogs((prev) => [...prev, '> ACCESO AUTORIZADO. REDIRIGIENDO...']);
-      onLogin();
+      onLoginSuccess();
     }, 2500);
   };
 
@@ -140,6 +141,17 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     INICIAR ENLACE DE TELEMETRÍA
                   </>
                 )}
+              </span>
+            </button>
+
+            <button 
+              type="button"
+              onClick={onCancel}
+              disabled={isAuthenticating}
+              className="relative group overflow-hidden border border-slate-800 hover:border-rose-500/80 bg-slate-950/40 hover:bg-rose-950/20 text-slate-500 hover:text-rose-500 py-3 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span className="relative flex items-center justify-center gap-3 text-xs font-bold">
+                [ ABORTAR ENLACE ]
               </span>
             </button>
           </form>

@@ -282,7 +282,7 @@ const eventosAleatorios = [
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [hasStarted, setHasStarted] = useState(false);
+  const [currentScreen, setCurrentScreen] = useState<'start' | 'login' | 'game'>('start');
   const [fechaVirtual, setFechaVirtual] = useState(new Date(2027, 4, 1));
   const [isPlaying, setIsPlaying] = useState(false);
   const [speedLevel, setSpeedLevel] = useState<1 | 2 | 3>(1);
@@ -456,12 +456,26 @@ export default function App() {
     }, ...prev]);
   };
 
-  if (!hasStarted) {
-    return <StartMenu onStart={() => setHasStarted(true)} />;
+  if (currentScreen === 'start') {
+    return (
+      <StartMenu 
+        onStartGame={() => setCurrentScreen('game')} 
+        onOpenLogin={() => setCurrentScreen('login')} 
+        isLoggedIn={isAuthenticated} 
+      />
+    );
   }
 
-  if (!isAuthenticated) {
-    return <Login onLogin={() => setIsAuthenticated(true)} />;
+  if (currentScreen === 'login') {
+    return (
+      <Login 
+        onLoginSuccess={() => {
+          setIsAuthenticated(true);
+          setCurrentScreen('start');
+        }} 
+        onCancel={() => setCurrentScreen('start')} 
+      />
+    );
   }
 
   return (
