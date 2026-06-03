@@ -7,7 +7,8 @@ import {
   Atom, Flag, Swords, Hexagon, Zap, Skull, Map as MapIcon,
   ChevronsRight, Globe
 } from "lucide-react";
-import { initialHabilidades } from "./TechTreeData";
+import { fetchInitialGameState, fetchRandomEvents, fetchTechTree, fetchCountryStats } from "./database/mockAPI";
+import type { Habilidad } from "./database/mockAPI";
 import Login from "./components/Login";
 import StartMenu from "./components/StartMenu";
 import SaveFilesMenu from "./components/SaveFilesMenu";
@@ -29,20 +30,6 @@ type Tropas = {
   artilleria: number;
 };
 
-export type Habilidad = {
-  id: string;
-  nombre: string;
-  costo: number;
-  desbloqueada: boolean;
-  prerrequisito_id: string | null;
-  tipo_bono: string;
-  categoria: "desarrollo" | "militar";
-  rama: string;
-  nivel: number;
-  x: number;
-  y: number;
-};
-
 type AtaqueEnCola = {
   id: string;
   pais_destino_id: string;
@@ -58,133 +45,6 @@ type Evento = {
   tipo: "success" | "alert" | "info";
 };
 
-const realPopulations: Record<string, number> = {
-  "China": 1420000000,
-  "India": 1440000000,
-  "Indonesia": 278000000,
-  "Pakistan": 242000000,
-  "Bangladesh": 173000000,
-  "Japan": 123000000,
-  "Philippines": 117000000,
-  "Vietnam": 99000000,
-  "Turkey": 86000000,
-  "Iran": 89000000,
-  "Thailand": 71000000,
-  "South Korea": 51000000,
-  "Saudi Arabia": 37000000,
-  "Iraq": 45000000,
-  "Afghanistan": 42000000,
-  "Yemen": 34000000,
-  "Nepal": 31000000,
-  "North Korea": 26000000,
-  "Taiwan": 24000000,
-  "Sri Lanka": 22000000,
-  "Kazakhstan": 20000000,
-  "Syria": 23000000,
-  "Cambodia": 17000000,
-  "Jordan": 11000000,
-  "Azerbaijan": 10000000,
-  "United Arab Emirates": 10000000,
-  "Israel": 9500000,
-  "Singapore": 6000000,
-  "United States of America": 341000000,
-  "Brazil": 216000000,
-  "Mexico": 129000000,
-  "Colombia": 52000000,
-  "Argentina": 46000000,
-  "Peru": 34000000,
-  "Venezuela": 29000000,
-  "Chile": 20000000,
-  "Ecuador": 18000000,
-  "Guatemala": 18000000,
-  "Cuba": 11000000,
-  "Haiti": 11500000,
-  "Dominican Rep.": 11300000,
-  "Bolivia": 12000000,
-  "Honduras": 10500000,
-  "Paraguay": 7000000,
-  "El Salvador": 6500000,
-  "Nicaragua": 7000000,
-  "Costa Rica": 5200000,
-  "Panama": 4500000,
-  "Uruguay": 3400000,
-  "Jamaica": 2800000,
-  "Puerto Rico": 3200000,
-  "Canada": 39000000,
-  "Russia": 144000000,
-  "Germany": 84000000,
-  "United Kingdom": 68000000,
-  "France": 65000000,
-  "Italy": 59000000,
-  "Spain": 48000000,
-  "Ukraine": 38000000,
-  "Poland": 38000000,
-  "Romania": 19000000,
-  "Netherlands": 18000000,
-  "Belgium": 12000000,
-  "Sweden": 10500000,
-  "Czechia": 10500000,
-  "Greece": 10300000,
-  "Portugal": 10300000,
-  "Hungary": 9600000,
-  "Belarus": 9500000,
-  "Austria": 9000000,
-  "Switzerland": 8900000,
-  "Bulgaria": 6800000,
-  "Serbia": 6700000,
-  "Denmark": 5900000,
-  "Finland": 5600000,
-  "Slovakia": 5400000,
-  "Norway": 5500000,
-  "Ireland": 5100000,
-  "Croatia": 4000000,
-  "Nigeria": 224000000,
-  "Ethiopia": 126000000,
-  "Egypt": 113000000,
-  "DR Congo": 102000000,
-  "Tanzania": 67000000,
-  "South Africa": 60000000,
-  "Kenya": 55000000,
-  "Uganda": 48000000,
-  "Sudan": 48000000,
-  "Algeria": 45000000,
-  "Morocco": 38000000,
-  "Angola": 36000000,
-  "Ghana": 34000000,
-  "Madagascar": 30000000,
-  "Mozambique": 33000000,
-  "Ivory Coast": 29000000,
-  "Cameroon": 28000000,
-  "Niger": 27000000,
-  "Mali": 23000000,
-  "Burkina Faso": 23000000,
-  "Malawi": 21000000,
-  "Zambia": 20000000,
-  "Somalia": 18000000,
-  "Senegal": 17500000,
-  "Zimbabwe": 16000000,
-  "Guinea": 14000000,
-  "Rwanda": 14000000,
-  "Benin": 13500000,
-  "Tunisia": 12500000,
-  "Burundi": 13000000,
-  "South Sudan": 11000000,
-  "Togo": 9000000,
-  "Libya": 7000000,
-  "Congo": 6000000,
-  "Central African Rep.": 5700000,
-  "Mauritania": 4800000,
-  "Eritrea": 3700000,
-  "Namibia": 2600000,
-  "Gambia": 2700000,
-  "Botswana": 2600000,
-  "Gabon": 2400000,
-  "Lesotho": 2300000,
-  "Australia": 26000000,
-  "New Zealand": 5200000,
-  "Papua New Guinea": 10000000
-};
-
 const normalizeName = (name: string): string => {
   const norm = name.toLowerCase();
   if (norm.includes("united states") || norm === "usa") return "united states of america";
@@ -195,9 +55,9 @@ const normalizeName = (name: string): string => {
   return norm;
 };
 
-const getRealPopulation = (name: string, seed: number): number => {
+const getRealPopulation = (name: string, seed: number, populations: Record<string, number>): number => {
   const norm = normalizeName(name);
-  for (const [key, value] of Object.entries(realPopulations)) {
+  for (const [key, value] of Object.entries(populations)) {
     const keyLower = key.toLowerCase();
     if (norm === keyLower || norm.includes(keyLower) || keyLower.includes(norm)) {
       const growthFactor = 1.05 + ((seed % 15) / 100);
@@ -226,61 +86,6 @@ const getRealEjercito = (isAliado: boolean, population: number, seed: number): n
   return Math.max(100, baseSize);
 };
 
-const generarStatsPais = (geo: any): Pais => {
-  const id = geo.id || "000";
-  const name = geo.properties.name || "Unknown";
-  const seed = id.charCodeAt(0) + (id.length > 1 ? id.charCodeAt(1) : 0);
-  
-  const inicialesAliados = ["USA", "840", "United States of America", "MEX", "484", "Mexico"];
-  const isAliado = inicialesAliados.includes(name) || inicialesAliados.includes(id);
-
-  const poblacion = getRealPopulation(name, seed);
-  const economia = getRealEconomy(name, poblacion, seed);
-  const ejercito_ia = getRealEjercito(isAliado, poblacion, seed);
-
-  return {
-    id: id,
-    nombre: name,
-    economia: economia,
-    poblacion: poblacion,
-    ejercito_ia: ejercito_ia,
-    conquistado: isAliado
-  };
-};
-
-const eventosAleatorios = [
-  { 
-    titulo: "SABOTAJE EN LA RED CLIMÁTICA",
-    mensaje: "Una tormenta de arena ionizada inducida por hackeo interrumpe los canales de extracción en los yacimientos de Medio Oriente. La infraestructura táctica reporta daños severos en los nodos. Impacto: -500 Créditos de Oro globales.", 
-    tipo: "alert" as const, 
-    efecto: (oro: number, tropas: Tropas) => ({ oro: Math.max(0, oro - 500), tropas }) 
-  },
-  { 
-    titulo: "CAMPAÑA DE CONCRIPCIÓN SATELITAL",
-    mensaje: "Nuestra señal de propaganda de alta frecuencia ha sorteado los cortafuegos del hemisferio sur, motivando a reservistas locales. Se reporta un flujo de refuerzo táctico. Impacto: +200 Infantería en la reserva.", 
-    tipo: "success" as const, 
-    efecto: (oro: number, tropas: Tropas) => ({ oro, tropas: { ...tropas, infanteria: tropas.infanteria + 200 } }) 
-  },
-  { 
-    titulo: "EXTRACCIÓN DE CRIPTOMINAS SIBERIANAS",
-    mensaje: "Nuestras sondas autónomas reactivaron una granja de servidores de la ex-megacorporación siberiana en desuso, liquidando activos protegidos. Impacto: +1000 Créditos de Oro globales transferidos a tesorería.", 
-    tipo: "success" as const, 
-    efecto: (oro: number, tropas: Tropas) => ({ oro: oro + 1000, tropas }) 
-  },
-  { 
-    titulo: "DESERCIÓN MASIVA EN FRONTERA",
-    mensaje: "Un ciberataque de pulso electromagnético del enemigo desactiva los chips neurales de obediencia de un regimiento fronterizo, provocando su desconexión y retirada. Impacto: -100 Unidades de Caballería táctica.", 
-    tipo: "alert" as const, 
-    efecto: (oro: number, tropas: Tropas) => ({ oro, tropas: { ...tropas, caballeria: Math.max(0, tropas.caballeria - 100) } }) 
-  },
-  { 
-    titulo: "TREGUA DIGITAL ESTABLECIDA",
-    mensaje: "Los sistemas de cifrado de la megacorporación rival detectaron nuestras sondas de escaneo en los frentes fronterizos. Se firma una tregua digital temporal automática mientras se reconfiguran los firewalls. Sin cambios militares reportados.", 
-    tipo: "info" as const, 
-    efecto: (oro: number, tropas: Tropas) => ({ oro, tropas }) 
-  }
-];
-
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<'start' | 'login' | 'game'>('start');
@@ -290,13 +95,17 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [speedLevel, setSpeedLevel] = useState<1 | 2 | 3>(1);
   const [paises, setPaises] = useState<Record<string, Pais>>({});
-  const [tropas, setTropas] = useState<Tropas>({ infanteria: 5000, caballeria: 2000, artilleria: 500 });
-  const [presupuesto, setPresupuesto] = useState(5000);
-  const [habilidades, setHabilidades] = useState<Habilidad[]>(initialHabilidades);
+  const [tropas, setTropas] = useState<Tropas>({ infanteria: 0, caballeria: 0, artilleria: 0 });
+  const [presupuesto, setPresupuesto] = useState(0);
+  const [habilidades, setHabilidades] = useState<Habilidad[]>([]);
   const [ataquesEnCola, setAtaquesEnCola] = useState<AtaqueEnCola[]>([]);
   const [diarioGuerra, setDiarioGuerra] = useState<Evento[]>([
     { id: "inicio", fecha: new Date(2027, 4, 1), titulo: "SISTEMA TÁCTICO INICIADO", mensaje: "Núcleo de inteligencia y comunicaciones satelitales en línea. Iniciando simulación y mapeo geopolítico...", tipo: "info" }
   ]);
+
+  const [isDbLoading, setIsDbLoading] = useState(true);
+  const eventosAleatoriosRef = useRef<any[]>([]);
+  const countryStatsRef = useRef<Record<string, number>>({});
 
   const [paisSeleccionado, setPaisSeleccionado] = useState<Pais | null>(null);
   const [hoveredPais, setHoveredPais] = useState<Pais | null>(null);
@@ -308,6 +117,28 @@ export default function App() {
   const [tabIyd, setTabIyd] = useState<"desarrollo" | "militar">("desarrollo");
   const [, setDiasParaEvento] = useState(10 + Math.floor(Math.random() * 6));
   const isPanningRef = useRef(false);
+
+  const generarStatsPais = (geo: any): Pais => {
+    const id = geo.id || "000";
+    const name = geo.properties.name || "Unknown";
+    const seed = id.charCodeAt(0) + (id.length > 1 ? id.charCodeAt(1) : 0);
+    
+    const inicialesAliados = ["USA", "840", "United States of America", "MEX", "484", "Mexico"];
+    const isAliado = inicialesAliados.includes(name) || inicialesAliados.includes(id);
+
+    const poblacion = getRealPopulation(name, seed, countryStatsRef.current);
+    const economia = getRealEconomy(name, poblacion, seed);
+    const ejercito_ia = getRealEjercito(isAliado, poblacion, seed);
+
+    return {
+      id: id,
+      nombre: name,
+      economia: economia,
+      poblacion: poblacion,
+      ejercito_ia: ejercito_ia,
+      conquistado: isAliado
+    };
+  };
 
   const getPais = (geo: any): Pais => {
     return paises[geo.id] || generarStatsPais(geo);
@@ -321,6 +152,28 @@ export default function App() {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
+  }, []);
+
+  // Bootstrap: Carga inicial de datos desde la capa de acceso
+  useEffect(() => {
+    const bootstrap = async () => {
+      try {
+        const [gameState, events, techTree, countryData] = await Promise.all([
+          fetchInitialGameState(),
+          fetchRandomEvents(),
+          fetchTechTree(),
+          fetchCountryStats()
+        ]);
+        setPresupuesto(gameState.presupuesto);
+        setTropas(gameState.tropas);
+        eventosAleatoriosRef.current = events;
+        countryStatsRef.current = countryData;
+        setHabilidades(techTree);
+      } finally {
+        setIsDbLoading(false);
+      }
+    };
+    bootstrap();
   }, []);
 
   useEffect(() => {
@@ -339,7 +192,9 @@ export default function App() {
   useEffect(() => {
     setDiasParaEvento(prev => {
       if (prev <= 1) {
-        const eventoAzar = eventosAleatorios[Math.floor(Math.random() * eventosAleatorios.length)];
+        const evts = eventosAleatoriosRef.current;
+        if (evts.length === 0) return prev;
+        const eventoAzar = evts[Math.floor(Math.random() * evts.length)];
         const nuevoEstado = eventoAzar.efecto(presupuesto, tropas);
         setPresupuesto(nuevoEstado.oro);
         setTropas(nuevoEstado.tropas);
@@ -458,6 +313,16 @@ export default function App() {
       tipo: "success"
     }, ...prev]);
   };
+
+  if (isDbLoading) {
+    return (
+      <div className="h-[100dvh] w-screen flex flex-col items-center justify-center bg-[#030712] font-mono text-slate-300 uppercase tracking-widest select-none">
+        <Hexagon className="w-16 h-16 text-cyan-500/40 animate-[spin_3s_linear_infinite] mb-6" strokeWidth={1.5} />
+        <p className="text-sm text-cyan-400 animate-pulse tracking-[0.3em]">CARGANDO SISTEMA TÁCTICO...</p>
+        <p className="text-[10px] text-slate-600 mt-2">ESTABLECIENDO ENLACE CON BASE DE DATOS</p>
+      </div>
+    );
+  }
 
   if (currentScreen === 'start') {
     return (

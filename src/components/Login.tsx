@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Hexagon, Terminal, ShieldAlert, Cpu, Lock, User, ChevronRight } from 'lucide-react';
+import { authenticateOperator } from '../database/mockAPI';
 
 interface LoginProps {
   onLoginSuccess: () => void;
@@ -29,21 +30,26 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onCancel }) => {
     };
   }, []);
 
-  const handleAuth = (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!operatorId || !cipherKey) return;
     
     setIsAuthenticating(true);
     setLogs((prev) => [...prev, '> VALIDANDO HASH DE ACCESO...']);
-    
-    setTimeout(() => {
-      setLogs((prev) => [...prev, '> ENCRIPTACIÓN RSA-4096 CONFIRMADA.']);
-    }, 1000);
 
-    setTimeout(() => {
-      setLogs((prev) => [...prev, '> ACCESO AUTORIZADO. REDIRIGIENDO...']);
-      onLoginSuccess();
-    }, 2500);
+    const isValid = await authenticateOperator(operatorId, cipherKey);
+
+    if (isValid) {
+      setLogs((prev) => [...prev, '> ENCRIPTACIÓN RSA-4096 CONFIRMADA.']);
+      setTimeout(() => {
+        setLogs((prev) => [...prev, '> ACCESO AUTORIZADO. REDIRIGIENDO...']);
+        onLoginSuccess();
+      }, 1000);
+    } else {
+      setLogs((prev) => [...prev, '> ERROR: HASH NO COINCIDE.']);
+      setLogs((prev) => [...prev, '> ACCESO DENEGADO. CREDENCIALES INVÁLIDAS.']);
+      setIsAuthenticating(false);
+    }
   };
 
   return (

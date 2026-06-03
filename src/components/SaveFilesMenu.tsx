@@ -1,19 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Database, Trash2, Shield, Calendar, DollarSign, Users, Award, Plus, X 
 } from "lucide-react";
-
-export interface SaveFile {
-  id: string;
-  commanderID: string;
-  hq: string;
-  creationDate: string;
-  lastSaveDate: string;
-  campaignDays: number;
-  dominionPercent: number;
-  budget: number;
-  troops: number;
-}
+import { fetchSavedGames } from "../database/mockAPI";
+import type { SaveFile } from "../database/mockAPI";
 
 interface SaveFilesMenuProps {
   onClose: () => void;
@@ -21,47 +11,21 @@ interface SaveFilesMenuProps {
   onNewGame?: () => void;
 }
 
-const initialSaves: SaveFile[] = [
-  {
-    id: "save-01",
-    commanderID: "OMEGA-PROTOCOL-01",
-    hq: "ESTADOS UNIDOS",
-    creationDate: "2027-05-01 08:30",
-    lastSaveDate: "2027-05-15 22:45",
-    campaignDays: 14,
-    dominionPercent: 32.5,
-    budget: 125000,
-    troops: 45000
-  },
-  {
-    id: "save-02",
-    commanderID: "NEXUS-COMMANDER-09",
-    hq: "ALEMANIA",
-    creationDate: "2027-04-10 12:15",
-    lastSaveDate: "2027-04-20 18:33",
-    campaignDays: 10,
-    dominionPercent: 15.2,
-    budget: 84000,
-    troops: 28000
-  },
-  {
-    id: "save-03",
-    commanderID: "SHADOW-OPERATOR-X",
-    hq: "JAPÓN",
-    creationDate: "2027-05-18 19:00",
-    lastSaveDate: "2027-06-02 01:10",
-    campaignDays: 25,
-    dominionPercent: 68.9,
-    budget: 310000,
-    troops: 112000
-  }
-];
-
 export default function SaveFilesMenu({ onClose, onLoadSave, onNewGame }: SaveFilesMenuProps) {
-  const [saves, setSaves] = useState<(SaveFile | null)[]>([
-    ...initialSaves,
-    null
-  ]);
+  const [saves, setSaves] = useState<(SaveFile | null)[]>([null]);
+  const [isLoadingSaves, setIsLoadingSaves] = useState(true);
+
+  useEffect(() => {
+    const loadSaves = async () => {
+      try {
+        const data = await fetchSavedGames();
+        setSaves([...data, null]);
+      } finally {
+        setIsLoadingSaves(false);
+      }
+    };
+    loadSaves();
+  }, []);
 
   const handlePurge = (id: string) => {
     setSaves(prev => prev.map(save => save?.id === id ? null : save));
