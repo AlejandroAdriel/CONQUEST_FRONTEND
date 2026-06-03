@@ -6,10 +6,11 @@ import {
 interface StartMenuProps {
   onStartGame: () => void;
   onOpenLogin: () => void;
+  onOpenSaves: () => void;
   isLoggedIn: boolean;
 }
 
-export default function StartMenu({ onStartGame, onOpenLogin, isLoggedIn }: StartMenuProps) {
+export default function StartMenu({ onStartGame, onOpenLogin, onOpenSaves, isLoggedIn }: StartMenuProps) {
   const [alertMessage, setAlertMessage] = useState("");
   const [alertType, setAlertType] = useState<"success" | "error" | null>(null);
   const [isStartHovered, setIsStartHovered] = useState(false);
@@ -23,9 +24,7 @@ export default function StartMenu({ onStartGame, onOpenLogin, isLoggedIn }: Star
 
   const handleLoadSaves = () => {
     if (isLoggedIn) {
-      console.log("Acceso concedido a los archivos de guardado centralizados.");
-      setAlertMessage("ACCESO CONCEDIDO: Descargando archivos de guardado locales... Conexión estable con la base de datos.");
-      setAlertType("success");
+      onOpenSaves();
     } else {
       setAlertMessage("ACCESO DENEGADO: Inicia sesión en la red central para recuperar o guardar simulaciones tácticas.");
       setAlertType("error");

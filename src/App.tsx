@@ -10,6 +10,7 @@ import {
 import { initialHabilidades } from "./TechTreeData";
 import Login from "./components/Login";
 import StartMenu from "./components/StartMenu";
+import SaveFilesMenu from "./components/SaveFilesMenu";
 // Geometría del mapa del mundo (TopoJSON)
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
@@ -283,6 +284,7 @@ const eventosAleatorios = [
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<'start' | 'login' | 'game'>('start');
+  const [showSaves, setShowSaves] = useState(false);
   const [fechaVirtual, setFechaVirtual] = useState(new Date(2027, 4, 1));
   const [isPlaying, setIsPlaying] = useState(false);
   const [speedLevel, setSpeedLevel] = useState<1 | 2 | 3>(1);
@@ -458,11 +460,27 @@ export default function App() {
 
   if (currentScreen === 'start') {
     return (
-      <StartMenu 
-        onStartGame={() => setCurrentScreen('game')} 
-        onOpenLogin={() => setCurrentScreen('login')} 
-        isLoggedIn={isAuthenticated} 
-      />
+      <>
+        <StartMenu 
+          onStartGame={() => setCurrentScreen('game')} 
+          onOpenLogin={() => setCurrentScreen('login')} 
+          onOpenSaves={() => setShowSaves(true)}
+          isLoggedIn={isAuthenticated} 
+        />
+        {showSaves && (
+          <SaveFilesMenu 
+            onClose={() => setShowSaves(false)} 
+            onLoadSave={(saveId) => {
+              setCurrentScreen('game');
+              setShowSaves(false);
+            }}
+            onNewGame={() => {
+              setCurrentScreen('game');
+              setShowSaves(false);
+            }}
+          />
+        )}
+      </>
     );
   }
 
