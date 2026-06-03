@@ -60,10 +60,8 @@ type Evento = {
 const generarStatsPais = (geo: any): Pais => {
   const id = geo.id || "000";
   const name = geo.properties.name || "Unknown";
-  // Seed determinista simple
   const seed = id.charCodeAt(0) + (id.length > 1 ? id.charCodeAt(1) : 0);
   
-  // Países iniciales aliados por defecto
   const inicialesAliados = ["USA", "840", "United States of America", "MEX", "484", "Mexico"];
   const isAliado = inicialesAliados.includes(name) || inicialesAliados.includes(id);
 
@@ -76,8 +74,6 @@ const generarStatsPais = (geo: any): Pais => {
     conquistado: isAliado
   };
 };
-
-
 
 const eventosAleatorios = [
   { 
@@ -113,13 +109,10 @@ const eventosAleatorios = [
 ];
 
 export default function App() {
-  const [fechaVirtual, setFechaVirtual] = useState(new Date(2027, 4, 1)); // 1 de Mayo de 2027
+  const [fechaVirtual, setFechaVirtual] = useState(new Date(2027, 4, 1));
   const [isPlaying, setIsPlaying] = useState(false);
   const [speedLevel, setSpeedLevel] = useState<1 | 2 | 3>(1);
-
-  // El estado de los países es un diccionario para acceso rápido. Se hidrata de manera lazy.
   const [paises, setPaises] = useState<Record<string, Pais>>({});
-  
   const [tropas, setTropas] = useState<Tropas>({ infanteria: 5000, caballeria: 2000, artilleria: 500 });
   const [presupuesto, setPresupuesto] = useState(5000);
   const [habilidades, setHabilidades] = useState<Habilidad[]>(initialHabilidades);
@@ -131,28 +124,23 @@ export default function App() {
   const [paisSeleccionado, setPaisSeleccionado] = useState<Pais | null>(null);
   const [hoveredPais, setHoveredPais] = useState<Pais | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  
   const [tropasAEnviar, setTropasAEnviar] = useState(0);
   const [mostrarArbol, setMostrarArbol] = useState(false);
   const [tabIyd, setTabIyd] = useState<"desarrollo" | "militar">("desarrollo");
   const [, setDiasParaEvento] = useState(10 + Math.floor(Math.random() * 6));
   const isPanningRef = useRef(false);
 
-  // Función auxiliar para obtener un país (del estado o generado)
   const getPais = (geo: any): Pais => {
     return paises[geo.id] || generarStatsPais(geo);
   };
 
-  // Tracking del mouse para el tooltip flotante
   const handleMouseMove = (e: React.MouseEvent) => {
     setMousePos({ x: e.clientX, y: e.clientY });
   };
 
-  // Loop principal del tiempo
   useEffect(() => {
     if (!isPlaying) return;
     const intervalTime = speedLevel === 1 ? 1000 : speedLevel === 2 ? 250 : 80;
-    
     const interval = setInterval(() => {
       setFechaVirtual(prev => {
         const nextDate = new Date(prev);
@@ -160,13 +148,10 @@ export default function App() {
         return nextDate;
       });
     }, intervalTime);
-    
     return () => clearInterval(interval);
   }, [isPlaying, speedLevel]);
 
-  // Lógica de avance por día (Eventos, Ataques)
   useEffect(() => {
-    // Eventos aleatorios
     setDiasParaEvento(prev => {
       if (prev <= 1) {
         const eventoAzar = eventosAleatorios[Math.floor(Math.random() * eventosAleatorios.length)];
@@ -181,26 +166,22 @@ export default function App() {
           mensaje: eventoAzar.mensaje,
           tipo: eventoAzar.tipo as "success" | "alert" | "info"
         }, ...prevDiario]);
-
         return 10 + Math.floor(Math.random() * 6);
       }
       return prev - 1;
     });
 
-    // Resolución de ataques
     setAtaquesEnCola(prevAtaques => {
       const ataquesPendientes: AtaqueEnCola[] = [];
       prevAtaques.forEach(ataque => {
         if (fechaVirtual >= ataque.fecha_impacto) {
           const paisDestino = paises[ataque.pais_destino_id];
-          if (!paisDestino) return; // Si no existe en estado, algo salió mal
+          if (!paisDestino) return;
 
           let fuerzaJugador = ataque.tropas_enviadas;
           let fuerzaIA = paisDestino.ejercito_ia;
-
           const bajasJugador = Math.floor(fuerzaJugador * (0.1 + Math.random() * 0.3));
           const bajasIA = Math.floor(fuerzaIA * (0.2 + Math.random() * 0.4));
-
           fuerzaJugador -= bajasJugador;
           fuerzaIA -= bajasIA;
 
@@ -217,17 +198,10 @@ export default function App() {
           }, ...prevDiario]);
 
           if (victoria) {
-            setPaises(p => ({
-              ...p,
-              [paisDestino.id]: { ...paisDestino, conquistado: true, ejercito_ia: 0 }
-            }));
+            setPaises(p => ({ ...p, [paisDestino.id]: { ...paisDestino, conquistado: true, ejercito_ia: 0 } }));
             setTropas(t => ({ ...t, infanteria: t.infanteria + Math.floor(fuerzaJugador) }));
           } else {
-            // Actualizar ejercito IA tras la batalla
-            setPaises(p => ({
-              ...p,
-              [paisDestino.id]: { ...paisDestino, ejercito_ia: Math.max(0, Math.floor(fuerzaIA)) }
-            }));
+            setPaises(p => ({ ...p, [paisDestino.id]: { ...paisDestino, ejercito_ia: Math.max(0, Math.floor(fuerzaIA)) } }));
           }
         } else {
           ataquesPendientes.push(ataque);
@@ -235,7 +209,6 @@ export default function App() {
       });
       return ataquesPendientes;
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fechaVirtual]);
 
   const handleDeclararGuerra = () => {
@@ -264,7 +237,6 @@ export default function App() {
       tipo: "info"
     }, ...prev]);
 
-    // Asegurarse de que el país atacado exista en el estado local
     if (!paises[paisSeleccionado.id]) {
       setPaises(p => ({ ...p, [paisSeleccionado.id]: paisSeleccionado }));
     }
@@ -304,7 +276,7 @@ export default function App() {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-tactical text-slate-200 overflow-hidden select-none" onMouseMove={handleMouseMove}>
-      {/* TOPBAR TÁCTICO */}
+      {/* TOPBAR TÁCTICO - Con shrink-0 para evitar deformaciones */}
       <header className="h-16 border-b border-slate-800/80 bg-slate-950/80 flex items-center justify-between px-6 shrink-0 z-20 shadow-[0_4px_30px_rgba(0,0,0,0.5)] backdrop-blur-md">
         <div className="flex items-center gap-4">
           <Hexagon className="w-8 h-8 text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" strokeWidth={1.5} />
@@ -314,67 +286,41 @@ export default function App() {
         </div>
         
         <div className="flex items-center gap-6">
-          {/* Status Indicator */}
           <div className="text-xs font-bold tracking-widest text-slate-400 flex items-center gap-2">
             STATUS: 
-            <span className={
-              isPlaying 
-                ? (speedLevel === 1 ? "text-emerald-500" : speedLevel === 2 ? "text-amber-500" : "text-cyan-400") 
-                : "text-rose-500"
-            }>
-              {isPlaying 
-                ? (speedLevel === 1 ? "SIMULATING [>]" : speedLevel === 2 ? "SIMULATING [>>]" : "SIMULATING [>>>]") 
-                : "PAUSED [||]"
-              }
+            <span className={isPlaying ? (speedLevel === 1 ? "text-emerald-500" : speedLevel === 2 ? "text-amber-500" : "text-cyan-400") : "text-rose-500"}>
+              {isPlaying ? (speedLevel === 1 ? "SIMULATING [>]" : speedLevel === 2 ? "SIMULATING [>>]" : "SIMULATING [>>>]") : "PAUSED [||]"}
             </span>
           </div>
 
-          {/* Clock Panel */}
           <div className="bg-slate-900 px-5 py-2 rounded-sm border border-slate-700/80 shadow-inner flex items-center justify-center min-w-[160px]">
             <span className="text-digital text-amber-500 text-lg font-bold tracking-wider">
               {fechaVirtual.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).replace('.', '')}
             </span>
           </div>
 
-          {/* Controls */}
           <div className="flex bg-slate-900 rounded-sm p-0.5 border border-slate-700/80 shadow-inner">
-            <button 
-              onClick={() => { setIsPlaying(false); }}
-              className={`p-2 transition-all ${!isPlaying ? 'bg-slate-800 text-amber-500 shadow-[inset_0_0_8px_rgba(0,0,0,0.5)]' : 'text-slate-500 hover:text-slate-300'}`}
-              title="Pausar"
-            >
+            <button onClick={() => setIsPlaying(false)} className={`p-2 transition-all ${!isPlaying ? 'bg-slate-800 text-amber-500 shadow-[inset_0_0_8px_rgba(0,0,0,0.5)]' : 'text-slate-500 hover:text-slate-300'}`} title="Pausar">
               <Pause className="w-4 h-4 fill-current" />
             </button>
-            <button 
-              onClick={() => { setIsPlaying(true); setSpeedLevel(1); }}
-              className={`p-2 transition-all ${isPlaying && speedLevel === 1 ? 'bg-slate-800 text-emerald-500 shadow-[inset_0_0_8px_rgba(0,0,0,0.5)]' : 'text-slate-500 hover:text-slate-300'}`}
-              title="Velocidad normal x1"
-            >
+            <button onClick={() => { setIsPlaying(true); setSpeedLevel(1); }} className={`p-2 transition-all ${isPlaying && speedLevel === 1 ? 'bg-slate-800 text-emerald-500 shadow-[inset_0_0_8px_rgba(0,0,0,0.5)]' : 'text-slate-500 hover:text-slate-300'}`} title="Velocidad normal x1">
               <Play className="w-4 h-4 fill-current" />
             </button>
-            <button 
-              onClick={() => { setIsPlaying(true); setSpeedLevel(2); }}
-              className={`p-2 transition-all ${isPlaying && speedLevel === 2 ? 'bg-slate-800 text-amber-500 shadow-[inset_0_0_8px_rgba(0,0,0,0.5)]' : 'text-slate-500 hover:text-slate-300'}`}
-              title="Velocidad rápida x2"
-            >
+            <button onClick={() => { setIsPlaying(true); setSpeedLevel(2); }} className={`p-2 transition-all ${isPlaying && speedLevel === 2 ? 'bg-slate-800 text-amber-500 shadow-[inset_0_0_8px_rgba(0,0,0,0.5)]' : 'text-slate-500 hover:text-slate-300'}`} title="Velocidad rápida x2">
               <FastForward className="w-4 h-4 fill-current" />
             </button>
-            <button 
-              onClick={() => { setIsPlaying(true); setSpeedLevel(3); }}
-              className={`p-2 transition-all ${isPlaying && speedLevel === 3 ? 'bg-slate-800 text-cyan-400 shadow-[inset_0_0_8px_rgba(0,0,0,0.5)]' : 'text-slate-500 hover:text-slate-300'}`}
-              title="Velocidad hiper x3"
-            >
+            <button onClick={() => { setIsPlaying(true); setSpeedLevel(3); }} className={`p-2 transition-all ${isPlaying && speedLevel === 3 ? 'bg-slate-800 text-cyan-400 shadow-[inset_0_0_8px_rgba(0,0,0,0.5)]' : 'text-slate-500 hover:text-slate-300'}`} title="Velocidad hiper x3">
               <ChevronsRight className="w-4.5 h-4.5 fill-current" />
             </button>
           </div>
         </div>
       </header>
 
-      {/* CUERPO PRINCIPAL */}
-      <div className="flex-1 min-h-0 flex overflow-hidden z-10">
+      {/* SECCIÓN CENTRAL FLEXIBLE (Diario + Mapa) - Uso de flex-1 y min-h-0 */}
+      <div className="flex-1 flex min-h-0 overflow-hidden z-10">
         {/* PANEL IZQUIERDO: Diario de Guerra */}
-        <div className="w-[380px] shrink-0 border-r border-slate-800/80 bg-slate-950/60 flex flex-col relative backdrop-blur-sm">
-          <div className="p-4 border-b border-slate-800/50 bg-slate-900/90 shadow-md">
+        <div className="w-[35%] shrink-0 border-r border-slate-800/80 bg-slate-950/60 flex flex-col relative backdrop-blur-sm">
+          <div className="p-4 border-b border-slate-800/50 bg-slate-900/90 shadow-md shrink-0">
             <h2 className="text-sm font-bold text-slate-300 tracking-[0.2em] uppercase flex items-center gap-2">
               <Activity className="w-4 h-4 text-blue-500" />
               Diario de Guerra
@@ -394,10 +340,8 @@ export default function App() {
                     'bg-slate-900/50 border-t-slate-800/80 border-r-slate-800/80 border-b-slate-800/80 border-l-blue-600'
                   }`}
                 >
-                  {/* Decorative Texture/Pattern */}
                   {isSuccess && (
-                    <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
-                         style={{ backgroundImage: 'radial-gradient(#10b981 1px, transparent 1px)', backgroundSize: '10px 10px' }} />
+                    <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#10b981 1px, transparent 1px)', backgroundSize: '10px 10px' }} />
                   )}
                   {isAlert && (
                     <div className="absolute right-0 top-0 w-32 h-32 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
@@ -409,13 +353,9 @@ export default function App() {
                         {isAlert ? <ShieldAlert className="w-3.5 h-3.5" /> : isSuccess ? <ShieldCheck className="w-3.5 h-3.5" /> : <Info className="w-3.5 h-3.5" />}
                         {ev.titulo}
                       </div>
-                      <span className="text-amber-500/90 font-semibold">
-                        [{ev.fecha.toLocaleDateString('es-ES')}]
-                      </span>
+                      <span className="text-amber-500/90 font-semibold">[{ev.fecha.toLocaleDateString('es-ES')}]</span>
                     </div>
-                    <p className="text-[11px] leading-relaxed text-slate-300">
-                      {ev.mensaje}
-                    </p>
+                    <p className="text-[11px] leading-relaxed text-slate-300">{ev.mensaje}</p>
                   </div>
                 </div>
               );
@@ -423,8 +363,8 @@ export default function App() {
           </div>
         </div>
 
-        {/* PANEL DERECHO: Mapa Global (react-simple-maps) */}
-        <div className="flex-1 h-full relative map-container bg-transparent flex items-center justify-center">
+        {/* PANEL DERECHO: Mapa Global - Eliminación del h-[calc(100vh-154px)] problemático */}
+        <div className="w-[65%] h-full relative map-container bg-transparent flex items-center justify-center overflow-hidden">
           <TransformWrapper
             initialScale={1}
             minScale={1}
@@ -432,58 +372,20 @@ export default function App() {
             centerOnInit
             doubleClick={{ disabled: true }}
             limitToBounds={false}
-            onPanningStart={() => {
-              isPanningRef.current = true;
-            }}
-            onPanning={() => {
-              isPanningRef.current = true;
-            }}
-            onPanningStop={() => {
-              setTimeout(() => {
-                isPanningRef.current = false;
-              }, 50);
-            }}
+            onPanningStart={() => { isPanningRef.current = true; }}
+            onPanning={() => { isPanningRef.current = true; }}
+            onPanningStop={() => { setTimeout(() => { isPanningRef.current = false; }, 50); }}
           >
             {({ zoomIn, zoomOut, resetTransform }) => (
               <>
-                {/* Mini-HUD táctico (abajo a la izquierda) */}
                 <div className="absolute bottom-6 left-6 z-20 flex flex-col gap-2">
-                  <button 
-                    onClick={() => zoomIn()} 
-                    className="w-10 h-10 bg-slate-950/80 hover:bg-slate-900 border border-slate-700/50 hover:border-slate-500 text-slate-300 hover:text-white font-bold flex items-center justify-center rounded-sm transition backdrop-blur-md shadow-lg text-lg select-none animate-in fade-in"
-                    title="Acercar (Zoom In)"
-                  >
-                    +
-                  </button>
-                  <button 
-                    onClick={() => zoomOut()} 
-                    className="w-10 h-10 bg-slate-950/80 hover:bg-slate-900 border border-slate-700/50 hover:border-slate-500 text-slate-300 hover:text-white font-bold flex items-center justify-center rounded-sm transition backdrop-blur-md shadow-lg text-lg select-none animate-in fade-in"
-                    title="Alejar (Zoom Out)"
-                  >
-                    -
-                  </button>
-                  <button 
-                    onClick={() => resetTransform()} 
-                    className="w-10 h-10 bg-slate-950/80 hover:bg-slate-900 border border-slate-700/50 hover:border-slate-500 text-slate-300 hover:text-white font-bold flex items-center justify-center rounded-sm transition backdrop-blur-md shadow-lg text-lg select-none animate-in fade-in"
-                    title="Resetear vista"
-                  >
-                    ⟲
-                  </button>
+                  <button onClick={() => zoomIn()} className="w-10 h-10 bg-slate-950/80 hover:bg-slate-900 border border-slate-700/50 hover:border-slate-500 text-slate-300 hover:text-white font-bold flex items-center justify-center rounded-sm transition backdrop-blur-md shadow-lg text-lg select-none" title="Acercar">+</button>
+                  <button onClick={() => zoomOut()} className="w-10 h-10 bg-slate-950/80 hover:bg-slate-900 border border-slate-700/50 hover:border-slate-500 text-slate-300 hover:text-white font-bold flex items-center justify-center rounded-sm transition backdrop-blur-md shadow-lg text-lg select-none" title="Alejar">-</button>
+                  <button onClick={() => resetTransform()} className="w-10 h-10 bg-slate-950/80 hover:bg-slate-900 border border-slate-700/50 hover:border-slate-500 text-slate-300 hover:text-white font-bold flex items-center justify-center rounded-sm transition backdrop-blur-md shadow-lg text-lg select-none" title="Resetear vista">⟲</button>
                 </div>
 
-                <TransformComponent 
-                  wrapperStyle={{ width: "100%", height: "100%" }} 
-                  wrapperClass="bg-transparent cursor-grab active:cursor-grabbing" 
-                  contentClass="flex items-center justify-center"
-                >
-                  <ComposableMap 
-                    projection="geoMercator"
-                    width={1000}
-                    height={600}
-                    projectionConfig={{ scale: 155, center: [0, 0] }} 
-                    className="drop-shadow-[0_0_25px_rgba(0,0,0,0.8)] block"
-                    style={{ width: "1000px", height: "600px", display: "block" }}
-                  >
+                <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }} wrapperClass="bg-transparent cursor-grab active:cursor-grabbing" contentClass="flex items-center justify-center">
+                  <ComposableMap projection="geoMercator" width={1000} height={600} projectionConfig={{ scale: 155, center: [0, 0] }} className="drop-shadow-[0_0_25px_rgba(0,0,0,0.8)] block" style={{ width: "1000px", height: "600px", display: "block" }}>
                     <Geographies geography={geoUrl}>
                       {({ geographies }) =>
                         geographies.map((geo) => {
@@ -492,49 +394,23 @@ export default function App() {
                           const isSelected = paisSeleccionado?.id === pais.id;
                           const isAttacked = ataquesEnCola.some(a => a.pais_destino_id === pais.id);
                           
-                          // Lógica de colores Dark Tactical
-                          let fill = pais.conquistado ? "#1e3a8a" : "#4c1d95"; // azul oscuro vs violeta oscuro default
-                          if (!pais.conquistado) fill = "#3f1a28"; // rose-950 tone for AI
-                          
-                          if (isHovered && !pais.conquistado) fill = "#701a2e"; // brighter red on hover
-                          if (isHovered && pais.conquistado) fill = "#1d4ed8"; // brighter blue on hover
+                          let fill = "#3f1a28";
+                          if (pais.conquistado) fill = "#1e3a8a";
+                          if (isHovered && !pais.conquistado) fill = "#701a2e";
+                          if (isHovered && pais.conquistado) fill = "#1d4ed8";
                           if (isSelected) fill = pais.conquistado ? "#2563eb" : "#9f1239"; 
 
                           return (
                             <Geography
                               key={geo.rsmKey}
                               geography={geo}
-                              onClick={() => {
-                                if (isPanningRef.current) return;
-                                setPaisSeleccionado(pais);
-                              }}
-                              onMouseEnter={() => {
-                                setHoveredPais(pais);
-                              }}
-                              onMouseLeave={() => {
-                                setHoveredPais(null);
-                              }}
+                              onClick={() => { if (!isPanningRef.current) setPaisSeleccionado(pais); }}
+                              onMouseEnter={() => setHoveredPais(pais)}
+                              onMouseLeave={() => setHoveredPais(null)}
                               style={{
-                                default: {
-                                  fill: fill,
-                                  stroke: isAttacked ? "#ef4444" : "#1e293b",
-                                  strokeWidth: isAttacked ? 1.5 : 0.5,
-                                  outline: "none",
-                                  transition: "all 250ms"
-                                },
-                                hover: {
-                                  fill: fill,
-                                  stroke: pais.conquistado ? "#60a5fa" : "#fb7185",
-                                  strokeWidth: 1,
-                                  outline: "none",
-                                  cursor: "crosshair"
-                                },
-                                pressed: {
-                                  fill: fill,
-                                  stroke: "#fff",
-                                  strokeWidth: 1.5,
-                                  outline: "none"
-                                }
+                                default: { fill: fill, stroke: isAttacked ? "#ef4444" : "#1e293b", strokeWidth: isAttacked ? 1.5 : 0.5, outline: "none", transition: "all 250ms" },
+                                hover: { fill: fill, stroke: pais.conquistado ? "#60a5fa" : "#fb7185", strokeWidth: 1, outline: "none", cursor: "crosshair" },
+                                pressed: { fill: fill, stroke: "#fff", strokeWidth: 1.5, outline: "none" }
                               }}
                             />
                           );
@@ -547,20 +423,15 @@ export default function App() {
             )}
           </TransformWrapper>
 
-          {/* TOOLTIP FLOTANTE (Hover) */}
+          {/* TOOLTIP FLOTANTE */}
           {hoveredPais && !paisSeleccionado && (() => {
             const isNearBottom = window.innerHeight - mousePos.y < 280;
             const isNearRight = window.innerWidth - mousePos.x < 240;
             const topStyle = isNearBottom ? mousePos.y - 190 : mousePos.y + 20;
             const leftStyle = isNearRight ? mousePos.x - 220 : mousePos.x + 20;
             return (
-              <div 
-                className="fixed z-50 pointer-events-none bg-slate-900/95 border border-slate-700/80 p-3 rounded-sm shadow-2xl backdrop-blur-md min-w-[200px] transition-all duration-100 ease-out"
-                style={{ left: leftStyle, top: topStyle }}
-              >
-                <div className="text-slate-400 text-xs font-mono mb-2 uppercase tracking-widest border-b border-slate-800 pb-1">
-                  Datos Geométricos
-                </div>
+              <div className="fixed z-50 pointer-events-none bg-slate-900/95 border border-slate-700/80 p-3 rounded-sm shadow-2xl backdrop-blur-md min-w-[200px]" style={{ left: leftStyle, top: topStyle }}>
+                <div className="text-slate-400 text-xs font-mono mb-2 uppercase tracking-widest border-b border-slate-800 pb-1">Datos Geométricos</div>
                 <div className="font-bold text-slate-100 text-sm mb-1 truncate">{hoveredPais.nombre}</div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mt-2">
                   <span className="text-slate-500">Población:</span>
@@ -570,9 +441,7 @@ export default function App() {
                   <span className="text-slate-500">Fuerza:</span>
                   <span className="text-rose-400 text-right font-mono">{hoveredPais.conquistado ? '-' : hoveredPais.ejercito_ia.toLocaleString()}</span>
                 </div>
-                <div className={`mt-3 text-[10px] font-bold text-center py-1 uppercase tracking-widest ${hoveredPais.conquistado ? 'bg-blue-900/30 text-blue-400' : 'bg-rose-900/30 text-rose-400'}`}>
-                  {hoveredPais.conquistado ? 'ALIADO' : 'HOSTIL'}
-                </div>
+                <div className={`mt-3 text-[10px] font-bold text-center py-1 uppercase tracking-widest ${hoveredPais.conquistado ? 'bg-blue-900/30 text-blue-400' : 'bg-rose-900/30 text-rose-400'}`}>{hoveredPais.conquistado ? 'ALIADO' : 'HOSTIL'}</div>
               </div>
             );
           })()}
@@ -584,14 +453,12 @@ export default function App() {
               const nombre = p ? p.nombre : "Desconocido";
               const diasLeft = Math.ceil((atk.fecha_impacto.getTime() - fechaVirtual.getTime()) / (1000 * 3600 * 24));
               return (
-                <div key={atk.id} className="bg-slate-950/90 border border-amber-900/50 text-amber-500 text-xs px-4 py-2 rounded-sm flex items-center gap-3 backdrop-blur-md shadow-[0_0_15px_rgba(217,119,6,0.15)]">
+                <div key={atk.id} className="bg-slate-950/90 border border-amber-900/50 text-amber-500 text-xs px-4 py-2 rounded-sm flex items-center gap-3 backdrop-blur-md shadow-md">
                   <div className="relative flex h-3 w-3">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
                   </div>
-                  <span className="font-mono">
-                    OFENSIVA A {nombre.toUpperCase()} <span className="text-amber-200">T-{Math.max(0, diasLeft)} DÍAS</span>
-                  </span>
+                  <span className="font-mono">OFENSIVA A {nombre.toUpperCase()} <span className="text-amber-200">T-{Math.max(0, diasLeft)} DÍAS</span></span>
                 </div>
               );
             })}
@@ -599,9 +466,9 @@ export default function App() {
         </div>
       </div>
 
-      {/* DRAWER LATERAL (Detalle y Ataque) */}
+      {/* DRAWER LATERAL */}
       {paisSeleccionado && (
-        <div className="absolute right-6 top-24 w-80 bg-slate-950/95 border border-slate-700 shadow-2xl rounded-sm backdrop-blur-xl overflow-hidden animate-in slide-in-from-right-8 z-30">
+        <div className="absolute right-6 top-24 w-80 bg-slate-950/95 border border-slate-700 shadow-2xl rounded-sm backdrop-blur-xl overflow-hidden z-30">
           <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-gradient-to-r from-slate-900 to-slate-950">
             <h3 className="font-bold text-sm tracking-widest text-slate-100 uppercase flex items-center gap-2">
               <MapIcon className="w-4 h-4 text-blue-500" />
@@ -648,22 +515,10 @@ export default function App() {
                   <span className="text-slate-500">Disp: {tropas.infanteria}</span>
                 </label>
                 <div className="flex gap-2 mb-4">
-                  <input 
-                    type="number" 
-                    min="0" 
-                    max={tropas.infanteria}
-                    value={tropasAEnviar}
-                    onChange={(e) => setTropasAEnviar(Number(e.target.value))}
-                    className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-2 text-slate-200 focus:outline-none focus:border-rose-500 font-mono transition text-sm shadow-inner"
-                    placeholder="Ej. 1000"
-                  />
+                  <input type="number" min="0" max={tropas.infanteria} value={tropasAEnviar} onChange={(e) => setTropasAEnviar(Number(e.target.value))} className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-2 text-slate-200 focus:outline-none focus:border-rose-500 font-mono text-sm" placeholder="Ej. 1000"/>
                   <button onClick={() => setTropasAEnviar(tropas.infanteria)} className="bg-slate-800 hover:bg-slate-700 text-xs px-2 rounded-sm border border-slate-700 text-slate-300">MAX</button>
                 </div>
-                <button 
-                  onClick={handleDeclararGuerra}
-                  disabled={tropasAEnviar <= 0 || tropasAEnviar > tropas.infanteria}
-                  className="w-full bg-rose-700 hover:bg-rose-600 disabled:bg-slate-800 disabled:text-slate-600 disabled:border-slate-700 disabled:shadow-none text-white font-bold py-3 px-4 rounded-sm transition shadow-[0_0_15px_rgba(225,29,72,0.3)] border border-rose-500 uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-2"
-                >
+                <button onClick={handleDeclararGuerra} disabled={tropasAEnviar <= 0 || tropasAEnviar > tropas.infanteria} className="w-full bg-rose-700 hover:bg-rose-600 disabled:bg-slate-800 disabled:text-slate-600 disabled:border-slate-700 text-white font-bold py-3 px-4 rounded-sm border border-rose-500 uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-2">
                   <Swords className="w-4 h-4" />
                   Iniciar Ofensiva
                 </button>
@@ -673,13 +528,10 @@ export default function App() {
         </div>
       )}
 
-      {/* BOTTOMBAR */}
+      {/* FOOTER (BARRA INFERIOR) - Con h-[90px] y shrink-0 fijado */}
       <footer className="h-[90px] border-t border-slate-800/80 bg-slate-950/90 flex items-center justify-between px-6 shrink-0 z-20 backdrop-blur-md shadow-[0_-4px_30px_rgba(0,0,0,0.5)]">
-        
         <div className="flex gap-4 h-14">
-          {/* Panel Presupuesto */}
           <div className="bg-slate-900 border border-slate-700/80 rounded-sm px-5 flex flex-col justify-center shadow-inner relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Presupuesto Global</span>
             <div className="flex items-center gap-2">
               <span className="text-amber-500 font-black">€</span>
@@ -689,33 +541,27 @@ export default function App() {
           
           <div className="w-px bg-gradient-to-b from-transparent via-slate-700 to-transparent my-1"></div>
           
-          {/* Panel Reservas Militares */}
           <div className="bg-slate-900 border border-slate-700/80 rounded-sm px-5 flex flex-col justify-center shadow-inner">
             <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1.5">Fuerzas de Reserva</span>
             <div className="flex gap-6 font-mono text-sm">
-              <div className="flex items-center gap-2 group" title="Infantería">
-                <Flag className="w-4 h-4 text-slate-400 group-hover:text-slate-300 transition-colors" />
+              <div className="flex items-center gap-2" title="Infantería">
+                <Flag className="w-4 h-4 text-slate-400" />
                 <span className="text-slate-300">{tropas.infanteria.toLocaleString()}</span>
               </div>
-              <div className="flex items-center gap-2 group" title="Caballería">
-                <Zap className="w-4 h-4 text-amber-600 group-hover:text-amber-500 transition-colors" />
+              <div className="flex items-center gap-2" title="Caballería">
+                <Zap className="w-4 h-4 text-amber-600" />
                 <span className="text-slate-300">{tropas.caballeria.toLocaleString()}</span>
               </div>
-              <div className="flex items-center gap-2 group" title="Artillería">
-                <Skull className="w-4 h-4 text-rose-700 group-hover:text-rose-500 transition-colors" />
+              <div className="flex items-center gap-2" title="Artillería">
+                <Skull className="w-4 h-4 text-rose-700" />
                 <span className="text-slate-300">{tropas.artilleria.toLocaleString()}</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Botón Árbol Tecnológico */}
-        <button 
-          onClick={() => setMostrarArbol(true)}
-          className="group relative bg-slate-900 hover:bg-slate-800 border border-purple-900/50 hover:border-purple-500 text-purple-100 h-14 px-8 rounded-sm shadow-[0_0_20px_rgba(88,28,135,0.2)] hover:shadow-[0_0_25px_rgba(147,51,234,0.3)] transition-all overflow-hidden flex items-center gap-3"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-900/20 to-transparent pointer-events-none"></div>
-          <Atom className="w-5 h-5 text-purple-400 group-hover:text-purple-300 group-hover:animate-spin-slow" />
+        <button onClick={() => setMostrarArbol(true)} className="group relative bg-slate-900 hover:bg-slate-800 border border-purple-900/50 hover:border-purple-500 text-purple-100 h-14 px-8 rounded-sm shadow-md transition-all flex items-center gap-3">
+          <Atom className="w-5 h-5 text-purple-400 group-hover:text-purple-300" />
           <span className="font-bold uppercase tracking-[0.2em] text-xs">Árbol Tecnológico</span>
         </button>
       </footer>
@@ -733,38 +579,22 @@ export default function App() {
                 Presupuesto Asignable: <span className="text-emerald-400 font-mono font-bold">${presupuesto.toLocaleString()}</span>
               </p>
             </div>
-            <button 
-              onClick={() => setMostrarArbol(false)}
-              className="p-3 bg-slate-900 hover:bg-rose-950/40 hover:text-rose-400 border border-slate-800 hover:border-rose-900 rounded-sm transition text-slate-400"
-            >
+            <button onClick={() => setMostrarArbol(false)} className="p-3 bg-slate-900 hover:bg-rose-950/40 hover:text-rose-400 border border-slate-800 rounded-sm text-slate-400">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
           </div>
 
           <div className="flex gap-4 mb-4 shrink-0">
-            <button 
-              onClick={() => setTabIyd("desarrollo")}
-              className={`px-6 py-3 font-bold text-xs uppercase tracking-widest border rounded-sm transition-all ${tabIyd === "desarrollo" ? "bg-purple-900/50 border-purple-500 text-purple-200 shadow-[0_0_15px_rgba(168,85,247,0.3)]" : "bg-slate-900/50 border-slate-800 text-slate-500 hover:border-purple-900 hover:text-slate-300"}`}
-            >
-              [ ⚙ DESARROLLO INDUSTRIAL Y CIBERNÉTICO ]
-            </button>
-            <button 
-              onClick={() => setTabIyd("militar")}
-              className={`px-6 py-3 font-bold text-xs uppercase tracking-widest border rounded-sm transition-all ${tabIyd === "militar" ? "bg-rose-900/50 border-rose-500 text-rose-200 shadow-[0_0_15px_rgba(225,29,72,0.3)]" : "bg-slate-900/50 border-slate-800 text-slate-500 hover:border-rose-900 hover:text-slate-300"}`}
-            >
-              [ ⚔ DOCTRINA MILITAR GLOBAL ]
-            </button>
+            <button onClick={() => setTabIyd("desarrollo")} className={`px-6 py-3 font-bold text-xs uppercase tracking-widest border rounded-sm transition-all ${tabIyd === "desarrollo" ? "bg-purple-900/50 border-purple-500 text-purple-200" : "bg-slate-900/50 border-slate-800 text-slate-500"}`}>[ ⚙ DESARROLLO INDUSTRIAL Y CIBERNÉTICO ]</button>
+            <button onClick={() => setTabIyd("militar")} className={`px-6 py-3 font-bold text-xs uppercase tracking-widest border rounded-sm transition-all ${tabIyd === "militar" ? "bg-rose-900/50 border-rose-500 text-rose-200" : "bg-slate-900/50 border-slate-800 text-slate-500"}`}>[ ⚔ DOCTRINA MILITAR GLOBAL ]</button>
           </div>
 
           <div className="flex-1 w-full relative border border-slate-800/80 rounded-lg bg-slate-950/90 overflow-auto shadow-inner p-12 custom-scrollbar">
             <div className="relative min-w-[1500px] min-h-[600px]">
-              {/* SVG Connectors */}
               <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
                 {habilidades.filter(h => h.categoria === tabIyd).map(hab => {
                   let pre: Habilidad | undefined;
-                  
                   if (hab.id === "M_SEC") {
-                     // For M_SEC, draw lines from the level 3 military tech
                      const m13 = habilidades.find(h => h.id === "M_13");
                      const m23 = habilidades.find(h => h.id === "M_23");
                      const m33 = habilidades.find(h => h.id === "M_33");
@@ -772,17 +602,7 @@ export default function App() {
                        if (!p) return null;
                        const isActive = p.desbloqueada;
                        return (
-                        <line 
-                          key={`line-sec-${i}`}
-                          x1={p.x + 208} 
-                          y1={p.y + 45} 
-                          x2={hab.x} 
-                          y2={hab.y + 45} 
-                          stroke={hab.desbloqueada ? "#10b981" : isActive ? "#06b6d4" : "#1e293b"} 
-                          strokeWidth="2"
-                          strokeDasharray={hab.desbloqueada ? "none" : "4,4"}
-                          style={hab.desbloqueada ? { filter: "drop-shadow(0 0 5px #10b981)" } : {}}
-                        />
+                        <line key={`line-sec-${i}`} x1={p.x + 208} y1={p.y + 45} x2={hab.x} y2={hab.y + 45} stroke={hab.desbloqueada ? "#10b981" : isActive ? "#06b6d4" : "#1e293b"} strokeWidth="2" strokeDasharray={hab.desbloqueada ? "none" : "4,4"} style={hab.desbloqueada ? { filter: "drop-shadow(0 0 5px #10b981)" } : {}}/>
                        );
                      });
                   } else {
@@ -790,25 +610,13 @@ export default function App() {
                     pre = habilidades.find(h => h.id === hab.prerrequisito_id);
                     if (!pre) return null;
                     const isAvailable = pre.desbloqueada;
-
                     return (
-                      <line 
-                        key={`line-${hab.id}`}
-                        x1={pre.x + 208} 
-                        y1={pre.y + 45} 
-                        x2={hab.x} 
-                        y2={hab.y + 45} 
-                        stroke={hab.desbloqueada ? "#10b981" : isAvailable ? "#06b6d4" : "#1e293b"} 
-                        strokeWidth="2"
-                        strokeDasharray={hab.desbloqueada ? "none" : "4,4"}
-                        style={hab.desbloqueada ? { filter: "drop-shadow(0 0 5px #10b981)" } : {}}
-                      />
+                      <line key={`line-${hab.id}`} x1={pre.x + 208} y1={pre.y + 45} x2={hab.x} y2={hab.y + 45} stroke={hab.desbloqueada ? "#10b981" : isAvailable ? "#06b6d4" : "#1e293b"} strokeWidth="2" strokeDasharray={hab.desbloqueada ? "none" : "4,4"} style={hab.desbloqueada ? { filter: "drop-shadow(0 0 5px #10b981)" } : {}}/>
                     );
                   }
                 })}
               </svg>
 
-              {/* Cards */}
               {habilidades.filter(h => h.categoria === tabIyd).map(hab => {
                 let canUnlock = false;
                 if (hab.id === "M_SEC") {
@@ -819,29 +627,11 @@ export default function App() {
                 }
 
                 return (
-                  <div 
-                    key={hab.id}
-                    className={`absolute p-3 w-52 rounded border backdrop-blur-sm transition-all text-xs font-mono z-10 ${
-                      hab.desbloqueada 
-                        ? 'bg-emerald-950/40 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]' 
-                        : canUnlock 
-                          ? 'bg-slate-800/80 border-cyan-500 hover:border-cyan-300 hover:bg-slate-700 hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] cursor-pointer'
-                          : 'bg-slate-950/80 border-slate-800 opacity-60 grayscale pointer-events-none'
-                    }`}
-                    style={{ left: hab.x, top: hab.y }}
-                    onClick={() => canUnlock && handleDesbloquearHabilidad(hab)}
-                  >
+                  <div key={hab.id} className={`absolute p-3 w-52 rounded border backdrop-blur-sm transition-all text-xs font-mono z-10 ${hab.desbloqueada ? 'bg-emerald-950/40 border-emerald-500' : canUnlock ? 'bg-slate-800/80 border-cyan-500 hover:border-cyan-300 cursor-pointer' : 'bg-slate-950/80 border-slate-800 opacity-60 grayscale pointer-events-none'}`} style={{ left: hab.x, top: hab.y }} onClick={() => canUnlock && handleDesbloquearHabilidad(hab)}>
                     <div className="font-bold mb-1 text-slate-100 truncate" title={hab.nombre}>{hab.nombre}</div>
                     <div className="text-[10px] text-cyan-300 mb-3">{hab.tipo_bono}</div>
                     <div className="flex justify-between items-center text-[10px] border-t border-slate-700/50 pt-2">
-                      {hab.desbloqueada ? (
-                        <span className="text-emerald-400 font-bold uppercase tracking-wider">Investigado</span>
-                      ) : (
-                        <>
-                          <span className="text-amber-400/80 font-mono">${hab.costo}</span>
-                          {canUnlock ? <span className="text-cyan-400 font-bold uppercase tracking-wider">Investigar</span> : <span className="text-slate-600 uppercase tracking-wider">Bloqueado</span>}
-                        </>
-                      )}
+                      {hab.desbloqueada ? <span className="text-emerald-400 font-bold uppercase tracking-wider">Investigado</span> : <><span className="text-amber-400/80 font-mono">${hab.costo}</span>{canUnlock ? <span className="text-cyan-400 font-bold uppercase tracking-wider">Investigar</span> : <span className="text-slate-600 uppercase tracking-wider">Bloqueado</span>}</>}
                     </div>
                   </div>
                 )
