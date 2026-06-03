@@ -8,7 +8,7 @@ import {
   ChevronsRight
 } from "lucide-react";
 import { initialHabilidades } from "./TechTreeData";
-
+import Login from "./components/Login";
 // Geometría del mapa del mundo (TopoJSON)
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
@@ -109,6 +109,7 @@ const eventosAleatorios = [
 ];
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [fechaVirtual, setFechaVirtual] = useState(new Date(2027, 4, 1));
   const [isPlaying, setIsPlaying] = useState(false);
   const [speedLevel, setSpeedLevel] = useState<1 | 2 | 3>(1);
@@ -274,8 +275,12 @@ export default function App() {
     }, ...prev]);
   };
 
+  if (!isAuthenticated) {
+    return <Login onLogin={() => setIsAuthenticated(true)} />;
+  }
+
   return (
-    <div className="h-[100dvh] w-screen flex flex-col bg-tactical text-slate-200 overflow-hidden select-none" onMouseMove={handleMouseMove}>
+    <div className="h-[100dvh] w-screen flex flex-col bg-[#030712] text-slate-200 overflow-hidden select-none" onMouseMove={handleMouseMove}>
       {/* TOPBAR TÁCTICO - Con shrink-0 para evitar deformaciones */}
       <header className="h-16 border-b border-slate-800/80 bg-slate-950/80 flex items-center justify-between px-6 shrink-0 z-20 shadow-[0_4px_30px_rgba(0,0,0,0.5)] backdrop-blur-md">
         <div className="flex items-center gap-4">

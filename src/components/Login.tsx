@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Hexagon, Terminal, ShieldAlert, Cpu, Lock, User, ChevronRight } from 'lucide-react';
 
-const Login: React.FC = () => {
+interface LoginProps {
+  onLogin: () => void;
+}
+
+const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [operatorId, setOperatorId] = useState('');
   const [cipherKey, setCipherKey] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -37,7 +41,7 @@ const Login: React.FC = () => {
 
     setTimeout(() => {
       setLogs((prev) => [...prev, '> ACCESO AUTORIZADO. REDIRIGIENDO...']);
-      // Aca puedes agregar la logica para redirigir al juego
+      onLogin();
     }, 2500);
   };
 
