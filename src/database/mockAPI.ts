@@ -211,44 +211,47 @@ const eventosAleatorios = [
 ];
 
 const initialHabilidades: Habilidad[] = [
-  // ===================== DESARROLLO =====================
-  { id: "D_ROOT", nombre: "Protocolo de Enlace Neuronal", costo: 300, desbloqueada: false, prerrequisito_id: null, tipo_bono: "+5% Eficiencia Global", categoria: "desarrollo", rama: "raiz", nivel: 0, x: 50, y: 200 },
+  // ===================== INFRAESTRUCTURA (DESARROLLO) =====================
+  { id: "D_ROOT", nombre: "Protocolo de Enlace Neuronal", costo: 300, desbloqueada: false, prerrequisito_id: null, tipo_bono: "+5% Eficiencia Global", categoria: "desarrollo", rama: "raiz", nivel: 0, x: 100, y: 500 },
   
-  // Rama A: Economía
-  { id: "D_A1", nombre: "Algoritmos Financieros", costo: 500, desbloqueada: false, prerrequisito_id: "D_ROOT", tipo_bono: "+10% Ingresos Oro", categoria: "desarrollo", rama: "A", nivel: 1, x: 350, y: 50 },
-  { id: "D_A2", nombre: "Cripto-Minería Geotérmica", costo: 900, desbloqueada: false, prerrequisito_id: "D_A1", tipo_bono: "+20% Ingresos Oro", categoria: "desarrollo", rama: "A", nivel: 2, x: 650, y: 50 },
-  { id: "D_A3", nombre: "Monopolio de Red de Datos", costo: 2000, desbloqueada: false, prerrequisito_id: "D_A2", tipo_bono: "+50% Ingresos Oro", categoria: "desarrollo", rama: "A", nivel: 3, x: 950, y: 50 },
+  // Logística y Producción
+  { id: "D_A1", nombre: "IA de Logística", costo: 600, desbloqueada: false, prerrequisito_id: "D_ROOT", tipo_bono: "-10% Costo Unidades", categoria: "desarrollo", rama: "A", nivel: 1, x: 450, y: 250 },
+  { id: "D_A2", nombre: "Cadenas de Suministro Auto", costo: 1200, desbloqueada: false, prerrequisito_id: "D_A1", tipo_bono: "-20% Costo Construcción", categoria: "desarrollo", rama: "A", nivel: 2, x: 800, y: 150 },
+  { id: "D_A3", nombre: "Megacorporación Sintética", costo: 3500, desbloqueada: false, prerrequisito_id: "D_A2", tipo_bono: "+50% Eficiencia Total", categoria: "desarrollo", rama: "A", nivel: 3, x: 1200, y: 150 },
+  { id: "D_A4", nombre: "Reciclaje Molecular", costo: 1500, desbloqueada: false, prerrequisito_id: "D_A1", tipo_bono: "+15% Ingresos Base", categoria: "desarrollo", rama: "A", nivel: 2, x: 800, y: 350 },
+  { id: "D_A5", nombre: "Enjambres Constructores", costo: 2800, desbloqueada: false, prerrequisito_id: "D_A4", tipo_bono: "-40% Tiempo Despliegue", categoria: "desarrollo", rama: "A", nivel: 3, x: 1200, y: 350 },
   
-  // Rama B: Infraestructura
-  { id: "D_B1", nombre: "Líneas de Ensamblaje Auto", costo: 550, desbloqueada: false, prerrequisito_id: "D_ROOT", tipo_bono: "-5% Costo Construcción", categoria: "desarrollo", rama: "B", nivel: 1, x: 350, y: 200 },
-  { id: "D_B2", nombre: "Impresión Molecular", costo: 1000, desbloqueada: false, prerrequisito_id: "D_B1", tipo_bono: "-15% Costo Construcción", categoria: "desarrollo", rama: "B", nivel: 2, x: 650, y: 200 },
-  { id: "D_B3", nombre: "Fábricas Orbitales", costo: 2200, desbloqueada: false, prerrequisito_id: "D_B2", tipo_bono: "-30% Costo Construcción", categoria: "desarrollo", rama: "B", nivel: 3, x: 950, y: 200 },
+  // Energía y Recursos
+  { id: "D_B1", nombre: "Minería Asteroide", costo: 800, desbloqueada: false, prerrequisito_id: "D_ROOT", tipo_bono: "+20% Ingresos Oro", categoria: "desarrollo", rama: "B", nivel: 1, x: 450, y: 500 },
+  { id: "D_B2", nombre: "Plantas de Fusión Quiral", costo: 1800, desbloqueada: false, prerrequisito_id: "D_B1", tipo_bono: "+35% Ingresos Oro", categoria: "desarrollo", rama: "B", nivel: 2, x: 800, y: 500 },
+  { id: "D_B3", nombre: "Economía de Esfera Dyson", costo: 5000, desbloqueada: false, prerrequisito_id: "D_B2", tipo_bono: "Recursos Ilimitados", categoria: "desarrollo", rama: "B", nivel: 3, x: 1200, y: 500 },
   
-  // Rama C: Ciberdefensa
-  { id: "D_C1", nombre: "Firewalls Cuánticos", costo: 600, desbloqueada: false, prerrequisito_id: "D_ROOT", tipo_bono: "+10% Defensa Ciber", categoria: "desarrollo", rama: "C", nivel: 1, x: 350, y: 350 },
-  { id: "D_C2", nombre: "Virus de Desinformación", costo: 1100, desbloqueada: false, prerrequisito_id: "D_C1", tipo_bono: "+20% Sabotaje", categoria: "desarrollo", rama: "C", nivel: 2, x: 650, y: 350 },
-  { id: "D_C3", nombre: "Control Satelital", costo: 2500, desbloqueada: false, prerrequisito_id: "D_C2", tipo_bono: "Revelar Mapa Completo", categoria: "desarrollo", rama: "C", nivel: 3, x: 950, y: 350 },
+  // Cibernética y Control Redes
+  { id: "D_C1", nombre: "Redes Cuánticas", costo: 700, desbloqueada: false, prerrequisito_id: "D_ROOT", tipo_bono: "+10% Sabotaje", categoria: "desarrollo", rama: "C", nivel: 1, x: 450, y: 750 },
+  { id: "D_C2", nombre: "Hackeo de Bolsas Globales", costo: 1600, desbloqueada: false, prerrequisito_id: "D_C1", tipo_bono: "Robar Fondos Enemigos", categoria: "desarrollo", rama: "C", nivel: 2, x: 800, y: 650 },
+  { id: "D_C3", nombre: "Singularidad Financiera", costo: 4000, desbloqueada: false, prerrequisito_id: "D_C2", tipo_bono: "+100% Retorno Inversión", categoria: "desarrollo", rama: "C", nivel: 3, x: 1200, y: 650 },
+  { id: "D_C4", nombre: "Manipulación de Información", costo: 1400, desbloqueada: false, prerrequisito_id: "D_C1", tipo_bono: "Reducir Moral Enemiga", categoria: "desarrollo", rama: "C", nivel: 2, x: 800, y: 850 },
 
   // ===================== DOCTRINA MILITAR =====================
-  { id: "M_ROOT", nombre: "Protocolo de Movilización Global", costo: 400, desbloqueada: false, prerrequisito_id: null, tipo_bono: "+5% Ataque Global", categoria: "militar", rama: "raiz", nivel: 0, x: 50, y: 200 },
+  { id: "M_ROOT", nombre: "Protocolo de Aniquilación", costo: 400, desbloqueada: false, prerrequisito_id: null, tipo_bono: "+5% Ataque Global", categoria: "militar", rama: "raiz", nivel: 0, x: 100, y: 500 },
   
-  // Rama 1: Infantería
-  { id: "M_11", nombre: "Entrenamiento en Gravedad Cero", costo: 600, desbloqueada: false, prerrequisito_id: "M_ROOT", tipo_bono: "+10% HP Infantería", categoria: "militar", rama: "1", nivel: 1, x: 350, y: 50 },
-  { id: "M_12", nombre: "Armaduras Tácticas de Grafeno", costo: 1200, desbloqueada: false, prerrequisito_id: "M_11", tipo_bono: "+20% Def Infantería", categoria: "militar", rama: "1", nivel: 2, x: 650, y: 50 },
-  { id: "M_13", nombre: "Exoesqueletos de Combate Autónomos", costo: 2500, desbloqueada: false, prerrequisito_id: "M_12", tipo_bono: "+40% Ataque Infantería", categoria: "militar", rama: "1", nivel: 3, x: 950, y: 50 },
+  // Infantería y Tácticas
+  { id: "M_A1", nombre: "Infantería Cibernética", costo: 700, desbloqueada: false, prerrequisito_id: "M_ROOT", tipo_bono: "+15% HP Infantería", categoria: "militar", rama: "A", nivel: 1, x: 450, y: 250 },
+  { id: "M_A2", nombre: "Exoesqueletos Pesados", costo: 1300, desbloqueada: false, prerrequisito_id: "M_A1", tipo_bono: "+25% Def Infantería", categoria: "militar", rama: "A", nivel: 2, x: 800, y: 150 },
+  { id: "M_A3", nombre: "Supersoldados Genéticos", costo: 3200, desbloqueada: false, prerrequisito_id: "M_A2", tipo_bono: "+50% Ataque Infantería", categoria: "militar", rama: "A", nivel: 3, x: 1200, y: 150 },
+  { id: "M_A4", nombre: "Guerra Psicológica", costo: 1100, desbloqueada: false, prerrequisito_id: "M_A1", tipo_bono: "Deserción Enemiga", categoria: "militar", rama: "A", nivel: 2, x: 800, y: 350 },
+  { id: "M_A5", nombre: "Control Mental Masivo", costo: 3000, desbloqueada: false, prerrequisito_id: "M_A4", tipo_bono: "Conversión de Tropas", categoria: "militar", rama: "A", nivel: 3, x: 1200, y: 350 },
   
-  // Rama 2: Caballería / Movilidad
-  { id: "M_21", nombre: "Vehículos de Asalto Todo Terreno", costo: 700, desbloqueada: false, prerrequisito_id: "M_ROOT", tipo_bono: "+10% Vel Movimiento", categoria: "militar", rama: "2", nivel: 1, x: 350, y: 200 },
-  { id: "M_22", nombre: "Tanques Aerodeslizadores", costo: 1400, desbloqueada: false, prerrequisito_id: "M_21", tipo_bono: "+20% Vel Movimiento", categoria: "militar", rama: "2", nivel: 2, x: 650, y: 200 },
-  { id: "M_23", nombre: "Caballería de Propulsión Iónica", costo: 2800, desbloqueada: false, prerrequisito_id: "M_22", tipo_bono: "+50% Ataque Sorpresa", categoria: "militar", rama: "2", nivel: 3, x: 950, y: 200 },
+  // Movilidad y Vehículos
+  { id: "M_B1", nombre: "Enjambres de Drones", costo: 900, desbloqueada: false, prerrequisito_id: "M_ROOT", tipo_bono: "+20% Vel Movimiento", categoria: "militar", rama: "B", nivel: 1, x: 450, y: 500 },
+  { id: "M_B2", nombre: "Blindaje de Nanotubos", costo: 1700, desbloqueada: false, prerrequisito_id: "M_B1", tipo_bono: "+30% Resistencia Total", categoria: "militar", rama: "B", nivel: 2, x: 800, y: 500 },
+  { id: "M_B3", nombre: "Tanques Levitadores", costo: 4200, desbloqueada: false, prerrequisito_id: "M_B2", tipo_bono: "+60% Daño Caballería", categoria: "militar", rama: "B", nivel: 3, x: 1200, y: 500 },
   
-  // Rama 3: Artillería
-  { id: "M_31", nombre: "Artillería de Asedio de Precisión", costo: 800, desbloqueada: false, prerrequisito_id: "M_ROOT", tipo_bono: "+15% Daño Área", categoria: "militar", rama: "3", nivel: 1, x: 350, y: 350 },
-  { id: "M_32", nombre: "Munición Inteligente Guiada por IA", costo: 1600, desbloqueada: false, prerrequisito_id: "M_31", tipo_bono: "+25% Precisión", categoria: "militar", rama: "3", nivel: 2, x: 650, y: 350 },
-  { id: "M_33", nombre: "Cañones de Riel Electromagnéticos", costo: 3000, desbloqueada: false, prerrequisito_id: "M_32", tipo_bono: "+60% Daño a Fortalezas", categoria: "militar", rama: "3", nivel: 3, x: 950, y: 350 },
-  
-  // Rama 4: Secreto
-  { id: "M_SEC", nombre: "Cibernética de Vanguardia", costo: 4000, desbloqueada: false, prerrequisito_id: null, tipo_bono: "+100% Eficiencia Táctica", categoria: "militar", rama: "sec", nivel: 4, x: 1250, y: 200 },
+  // Artillería y Orbital
+  { id: "M_C1", nombre: "Artillería Orbital Gauss", costo: 1000, desbloqueada: false, prerrequisito_id: "M_ROOT", tipo_bono: "+20% Daño de Área", categoria: "militar", rama: "C", nivel: 1, x: 450, y: 750 },
+  { id: "M_C2", nombre: "Satélites EMP", costo: 2000, desbloqueada: false, prerrequisito_id: "M_C1", tipo_bono: "Inutilizar Defensas", categoria: "militar", rama: "C", nivel: 2, x: 800, y: 650 },
+  { id: "M_C3", nombre: "Cañones de Antimateria", costo: 5500, desbloqueada: false, prerrequisito_id: "M_C2", tipo_bono: "Destrucción Instantánea", categoria: "militar", rama: "C", nivel: 3, x: 1200, y: 650 },
+  { id: "M_C4", nombre: "Escudos Planetarios", costo: 2500, desbloqueada: false, prerrequisito_id: "M_C1", tipo_bono: "Inmunidad Orbital", categoria: "militar", rama: "C", nivel: 2, x: 800, y: 850 }
 ];
 
 const initialSaves: SaveFile[] = [

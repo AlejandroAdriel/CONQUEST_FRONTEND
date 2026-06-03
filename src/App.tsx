@@ -5,7 +5,7 @@ import {
   Play, Pause, FastForward, Activity,
   ShieldAlert, ShieldCheck, Info,
   Atom, Flag, Swords, Hexagon, Zap, Skull, Map as MapIcon,
-  ChevronsRight, Globe
+  ChevronsRight, Globe, Cpu
 } from "lucide-react";
 import { fetchInitialGameState, fetchRandomEvents, fetchTechTree, fetchCountryStats } from "./database/mockAPI";
 import type { Habilidad } from "./database/mockAPI";
@@ -730,9 +730,9 @@ export default function App() {
           </div>
         </div>
 
-        <button onClick={() => setMostrarArbol(true)} className="group relative bg-slate-900 hover:bg-slate-800 border border-purple-900/50 hover:border-purple-500 text-purple-100 h-14 px-8 rounded-sm shadow-md transition-all flex items-center gap-3">
-          <Atom className="w-5 h-5 text-purple-400 group-hover:text-purple-300" />
-          <span className="font-bold uppercase tracking-[0.2em] text-xs">Árbol Tecnológico</span>
+        <button onClick={() => setMostrarArbol(true)} className="group relative bg-slate-900 hover:bg-slate-800 border border-cyan-900/50 hover:border-cyan-500 text-cyan-100 h-14 px-8 rounded-sm shadow-md transition-all flex items-center gap-3">
+          <Cpu className="w-5 h-5 text-cyan-400 group-hover:text-cyan-300" />
+          <span className="font-bold uppercase tracking-[0.2em] text-xs">[ MATRIZ DE PROTOCOLOS ]</span>
         </button>
       </footer>
 
@@ -741,72 +741,95 @@ export default function App() {
         <div className="fixed inset-0 bg-slate-950/95 z-50 flex flex-col backdrop-blur-xl p-8 animate-in fade-in">
           <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4 shrink-0">
             <div>
-              <h2 className="text-3xl font-black tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400 flex items-center gap-4">
-                <Atom className="w-8 h-8 text-purple-500" />
-                DEPARTAMENTO DE I+D
+              <h2 className="text-3xl font-black tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400 flex items-center gap-4">
+                <Cpu className="w-8 h-8 text-cyan-500" />
+                MAINFRAME DE ASIMILACIÓN TÁCTICA
               </h2>
               <p className="text-slate-400 mt-2 text-sm tracking-widest uppercase">
                 Presupuesto Asignable: <span className="text-emerald-400 font-mono font-bold">${presupuesto.toLocaleString()}</span>
               </p>
             </div>
-            <button onClick={() => setMostrarArbol(false)} className="p-3 bg-slate-900 hover:bg-rose-950/40 hover:text-rose-400 border border-slate-800 rounded-sm text-slate-400">
+            <button onClick={() => setMostrarArbol(false)} className="p-3 bg-slate-900 hover:bg-rose-950/40 hover:text-rose-400 border border-slate-800 rounded-sm text-slate-400 transition-colors">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
           </div>
 
           <div className="flex gap-4 mb-4 shrink-0">
-            <button onClick={() => setTabIyd("desarrollo")} className={`px-6 py-3 font-bold text-xs uppercase tracking-widest border rounded-sm transition-all ${tabIyd === "desarrollo" ? "bg-purple-900/50 border-purple-500 text-purple-200" : "bg-slate-900/50 border-slate-800 text-slate-500"}`}>[ ⚙ DESARROLLO INDUSTRIAL Y CIBERNÉTICO ]</button>
-            <button onClick={() => setTabIyd("militar")} className={`px-6 py-3 font-bold text-xs uppercase tracking-widest border rounded-sm transition-all ${tabIyd === "militar" ? "bg-rose-900/50 border-rose-500 text-rose-200" : "bg-slate-900/50 border-slate-800 text-slate-500"}`}>[ ⚔ DOCTRINA MILITAR GLOBAL ]</button>
+            <button onClick={() => setTabIyd("desarrollo")} className={`px-6 py-3 font-bold text-xs uppercase tracking-widest border rounded-sm transition-all ${tabIyd === "desarrollo" ? "bg-cyan-900/50 border-cyan-500 text-cyan-200" : "bg-slate-900/50 border-slate-800 text-slate-500 hover:text-slate-300"}`}>[ ⚙ REDES DE INFRAESTRUCTURA ]</button>
+            <button onClick={() => setTabIyd("militar")} className={`px-6 py-3 font-bold text-xs uppercase tracking-widest border rounded-sm transition-all ${tabIyd === "militar" ? "bg-rose-900/50 border-rose-500 text-rose-200" : "bg-slate-900/50 border-slate-800 text-slate-500 hover:text-slate-300"}`}>[ ⚔ DOCTRINA DE ANIQUILACIÓN ]</button>
           </div>
 
-          <div className="flex-1 w-full relative border border-slate-800/80 rounded-lg bg-slate-950/90 overflow-auto shadow-inner p-12 custom-scrollbar">
-            <div className="relative min-w-[1500px] min-h-[600px]">
-              <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
-                {habilidades.filter(h => h.categoria === tabIyd).map(hab => {
-                  let pre: Habilidad | undefined;
-                  if (hab.id === "M_SEC") {
-                     const m13 = habilidades.find(h => h.id === "M_13");
-                     const m23 = habilidades.find(h => h.id === "M_23");
-                     const m33 = habilidades.find(h => h.id === "M_33");
-                     return [m13, m23, m33].map((p, i) => {
-                       if (!p) return null;
-                       const isActive = p.desbloqueada;
-                       return (
-                        <line key={`line-sec-${i}`} x1={p.x + 208} y1={p.y + 45} x2={hab.x} y2={hab.y + 45} stroke={hab.desbloqueada ? "#10b981" : isActive ? "#06b6d4" : "#1e293b"} strokeWidth="2" strokeDasharray={hab.desbloqueada ? "none" : "4,4"} style={hab.desbloqueada ? { filter: "drop-shadow(0 0 5px #10b981)" } : {}}/>
-                       );
-                     });
-                  } else {
-                    if (!hab.prerrequisito_id) return null;
-                    pre = habilidades.find(h => h.id === hab.prerrequisito_id);
-                    if (!pre) return null;
-                    const isAvailable = pre.desbloqueada;
+          <div className="flex-1 w-full relative border border-slate-800/80 rounded-lg bg-slate-950/90 shadow-inner overflow-hidden cursor-move">
+            <TransformWrapper
+              initialScale={1}
+              minScale={0.3}
+              maxScale={2}
+              centerOnInit={true}
+              wheel={{ step: 0.1 }}
+            >
+              <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }} contentStyle={{ width: "100%", height: "100%" }}>
+                <div className="relative min-w-[2500px] min-h-[1500px]">
+                  <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
+                    {habilidades.filter(h => h.categoria === tabIyd).map(hab => {
+                      if (!hab.prerrequisito_id) return null;
+                      const pre = habilidades.find(h => h.id === hab.prerrequisito_id);
+                      if (!pre) return null;
+                      const isAvailable = pre.desbloqueada;
+                      return (
+                        <line 
+                          key={`line-${hab.id}`} 
+                          x1={pre.x + 208} 
+                          y1={pre.y + 45} 
+                          x2={hab.x} 
+                          y2={hab.y + 45} 
+                          stroke={hab.desbloqueada ? "#06b6d4" : isAvailable ? "#0891b2" : "#1e293b"} 
+                          strokeWidth={hab.desbloqueada ? "3" : "2"} 
+                          strokeDasharray={hab.desbloqueada ? "none" : isAvailable ? "none" : "8,8"} 
+                          style={hab.desbloqueada ? { filter: "drop-shadow(0 0 8px #06b6d4)", transition: "all 0.5s ease" } : { transition: "all 0.5s ease" }}
+                        />
+                      );
+                    })}
+                  </svg>
+
+                  {habilidades.filter(h => h.categoria === tabIyd).map(hab => {
+                    const canUnlock = !hab.desbloqueada && (!hab.prerrequisito_id || habilidades.find(h => h.id === hab.prerrequisito_id)?.desbloqueada === true);
+                    
                     return (
-                      <line key={`line-${hab.id}`} x1={pre.x + 208} y1={pre.y + 45} x2={hab.x} y2={hab.y + 45} stroke={hab.desbloqueada ? "#10b981" : isAvailable ? "#06b6d4" : "#1e293b"} strokeWidth="2" strokeDasharray={hab.desbloqueada ? "none" : "4,4"} style={hab.desbloqueada ? { filter: "drop-shadow(0 0 5px #10b981)" } : {}}/>
-                    );
-                  }
-                })}
-              </svg>
-
-              {habilidades.filter(h => h.categoria === tabIyd).map(hab => {
-                let canUnlock = false;
-                if (hab.id === "M_SEC") {
-                  const finalesMilitares = habilidades.filter(h => ["M_13", "M_23", "M_33"].includes(h.id) && h.desbloqueada);
-                  canUnlock = !hab.desbloqueada && finalesMilitares.length >= 2;
-                } else {
-                  canUnlock = !hab.desbloqueada && (!hab.prerrequisito_id || habilidades.find(h => h.id === hab.prerrequisito_id)?.desbloqueada === true);
-                }
-
-                return (
-                  <div key={hab.id} className={`absolute p-3 w-52 rounded border backdrop-blur-sm transition-all text-xs font-mono z-10 ${hab.desbloqueada ? 'bg-emerald-950/40 border-emerald-500' : canUnlock ? 'bg-slate-800/80 border-cyan-500 hover:border-cyan-300 cursor-pointer' : 'bg-slate-950/80 border-slate-800 opacity-60 grayscale pointer-events-none'}`} style={{ left: hab.x, top: hab.y }} onClick={() => canUnlock && handleDesbloquearHabilidad(hab)}>
-                    <div className="font-bold mb-1 text-slate-100 truncate" title={hab.nombre}>{hab.nombre}</div>
-                    <div className="text-[10px] text-cyan-300 mb-3">{hab.tipo_bono}</div>
-                    <div className="flex justify-between items-center text-[10px] border-t border-slate-700/50 pt-2">
-                      {hab.desbloqueada ? <span className="text-emerald-400 font-bold uppercase tracking-wider">Investigado</span> : <><span className="text-amber-400/80 font-mono">${hab.costo}</span>{canUnlock ? <span className="text-cyan-400 font-bold uppercase tracking-wider">Investigar</span> : <span className="text-slate-600 uppercase tracking-wider">Bloqueado</span>}</>}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+                      <div 
+                        key={hab.id} 
+                        className={`absolute p-3 w-52 rounded-sm border transition-all duration-300 text-xs font-mono z-10 
+                          ${hab.desbloqueada 
+                            ? 'bg-cyan-950/40 border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.3)]' 
+                            : canUnlock 
+                              ? 'bg-slate-900 border-cyan-500 animate-pulse hover:animate-none hover:bg-slate-800 cursor-pointer shadow-[0_0_8px_rgba(6,182,212,0.2)]' 
+                              : 'bg-slate-950 border-slate-800/50 opacity-40 grayscale pointer-events-none'
+                          }`} 
+                        style={{ left: hab.x, top: hab.y }} 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (canUnlock) handleDesbloquearHabilidad(hab);
+                        }}
+                      >
+                        <div className={`font-bold mb-1 truncate ${hab.desbloqueada ? 'text-cyan-50' : canUnlock ? 'text-slate-100' : 'text-slate-600'}`} title={hab.nombre}>{hab.nombre}</div>
+                        <div className="text-[10px] text-cyan-500/80 mb-3 font-semibold">{hab.tipo_bono}</div>
+                        <div className="flex justify-between items-center text-[10px] border-t border-slate-800/80 pt-2 mt-2">
+                          {hab.desbloqueada 
+                            ? <span className="text-cyan-400 font-bold uppercase tracking-wider">Investigado</span> 
+                            : <>
+                                <span className="text-amber-500/80 font-mono">${hab.costo}</span>
+                                {canUnlock 
+                                  ? <span className="text-cyan-400 font-bold uppercase tracking-wider">Investigar</span> 
+                                  : <span className="text-slate-700 uppercase tracking-wider">Bloqueado</span>
+                                }
+                              </>
+                          }
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </TransformComponent>
+            </TransformWrapper>
           </div>
         </div>
       )}
