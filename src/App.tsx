@@ -368,15 +368,15 @@ export default function App() {
       <header className="h-16 border-b border-slate-800/80 bg-slate-950/80 flex items-center justify-between px-6 shrink-0 z-20 shadow-[0_4px_30px_rgba(0,0,0,0.5)] backdrop-blur-md">
         <div className="flex items-center gap-4">
           <div className="relative w-8 h-8 flex items-center justify-center shrink-0">
-            <Hexagon className="absolute w-8 h-8 text-cyan-500/40 animate-[spin_12s_linear_infinite]" strokeWidth={1.5} />
+            <Hexagon className="absolute w-8 h-8 text-cyan-400/30 animate-[spin_12s_linear_infinite]" strokeWidth={1.5} />
             <Globe className="absolute w-4 h-4 text-cyan-400 animate-pulse" strokeWidth={2} />
           </div>
 
           <div className="flex flex-col justify-center">
-            <h1 className="text-2xl font-black tracking-[0.3em] text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 drop-shadow-[0_0_10px_rgba(34,211,238,0.4)]">
+            <h1 className="text-2xl font-black tracking-[0.3em] text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]">
               CONQUEST
             </h1>
-            <span className="text-[8px] font-mono font-bold text-emerald-400 animate-pulse tracking-[0.25em] -mt-1">
+            <span className="text-[9px] font-mono font-bold text-cyan-500 tracking-[0.25em] -mt-1">
               [ CORE EN LÍNEA ]
             </span>
           </div>
