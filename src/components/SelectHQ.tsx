@@ -1,17 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Globe, Shield, Users, DollarSign, Swords, Crosshair,
-  ChevronRight, X, Hexagon, MapPin, Zap
+  ChevronRight, X, Hexagon, MapPin, Zap, Search
 } from "lucide-react";
+import { fetchCountryStats } from "../database/mockAPI";
 
-interface HQOption {
+interface CountryData {
   id: string;
   nombre: string;
-  poblacion: string;
-  economia: string;
-  ventaja: string;
-  descripcion: string;
-  stats: { militar: number; economia: number; tecnologia: number; influencia: number };
+  poblacion: number;
+  economia: number;
+  ejercito: number;
 }
 
 interface SelectHQProps {
@@ -19,56 +18,85 @@ interface SelectHQProps {
   onCancel: () => void;
 }
 
-const HQ_OPTIONS: HQOption[] = [
-  {
-    id: "840",
-    nombre: "Estados Unidos",
-    poblacion: "341,000,000",
-    economia: "$28.7T",
-    ventaja: "Supremacía Tecnológica y Naval",
-    descripcion: "La megacorporación federal más poderosa del hemisferio occidental. Dominio absoluto en I+D militar, redes satelitales y proyección de fuerza global. Infraestructura de drones autónomos sin rival.",
-    stats: { militar: 95, economia: 90, tecnologia: 98, influencia: 85 }
-  },
-  {
-    id: "156",
-    nombre: "China",
-    poblacion: "1,420,000,000",
-    economia: "$21.3T",
-    ventaja: "Supremacía Industrial y Cibernética",
-    descripcion: "El conglomerado estatal-corporativo más grande del mundo. Capacidad de producción masiva de unidades de combate autónomas. Red de vigilancia cuántica que cubre el 98% del territorio continental.",
-    stats: { militar: 88, economia: 95, tecnologia: 90, influencia: 80 }
-  },
-  {
-    id: "643",
-    nombre: "Rusia",
-    poblacion: "144,000,000",
-    economia: "$4.8T",
-    ventaja: "Arsenal Nuclear y Guerra Electrónica",
-    descripcion: "Fortaleza continental con la mayor reserva de armamento táctico-nuclear del planeta. Especialistas en guerra electrónica, ciberataques de infraestructura crítica y operaciones de desinformación masiva.",
-    stats: { militar: 92, economia: 55, tecnologia: 75, influencia: 70 }
-  },
-  {
-    id: "276",
-    nombre: "Alemania",
-    poblacion: "84,000,000",
-    economia: "$5.1T",
-    ventaja: "Ingeniería de Precisión y Logística",
-    descripcion: "El nodo industrial central de la alianza europea. Líder en manufactura de exoesqueletos de combate, vehículos blindados de nueva generación y sistemas de defensa automatizados de perímetro.",
-    stats: { militar: 72, economia: 88, tecnologia: 92, influencia: 78 }
-  },
-  {
-    id: "392",
-    nombre: "Japón",
-    poblacion: "123,000,000",
-    economia: "$5.4T",
-    ventaja: "Robótica Avanzada y Defensa Autónoma",
-    descripcion: "Archipiélago-fortaleza con la mayor densidad de sistemas de defensa automatizados del mundo. Pioneros en mecas tácticos, IA de combate adaptativa y escudos electromagnéticos experimentales.",
-    stats: { militar: 68, economia: 85, tecnologia: 96, influencia: 65 }
-  }
-];
+// Genera stats derivados para el panel de análisis
+const computeStats = (country: CountryData, maxPop: number, maxEco: number) => {
+  const militar = Math.min(100, Math.max(5, Math.round((country.ejercito / 200000) * 100)));
+  const economia = Math.min(100, Math.max(5, Math.round((country.economia / maxEco) * 100)));
+  const tecnologia = Math.min(100, Math.max(5, Math.round((country.economia / country.poblacion) * 1200)));
+  const influencia = Math.min(100, Math.max(5, Math.round((country.poblacion / maxPop) * 100)));
+  return { militar, economia, tecnologia, influencia };
+};
+
+const getVentaja = (stats: { militar: number; economia: number; tecnologia: number; influencia: number }): string => {
+  const max = Math.max(stats.militar, stats.economia, stats.tecnologia, stats.influencia);
+  if (max === stats.militar) return "Doctrina Militar Dominante";
+  if (max === stats.tecnologia) return "Supremacía Tecnológica";
+  if (max === stats.economia) return "Potencia Económica Industrial";
+  return "Influencia Geopolítica Expansiva";
+};
+
+const formatPopulation = (n: number): string => n.toLocaleString("es-ES");
+const formatEconomy = (n: number): string => {
+  if (n >= 1000000) return `$${(n / 1000000).toFixed(1)}T`;
+  if (n >= 1000) return `$${(n / 1000).toFixed(0)}B`;
+  return `$${n}M`;
+};
 
 export default function SelectHQ({ onDeploy, onCancel }: SelectHQProps) {
-  const [selected, setSelected] = useState<HQOption | null>(null);
+  const [selected, setSelected] = useState<CountryData | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [allCountries, setAllCountries] = useState<CountryData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadCountries = async () => {
+      try {
+        const populations = await fetchCountryStats();
+        const countries: CountryData[] = Object.entries(populations).map(([name, pop]) => {
+          const seed = name.charCodeAt(0) + (name.length > 1 ? name.charCodeAt(1) : 0);
+
+          // Economía (misma lógica base de App.tsx getRealEconomy)
+          const norm = name.toLowerCase();
+          let gdpPerCapita = 5000;
+          if (["united states of america", "germany", "united kingdom", "france", "japan", "singapore", "switzerland", "canada", "australia"].some(c => norm.includes(c))) {
+            gdpPerCapita = 60000 + (seed % 20) * 1000;
+          } else if (["china", "russia", "brazil", "mexico", "turkey", "saudi arabia", "south korea", "spain", "italy", "poland"].some(c => norm.includes(c))) {
+            gdpPerCapita = 25000 + (seed % 15) * 800;
+          } else {
+            gdpPerCapita = 3000 + (seed % 10) * 500;
+          }
+          const economia = Math.floor((pop * gdpPerCapita) / 1000000);
+
+          // Ejército
+          const ejercito = Math.floor(Math.sqrt(pop) * (5 + (seed % 5)));
+
+          return {
+            id: name,
+            nombre: name,
+            poblacion: pop,
+            economia,
+            ejercito
+          };
+        });
+
+        countries.sort((a, b) => a.nombre.localeCompare(b.nombre));
+        setAllCountries(countries);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadCountries();
+  }, []);
+
+  const filteredCountries = useMemo(() =>
+    allCountries.filter(c => c.nombre.toLowerCase().includes(searchQuery.toLowerCase())),
+    [allCountries, searchQuery]
+  );
+
+  const maxPop = useMemo(() => Math.max(...allCountries.map(c => c.poblacion), 1), [allCountries]);
+  const maxEco = useMemo(() => Math.max(...allCountries.map(c => c.economia), 1), [allCountries]);
+
+  const selectedStats = selected ? computeStats(selected, maxPop, maxEco) : null;
 
   return (
     <div className="h-[100dvh] w-screen flex flex-col bg-[#030712] font-mono text-slate-300 uppercase tracking-widest select-none overflow-hidden">
@@ -114,60 +142,91 @@ export default function SelectHQ({ onDeploy, onCancel }: SelectHQProps) {
       {/* Contenido principal: Grid de 2 columnas */}
       <div className="relative z-10 flex flex-1 min-h-0">
 
-        {/* IZQUIERDA — Lista de países */}
-        <div className="w-1/3 border-r border-slate-800/60 flex flex-col p-4 overflow-y-auto min-h-0">
-          <div className="text-[9px] text-slate-500 mb-3 px-2 flex items-center gap-2">
-            <Globe className="w-3 h-3" />
-            NODOS DISPONIBLES — {HQ_OPTIONS.length} POTENCIAS
+        {/* IZQUIERDA — Lista de países con buscador */}
+        <div className="w-1/3 border-r border-slate-800/60 flex flex-col min-h-0">
+
+          {/* Buscador pegajoso */}
+          <div className="shrink-0 p-4 pb-2 border-b border-slate-800/40">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="[ BUSCAR OBJETIVO... ]"
+                className="w-full bg-slate-900/50 border border-slate-700 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 rounded-none pl-10 pr-4 py-2.5 text-xs text-cyan-100 uppercase tracking-wider placeholder:text-slate-600 focus:outline-none transition-all"
+              />
+            </div>
+            <div className="text-[9px] text-slate-500 mt-2 px-1 flex items-center gap-2">
+              <Globe className="w-3 h-3" />
+              {isLoading ? "CARGANDO NODOS..." : `${filteredCountries.length} DE ${allCountries.length} NODOS`}
+            </div>
           </div>
 
-          <div className="flex flex-col gap-2">
-            {HQ_OPTIONS.map((pais) => {
-              const isSelected = selected?.id === pais.id;
-              return (
-                <button
-                  key={pais.id}
-                  onClick={() => setSelected(pais)}
-                  className={`group relative text-left p-4 border transition-all duration-300 ${
-                    isSelected
-                      ? "border-cyan-500/60 bg-cyan-950/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]"
-                      : "border-slate-800/60 bg-slate-950/30 hover:border-cyan-500/30 hover:bg-cyan-950/10"
-                  }`}
-                >
-                  {/* Indicador de selección */}
-                  {isSelected && (
-                    <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
-                  )}
+          {/* Lista scrolleable */}
+          <div className="flex-1 overflow-y-auto min-h-0 p-4 pt-2 pr-2 custom-scrollbar">
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center h-full opacity-40">
+                <Hexagon className="w-10 h-10 text-cyan-500/40 animate-[spin_3s_linear_infinite] mb-3" strokeWidth={1.5} />
+                <p className="text-[10px] text-slate-500 tracking-wider">ESCANEANDO BASE DE DATOS...</p>
+              </div>
+            ) : filteredCountries.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full opacity-40">
+                <Search className="w-8 h-8 text-slate-700 mb-3" />
+                <p className="text-[10px] text-slate-500 tracking-wider text-center leading-relaxed">
+                  [ NINGÚN REGISTRO ENCONTRADO EN LA BASE DE DATOS ]
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                {filteredCountries.map((pais) => {
+                  const isSelected = selected?.id === pais.id;
+                  return (
+                    <button
+                      key={pais.id}
+                      onClick={() => setSelected(pais)}
+                      className={`shrink-0 group relative text-left p-3 border transition-all duration-200 ${
+                        isSelected
+                          ? "border-cyan-500/60 bg-cyan-950/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]"
+                          : "border-slate-800/40 bg-slate-950/20 hover:border-cyan-500/30 hover:bg-cyan-950/10"
+                      }`}
+                    >
+                      {/* Indicador de selección */}
+                      {isSelected && (
+                        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
+                      )}
 
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Shield className={`w-4 h-4 shrink-0 ${isSelected ? "text-cyan-400" : "text-slate-600 group-hover:text-slate-400"} transition-colors`} />
-                      <span className={`text-sm font-black tracking-wider ${isSelected ? "text-cyan-400" : "text-slate-300 group-hover:text-slate-100"} transition-colors`}>
-                        {pais.nombre.toUpperCase()}
-                      </span>
-                    </div>
-                    <ChevronRight className={`w-4 h-4 ${isSelected ? "text-cyan-400" : "text-slate-700 group-hover:text-slate-500"} transition-colors`} />
-                  </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <Shield className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-cyan-400" : "text-slate-600 group-hover:text-slate-400"} transition-colors`} />
+                          <span className={`text-[11px] font-black tracking-wider ${isSelected ? "text-cyan-400" : "text-slate-300 group-hover:text-slate-100"} transition-colors`}>
+                            {pais.nombre.toUpperCase()}
+                          </span>
+                        </div>
+                        <ChevronRight className={`w-3.5 h-3.5 ${isSelected ? "text-cyan-400" : "text-slate-700 group-hover:text-slate-500"} transition-colors`} />
+                      </div>
 
-                  <div className="mt-2 text-[9px] text-slate-500 flex items-center gap-4">
-                    <span className="flex items-center gap-1">
-                      <Users className="w-3 h-3" />
-                      {pais.poblacion}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <DollarSign className="w-3 h-3" />
-                      {pais.economia}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
+                      <div className="mt-1.5 text-[8px] text-slate-500 flex items-center gap-3 ml-6">
+                        <span className="flex items-center gap-1">
+                          <Users className="w-2.5 h-2.5" />
+                          {formatPopulation(pais.poblacion)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <DollarSign className="w-2.5 h-2.5" />
+                          {formatEconomy(pais.economia)}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
         {/* DERECHA — Panel de análisis */}
         <div className="w-2/3 flex flex-col p-6 min-h-0 overflow-y-auto">
-          {!selected ? (
+          {!selected || !selectedStats ? (
             // Estado vacío
             <div className="flex-1 flex flex-col items-center justify-center text-center opacity-40">
               <Crosshair className="w-20 h-20 text-slate-700 mb-6 animate-pulse" strokeWidth={1} />
@@ -197,21 +256,28 @@ export default function SelectHQ({ onDeploy, onCancel }: SelectHQProps) {
                     <Users className="w-3 h-3" />
                     POBLACIÓN REGISTRADA
                   </div>
-                  <div className="text-xl font-black text-slate-100 tracking-wider">{selected.poblacion}</div>
+                  <div className="text-xl font-black text-slate-100 tracking-wider">{formatPopulation(selected.poblacion)}</div>
                 </div>
                 <div className="border border-slate-800/60 bg-slate-950/40 p-4">
                   <div className="text-[8px] text-slate-500 mb-1 flex items-center gap-1.5">
                     <DollarSign className="w-3 h-3" />
                     PIB CORPORATIVO
                   </div>
-                  <div className="text-xl font-black text-emerald-400 tracking-wider">{selected.economia}</div>
+                  <div className="text-xl font-black text-emerald-400 tracking-wider">{formatEconomy(selected.economia)}</div>
                 </div>
-                <div className="col-span-2 border border-slate-800/60 bg-slate-950/40 p-4">
+                <div className="border border-slate-800/60 bg-slate-950/40 p-4">
+                  <div className="text-[8px] text-slate-500 mb-1 flex items-center gap-1.5">
+                    <Swords className="w-3 h-3" />
+                    FUERZAS MILITARES ESTIMADAS
+                  </div>
+                  <div className="text-xl font-black text-rose-400 tracking-wider">{formatPopulation(selected.ejercito)}</div>
+                </div>
+                <div className="border border-slate-800/60 bg-slate-950/40 p-4">
                   <div className="text-[8px] text-slate-500 mb-1 flex items-center gap-1.5">
                     <Zap className="w-3 h-3 text-amber-500" />
                     VENTAJA TÁCTICA DOMINANTE
                   </div>
-                  <div className="text-sm font-black text-amber-400 tracking-wider">{selected.ventaja.toUpperCase()}</div>
+                  <div className="text-sm font-black text-amber-400 tracking-wider">{getVentaja(selectedStats).toUpperCase()}</div>
                 </div>
               </div>
 
@@ -223,10 +289,10 @@ export default function SelectHQ({ onDeploy, onCancel }: SelectHQProps) {
                 </div>
                 <div className="flex flex-col gap-3">
                   {([
-                    { label: "POTENCIAL MILITAR", value: selected.stats.militar, color: "bg-rose-500" },
-                    { label: "CAPACIDAD ECONÓMICA", value: selected.stats.economia, color: "bg-emerald-500" },
-                    { label: "NIVEL TECNOLÓGICO", value: selected.stats.tecnologia, color: "bg-cyan-500" },
-                    { label: "INFLUENCIA GLOBAL", value: selected.stats.influencia, color: "bg-amber-500" },
+                    { label: "POTENCIAL MILITAR", value: selectedStats.militar, color: "bg-rose-500" },
+                    { label: "CAPACIDAD ECONÓMICA", value: selectedStats.economia, color: "bg-emerald-500" },
+                    { label: "NIVEL TECNOLÓGICO", value: selectedStats.tecnologia, color: "bg-cyan-500" },
+                    { label: "INFLUENCIA GLOBAL", value: selectedStats.influencia, color: "bg-amber-500" },
                   ]).map((stat) => (
                     <div key={stat.label}>
                       <div className="flex items-center justify-between mb-1">
@@ -242,14 +308,6 @@ export default function SelectHQ({ onDeploy, onCancel }: SelectHQProps) {
                     </div>
                   ))}
                 </div>
-              </div>
-
-              {/* Briefing */}
-              <div className="shrink-0 border border-slate-800/60 bg-slate-950/40 p-5 mb-6">
-                <div className="text-[9px] text-slate-500 mb-2">BRIEFING DE INTELIGENCIA</div>
-                <p className="text-[11px] text-slate-400 leading-relaxed normal-case tracking-normal">
-                  {selected.descripcion}
-                </p>
               </div>
 
               {/* Spacer */}
