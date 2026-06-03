@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { initialHabilidades } from "./TechTreeData";
 import Login from "./components/Login";
+import StartMenu from "./components/StartMenu";
 // Geometría del mapa del mundo (TopoJSON)
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
@@ -281,6 +282,7 @@ const eventosAleatorios = [
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
   const [fechaVirtual, setFechaVirtual] = useState(new Date(2027, 4, 1));
   const [isPlaying, setIsPlaying] = useState(false);
   const [speedLevel, setSpeedLevel] = useState<1 | 2 | 3>(1);
@@ -453,6 +455,10 @@ export default function App() {
       tipo: "success"
     }, ...prev]);
   };
+
+  if (!hasStarted) {
+    return <StartMenu onStart={() => setHasStarted(true)} />;
+  }
 
   if (!isAuthenticated) {
     return <Login onLogin={() => setIsAuthenticated(true)} />;
