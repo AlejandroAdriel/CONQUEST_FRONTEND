@@ -125,6 +125,8 @@ export default function App() {
   const [paisSeleccionado, setPaisSeleccionado] = useState<Pais | null>(null);
   const [hoveredPais, setHoveredPais] = useState<Pais | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const timeoutRef = useRef<any>(null);
   const [tropasAEnviar, setTropasAEnviar] = useState(0);
   const [mostrarArbol, setMostrarArbol] = useState(false);
   const [tabIyd, setTabIyd] = useState<"desarrollo" | "militar">("desarrollo");
@@ -138,6 +140,12 @@ export default function App() {
   const handleMouseMove = (e: React.MouseEvent) => {
     setMousePos({ x: e.clientX, y: e.clientY });
   };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isPlaying) return;
@@ -410,8 +418,19 @@ export default function App() {
                               key={geo.rsmKey}
                               geography={geo}
                               onClick={() => { if (!isPanningRef.current) setPaisSeleccionado(pais); }}
-                              onMouseEnter={() => setHoveredPais(pais)}
-                              onMouseLeave={() => setHoveredPais(null)}
+                              onMouseEnter={(e) => {
+                                if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                                setHoveredPais(pais);
+                                setTooltipPos({ x: e.clientX, y: e.clientY });
+                              }}
+                              onMouseMove={(e) => {
+                                setTooltipPos({ x: e.clientX, y: e.clientY });
+                              }}
+                              onMouseLeave={() => {
+                                timeoutRef.current = setTimeout(() => {
+                                  setHoveredPais(null);
+                                }, 300);
+                              }}
                               style={{
                                 default: { fill: fill, stroke: isAttacked ? "#ef4444" : "#1e293b", strokeWidth: isAttacked ? 1.5 : 0.5, outline: "none", transition: "all 250ms" },
                                 hover: { fill: fill, stroke: pais.conquistado ? "#60a5fa" : "#fb7185", strokeWidth: 1, outline: "none", cursor: "crosshair" },
@@ -430,12 +449,21 @@ export default function App() {
 
           {/* TOOLTIP FLOTANTE */}
           {hoveredPais && !paisSeleccionado && (() => {
-            const isNearBottom = window.innerHeight - mousePos.y < 280;
-            const isNearRight = window.innerWidth - mousePos.x < 240;
-            const topStyle = isNearBottom ? mousePos.y - 190 : mousePos.y + 20;
-            const leftStyle = isNearRight ? mousePos.x - 220 : mousePos.x + 20;
+            const isNearBottom = window.innerHeight - tooltipPos.y < 280;
+            const isNearRight = window.innerWidth - tooltipPos.x < 240;
+            const topStyle = isNearBottom ? tooltipPos.y - 190 : tooltipPos.y + 20;
+            const leftStyle = isNearRight ? tooltipPos.x - 220 : tooltipPos.x + 20;
             return (
-              <div className="fixed z-50 pointer-events-none bg-slate-900/95 border border-slate-700/80 p-3 rounded-sm shadow-2xl backdrop-blur-md min-w-[200px]" style={{ left: leftStyle, top: topStyle }}>
+              <div 
+                className="fixed z-50 pointer-events-auto bg-slate-900/95 border border-slate-700/80 p-3 rounded-sm shadow-2xl backdrop-blur-md min-w-[200px]" 
+                style={{ left: leftStyle, top: topStyle }}
+                onMouseEnter={() => {
+                  if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                }}
+                onMouseLeave={() => {
+                  setHoveredPais(null);
+                }}
+              >
                 <div className="text-slate-400 text-xs font-mono mb-2 uppercase tracking-widest border-b border-slate-800 pb-1">Datos Geométricos</div>
                 <div className="font-bold text-slate-100 text-sm mb-1 truncate">{hoveredPais.nombre}</div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mt-2">
@@ -446,7 +474,19 @@ export default function App() {
                   <span className="text-slate-500">Fuerza:</span>
                   <span className="text-rose-400 text-right font-mono">{hoveredPais.conquistado ? '-' : hoveredPais.ejercito_ia.toLocaleString()}</span>
                 </div>
-                <div className={`mt-3 text-[10px] font-bold text-center py-1 uppercase tracking-widest ${hoveredPais.conquistado ? 'bg-blue-900/30 text-blue-400' : 'bg-rose-900/30 text-rose-400'}`}>{hoveredPais.conquistado ? 'ALIADO' : 'HOSTIL'}</div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPaisSeleccionado(hoveredPais);
+                  }}
+                  className={`w-full mt-3 text-[10px] font-bold text-center py-1 uppercase tracking-widest ${
+                    hoveredPais.conquistado
+                      ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-700 hover:text-white cursor-pointer'
+                      : 'bg-rose-900/30 text-rose-400 hover:bg-rose-700 hover:text-white cursor-pointer transition-all active:scale-95'
+                  }`}
+                >
+                  {hoveredPais.conquistado ? 'ALIADO' : 'HOSTIL'}
+                </button>
               </div>
             );
           })()}
