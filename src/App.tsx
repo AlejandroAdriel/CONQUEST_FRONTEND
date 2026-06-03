@@ -285,6 +285,7 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<'start' | 'login' | 'game'>('start');
   const [showSaves, setShowSaves] = useState(false);
+  const [isSystemMenuOpen, setIsSystemMenuOpen] = useState(false);
   const [fechaVirtual, setFechaVirtual] = useState(new Date(2027, 4, 1));
   const [isPlaying, setIsPlaying] = useState(false);
   const [speedLevel, setSpeedLevel] = useState<1 | 2 | 3>(1);
@@ -505,6 +506,9 @@ export default function App() {
           <h1 className="text-2xl font-black tracking-[0.3em] text-slate-100 drop-shadow-md">
             CONQUEST
           </h1>
+          <div className="text-xs font-mono tracking-widest text-slate-400 border-l border-slate-800 pl-4 ml-2">
+            OPERARIO: [ <span className="text-cyan-400 font-bold">{isAuthenticated ? "ALEJANDRO" : "INVITADO"}</span> ]
+          </div>
         </div>
         
         <div className="flex items-center gap-6">
@@ -535,6 +539,16 @@ export default function App() {
               <ChevronsRight className="w-4.5 h-4.5 fill-current" />
             </button>
           </div>
+
+          <button 
+            onClick={() => {
+              setIsPlaying(false);
+              setIsSystemMenuOpen(true);
+            }}
+            className="text-xs font-bold text-slate-400 hover:text-cyan-400 transition-colors py-2 px-4 border border-slate-700 hover:border-cyan-500 bg-slate-900/80 rounded-sm"
+          >
+            [ SISTEMA ]
+          </button>
         </div>
       </header>
 
@@ -812,6 +826,17 @@ export default function App() {
               </div>
             </div>
           </div>
+
+          <div className="w-px bg-gradient-to-b from-transparent via-slate-700 to-transparent my-1"></div>
+          
+          <div className="bg-slate-900 border border-slate-700/80 rounded-sm px-5 flex flex-col justify-center shadow-inner">
+            <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Dominio Global</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-mono text-cyan-400 font-bold tracking-tight">
+                {((Object.values(paises).filter(p => p.conquistado).length / 177) * 100).toFixed(1)}%
+              </span>
+            </div>
+          </div>
         </div>
 
         <button onClick={() => setMostrarArbol(true)} className="group relative bg-slate-900 hover:bg-slate-800 border border-purple-900/50 hover:border-purple-500 text-purple-100 h-14 px-8 rounded-sm shadow-md transition-all flex items-center gap-3">
@@ -890,6 +915,74 @@ export default function App() {
                   </div>
                 )
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSaves && (
+        <SaveFilesMenu 
+          onClose={() => setShowSaves(false)} 
+          onLoadSave={(saveId) => {
+            setCurrentScreen('game');
+            setShowSaves(false);
+          }}
+          onNewGame={() => {
+            setCurrentScreen('game');
+            setShowSaves(false);
+          }}
+        />
+      )}
+
+      {isSystemMenuOpen && (
+        <div className="fixed inset-0 z-[60] bg-[#030712]/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="relative w-full max-w-sm bg-[#050915]/95 border border-cyan-500/30 p-6 rounded-sm shadow-2xl">
+            <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-cyan-400" />
+            <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-cyan-400" />
+            <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-cyan-400" />
+            <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-cyan-400" />
+
+            <div className="font-mono text-slate-300 uppercase tracking-widest text-center">
+              <h2 className="text-sm font-black text-rose-500 mb-6 tracking-[0.2em] animate-pulse">
+                OVERRIDE DE SISTEMA // PAUSADO
+              </h2>
+              
+              <div className="flex flex-col gap-4 text-xs">
+                <button 
+                  onClick={() => setIsSystemMenuOpen(false)}
+                  className="w-full border border-slate-800 hover:border-cyan-500 bg-slate-950/50 hover:bg-cyan-950/20 text-slate-400 hover:text-cyan-400 py-3 px-4 transition-all duration-300 rounded-sm font-bold"
+                >
+                  [ REANUDAR SIMULACIÓN ]
+                </button>
+                <button 
+                  onClick={() => {
+                    console.log("Guardado táctico completado en la terminal conquest.");
+                    alert("SISTEMA: ESTADO DE LA SIMULACIÓN COPIADO AL SILO SEGURO.");
+                  }}
+                  className="w-full border border-slate-800 hover:border-cyan-500 bg-slate-950/50 hover:bg-cyan-950/20 text-slate-400 hover:text-cyan-400 py-3 px-4 transition-all duration-300 rounded-sm font-bold"
+                >
+                  [ GUARDAR ESTADO ACTUAL ]
+                </button>
+                <button 
+                  onClick={() => {
+                    setIsSystemMenuOpen(false);
+                    setShowSaves(true);
+                  }}
+                  className="w-full border border-slate-800 hover:border-cyan-500 bg-slate-950/50 hover:bg-cyan-950/20 text-slate-400 hover:text-cyan-400 py-3 px-4 transition-all duration-300 rounded-sm font-bold"
+                >
+                  [ GESTOR DE ARCHIVOS ]
+                </button>
+                <button 
+                  onClick={() => {
+                    setIsSystemMenuOpen(false);
+                    setIsAuthenticated(false);
+                    setCurrentScreen('start');
+                  }}
+                  className="w-full border border-slate-800 hover:border-rose-500 bg-slate-950/50 hover:bg-rose-950/20 text-slate-500 hover:text-rose-500 py-3 px-4 transition-all duration-300 rounded-sm font-bold"
+                >
+                  [ DESCONECTAR ]
+                </button>
+              </div>
             </div>
           </div>
         </div>
