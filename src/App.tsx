@@ -56,7 +56,174 @@ type Evento = {
   tipo: "success" | "alert" | "info";
 };
 
-// Generador determinista de stats para países que no están en el estado
+const realPopulations: Record<string, number> = {
+  "China": 1420000000,
+  "India": 1440000000,
+  "Indonesia": 278000000,
+  "Pakistan": 242000000,
+  "Bangladesh": 173000000,
+  "Japan": 123000000,
+  "Philippines": 117000000,
+  "Vietnam": 99000000,
+  "Turkey": 86000000,
+  "Iran": 89000000,
+  "Thailand": 71000000,
+  "South Korea": 51000000,
+  "Saudi Arabia": 37000000,
+  "Iraq": 45000000,
+  "Afghanistan": 42000000,
+  "Yemen": 34000000,
+  "Nepal": 31000000,
+  "North Korea": 26000000,
+  "Taiwan": 24000000,
+  "Sri Lanka": 22000000,
+  "Kazakhstan": 20000000,
+  "Syria": 23000000,
+  "Cambodia": 17000000,
+  "Jordan": 11000000,
+  "Azerbaijan": 10000000,
+  "United Arab Emirates": 10000000,
+  "Israel": 9500000,
+  "Singapore": 6000000,
+  "United States of America": 341000000,
+  "Brazil": 216000000,
+  "Mexico": 129000000,
+  "Colombia": 52000000,
+  "Argentina": 46000000,
+  "Peru": 34000000,
+  "Venezuela": 29000000,
+  "Chile": 20000000,
+  "Ecuador": 18000000,
+  "Guatemala": 18000000,
+  "Cuba": 11000000,
+  "Haiti": 11500000,
+  "Dominican Rep.": 11300000,
+  "Bolivia": 12000000,
+  "Honduras": 10500000,
+  "Paraguay": 7000000,
+  "El Salvador": 6500000,
+  "Nicaragua": 7000000,
+  "Costa Rica": 5200000,
+  "Panama": 4500000,
+  "Uruguay": 3400000,
+  "Jamaica": 2800000,
+  "Puerto Rico": 3200000,
+  "Canada": 39000000,
+  "Russia": 144000000,
+  "Germany": 84000000,
+  "United Kingdom": 68000000,
+  "France": 65000000,
+  "Italy": 59000000,
+  "Spain": 48000000,
+  "Ukraine": 38000000,
+  "Poland": 38000000,
+  "Romania": 19000000,
+  "Netherlands": 18000000,
+  "Belgium": 12000000,
+  "Sweden": 10500000,
+  "Czechia": 10500000,
+  "Greece": 10300000,
+  "Portugal": 10300000,
+  "Hungary": 9600000,
+  "Belarus": 9500000,
+  "Austria": 9000000,
+  "Switzerland": 8900000,
+  "Bulgaria": 6800000,
+  "Serbia": 6700000,
+  "Denmark": 5900000,
+  "Finland": 5600000,
+  "Slovakia": 5400000,
+  "Norway": 5500000,
+  "Ireland": 5100000,
+  "Croatia": 4000000,
+  "Nigeria": 224000000,
+  "Ethiopia": 126000000,
+  "Egypt": 113000000,
+  "DR Congo": 102000000,
+  "Tanzania": 67000000,
+  "South Africa": 60000000,
+  "Kenya": 55000000,
+  "Uganda": 48000000,
+  "Sudan": 48000000,
+  "Algeria": 45000000,
+  "Morocco": 38000000,
+  "Angola": 36000000,
+  "Ghana": 34000000,
+  "Madagascar": 30000000,
+  "Mozambique": 33000000,
+  "Ivory Coast": 29000000,
+  "Cameroon": 28000000,
+  "Niger": 27000000,
+  "Mali": 23000000,
+  "Burkina Faso": 23000000,
+  "Malawi": 21000000,
+  "Zambia": 20000000,
+  "Somalia": 18000000,
+  "Senegal": 17500000,
+  "Zimbabwe": 16000000,
+  "Guinea": 14000000,
+  "Rwanda": 14000000,
+  "Benin": 13500000,
+  "Tunisia": 12500000,
+  "Burundi": 13000000,
+  "South Sudan": 11000000,
+  "Togo": 9000000,
+  "Libya": 7000000,
+  "Congo": 6000000,
+  "Central African Rep.": 5700000,
+  "Mauritania": 4800000,
+  "Eritrea": 3700000,
+  "Namibia": 2600000,
+  "Gambia": 2700000,
+  "Botswana": 2600000,
+  "Gabon": 2400000,
+  "Lesotho": 2300000,
+  "Australia": 26000000,
+  "New Zealand": 5200000,
+  "Papua New Guinea": 10000000
+};
+
+const normalizeName = (name: string): string => {
+  const norm = name.toLowerCase();
+  if (norm.includes("united states") || norm === "usa") return "united states of america";
+  if (norm.includes("congo") && (norm.includes("dem") || norm.includes("d.r."))) return "dr congo";
+  if (norm.includes("central african")) return "central african rep.";
+  if (norm.includes("dominican")) return "dominican rep.";
+  if (norm.includes("falkland")) return "argentina";
+  return norm;
+};
+
+const getRealPopulation = (name: string, seed: number): number => {
+  const norm = normalizeName(name);
+  for (const [key, value] of Object.entries(realPopulations)) {
+    const keyLower = key.toLowerCase();
+    if (norm === keyLower || norm.includes(keyLower) || keyLower.includes(norm)) {
+      const growthFactor = 1.05 + ((seed % 15) / 100);
+      return Math.floor(value * growthFactor);
+    }
+  }
+  return Math.floor((2000000 + (seed * 150000) % 43000000) * 1.1);
+};
+
+const getRealEconomy = (name: string, population: number, seed: number): number => {
+  const norm = normalizeName(name);
+  let baseGdpPerCapita = 5000;
+  if (["united states of america", "germany", "united kingdom", "france", "japan", "singapore", "switzerland", "canada", "australia"].some(c => norm.includes(c))) {
+    baseGdpPerCapita = 60000 + (seed % 20) * 1000;
+  } else if (["china", "russia", "brazil", "mexico", "turkey", "saudi arabia", "south korea", "spain", "italy", "poland"].some(c => norm.includes(c))) {
+    baseGdpPerCapita = 25000 + (seed % 15) * 800;
+  } else {
+    baseGdpPerCapita = 3000 + (seed % 10) * 500;
+  }
+  return Math.floor((population * baseGdpPerCapita) / 1000000);
+};
+
+const getRealEjercito = (isAliado: boolean, population: number, seed: number): number => {
+  if (isAliado) return 0;
+  const baseSize = Math.floor(Math.sqrt(population) * (5 + (seed % 5)));
+  return Math.max(100, baseSize);
+};
+
 const generarStatsPais = (geo: any): Pais => {
   const id = geo.id || "000";
   const name = geo.properties.name || "Unknown";
@@ -65,12 +232,16 @@ const generarStatsPais = (geo: any): Pais => {
   const inicialesAliados = ["USA", "840", "United States of America", "MEX", "484", "Mexico"];
   const isAliado = inicialesAliados.includes(name) || inicialesAliados.includes(id);
 
+  const poblacion = getRealPopulation(name, seed);
+  const economia = getRealEconomy(name, poblacion, seed);
+  const ejercito_ia = getRealEjercito(isAliado, poblacion, seed);
+
   return {
     id: id,
     nombre: name,
-    economia: 50 * seed,
-    poblacion: 1000 * seed,
-    ejercito_ia: isAliado ? 0 : 40 * seed,
+    economia: economia,
+    poblacion: poblacion,
+    ejercito_ia: ejercito_ia,
     conquistado: isAliado
   };
 };
