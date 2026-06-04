@@ -13,6 +13,7 @@ import Login from "./components/Login";
 import StartMenu from "./components/StartMenu";
 import SaveFilesMenu from "./components/SaveFilesMenu";
 import SelectHQ from "./components/SelectHQ";
+import { geoMiller } from "d3-geo-projection";
 // Geometría del mapa del mundo (TopoJSON)
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
@@ -535,7 +536,7 @@ export default function App() {
                 </div>
 
                 <TransformComponent wrapperStyle={{ width: "100%", height: "100%", position: "absolute", top: 0, left: 0 }} contentStyle={{ width: "100%", height: "100%" }} wrapperClass="bg-transparent cursor-grab active:cursor-grabbing" contentClass="flex items-center justify-center w-full h-full">
-                  <ComposableMap projection="geoMercator" projectionConfig={{ scale: 155, center: [0, 0] }} className="w-full h-full object-contain drop-shadow-[0_0_25px_rgba(0,0,0,0.8)] block" style={{ width: "100%", height: "100%" }}>
+                  <ComposableMap projection={geoMiller()} projectionConfig={{ scale: 130, center: [0, 10] }} className="w-full h-full object-contain drop-shadow-[0_0_25px_rgba(0,0,0,0.8)] block" style={{ width: "100%", height: "100%" }}>
                     <Geographies geography={geoUrl}>
                       {({ geographies }) =>
                         geographies.map((geo) => {
