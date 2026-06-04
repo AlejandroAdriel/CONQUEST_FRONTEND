@@ -56,6 +56,13 @@ const normalizeName = (name: string): string => {
   return norm;
 };
 
+const getDomId = (name: string): string => {
+  return "pais-" + normalizeName(name)
+    .replace(/[^a-z0-9]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+};
+
 const getRealPopulation = (name: string, seed: number, populations: Record<string, number>): number => {
   const norm = normalizeName(name);
   for (const [key, value] of Object.entries(populations)) {
@@ -119,6 +126,7 @@ export default function App() {
   const [tabIyd, setTabIyd] = useState<"desarrollo" | "militar">("desarrollo");
   const [, setDiasParaEvento] = useState(10 + Math.floor(Math.random() * 6));
   const isPanningRef = useRef(false);
+  const transformComponentRef = useRef<any>(null);
 
   const generarStatsPais = (geo: any): Pais => {
     const id = geo.id || "000";
@@ -176,6 +184,20 @@ export default function App() {
     };
     bootstrap();
   }, []);
+
+  useEffect(() => {
+    if (currentScreen === 'game' && playerHQ) {
+      // Timeout táctico para asegurar que el SVG del mapa ya se dibujó en el DOM
+      const timer = setTimeout(() => {
+        if (transformComponentRef.current) {
+          // API: zoomToElement(nodeId, scale, animationTime, animationType)
+          // Usamos escala 8 para enfocar bien países pequeños
+          transformComponentRef.current.zoomToElement(getDomId(playerHQ.nombre), 8, 1800, "easeOutQuart");
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [currentScreen, playerHQ]);
 
   useEffect(() => {
     if (!isPlaying) return;
@@ -493,6 +515,7 @@ export default function App() {
         {/* PANEL DERECHO: Mapa Global - Eliminación del h-[calc(100vh-154px)] problemático */}
         <div className="flex-1 relative min-h-0 overflow-hidden flex items-center justify-center bg-transparent map-container">
           <TransformWrapper
+            ref={transformComponentRef}
             initialScale={1}
             minScale={1}
             maxScale={8}
@@ -530,6 +553,7 @@ export default function App() {
                           return (
                             <Geography
                               key={geo.rsmKey}
+                              id={getDomId(pais.nombre)}
                               geography={geo}
                               onClick={() => { if (!isPanningRef.current) setPaisSeleccionado(pais); }}
                               onMouseEnter={(e) => {
