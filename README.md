@@ -13,9 +13,9 @@ Un simulador estratégico e interactivo de geopolítica global en tiempo real am
 
 El proyecto está diseñado bajo un paradigma modular enfocado en la responsividad táctil y la inmersión del usuario.
 
-*   **Framework Principal:** [React 18](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) para tipado estricto y robustez del estado.
-*   **Gestión del Build:** [Vite](https://vitejs.dev/) para empaquetado ultra-rápido HMR (Hot Module Replacement).
-*   **Estilos y Temática:** [Tailwind CSS](https://tailwindcss.com/) complementado con animaciones personalizadas de pulso electromagnético, scanlines CRT analógicas y layouts adaptables (*Bulletproof Flexbox*).
+*   **Framework Principal:** [React 19](https://react.dev/) + [TypeScript 6](https://www.typescriptlang.org/) para tipado estricto y robustez del estado.
+*   **Gestión del Build:** [Vite 8](https://vitejs.dev/) para empaquetado ultra-rápido HMR (Hot Module Replacement).
+*   **Estilos y Temática:** [Tailwind CSS 4](https://tailwindcss.com/) complementado con animaciones personalizadas de pulso electromagnético, scanlines CRT analógicas y layouts adaptables (*Bulletproof Flexbox*).
 *   **Motor Geográfico (GIS):** [react-simple-maps](https://www.react-simple-maps.io/) + TopoJSON con proyección customizada de Miller (`d3-geo-projection`) para corregir la deformación polar.
 *   **Controlador de Cámara:** [react-zoom-pan-pinch](https://github.com/BetterTyped/react-zoom-pan-pinch) para zooms cinemáticos dinámicos y seguimiento automatizado del centro táctico (Satelital).
 *   **Iconografía:** [Lucide React](https://lucide.dev/) para el set de indicadores tácticos y corporativos.
@@ -60,7 +60,7 @@ CONQUEST_FRONTEND/
 ## ⚡ Guía de Instalación y Ejecución
 
 ### Requisitos previos
-*   [Node.js](https://nodejs.org/) (Versión 16 o superior)
+*   [Node.js](https://nodejs.org/) (Versión 18 o superior)
 *   npm o yarn
 
 ### Pasos
@@ -76,3 +76,43 @@ CONQUEST_FRONTEND/
     ```bash
     npm run build
     ```
+
+---
+
+## 📦 Versiones de Dependencias
+
+> Última actualización: **4 de junio de 2026**
+
+### Dependencias de Producción
+
+| Paquete | Versión |
+|---------|---------|
+| react | 19.2.7 |
+| react-dom | 19.2.7 |
+| lucide-react | 1.17.0 |
+| react-simple-maps | 3.0.0 |
+| react-zoom-pan-pinch | 4.0.3 |
+| d3-geo-projection | 4.0.0 |
+| prop-types | 15.8.1 |
+
+### Dependencias de Desarrollo
+
+| Paquete | Versión |
+|---------|---------|
+| vite | 8.0.16 |
+| typescript | 6.0.3 |
+| tailwindcss | 4.3.0 |
+| @tailwindcss/vite | 4.3.0 |
+| eslint | 10.4.1 |
+| @vitejs/plugin-react | 6.0.2 |
+| @types/node | 25.9.1 |
+| @types/react | 19.2.16 |
+| @types/react-dom | 19.2.3 |
+| @types/react-simple-maps | 3.0.6 |
+| @eslint/js | 10.0.1 |
+| typescript-eslint | 8.60.1 |
+| eslint-plugin-react-hooks | 7.1.1 |
+| eslint-plugin-react-refresh | 0.5.2 |
+| globals | 17.6.0 |
+
+
