@@ -1,69 +1,78 @@
-# Conquest
+# 🌐 CONQUEST // GLOBAL TACTICAL SIMULATOR
 
-Un simulador interactivo de estrategia y conquista geopolítica en tiempo real desarrollado con React, TypeScript y Vite. El juego combina mecánicas de gestión de recursos, conquista territorial sobre un mapamundi y un árbol tecnológico masivo en un entorno visual táctico.
+[![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-B73BFE?style=for-the-badge&logo=vite&logoColor=FFD62B)](https://vitejs.dev/)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 
----
-
-## 🎮 ¿Cómo se juega? (Mecánicas de Juego)
-
-1. **Gestión de Recursos:** Comienzas con un **Presupuesto** (€) y **Fuerzas de Reserva** (Infantería, Caballería y Artillería) en la barra inferior.
-2. **Exploración:** Pasa el cursor por el mapamundi interactivo para ver los datos de cada país.
-   - 🔵 **Países Aliados:** Tonalidades azules. Tienen tu estatus.
-   - 🔴 **Países Hostiles:** Tonalidades rojizas. Tienen ejército propio controlado por la IA.
-3. **Ofensivas:** Haz clic en un país hostil, escribe el número de tropas a desplegar desde tu reserva y presiona `Iniciar Ofensiva`. El ataque tardará 5 días virtuales en llegar (puedes ver la alerta arriba a la derecha). Al impactar, el simulador calcula las bajas de ambos bandos y decide si conquistas el territorio.
-4. **Árbol Tecnológico (I+D):** Usa tus ingresos de oro para desbloquear patentes (económicas o militares) en el botón `Árbol Tecnológico`. Esto te otorgará mejoras pasivas.
-5. **Control de Tiempo:** Puedes pausar la simulación o correrla a 3 velocidades diferentes para acelerar el paso de los días y la resolución de las guerras.
+Un simulador estratégico e interactivo de geopolítica global en tiempo real ambientado en un entorno estético **Cyberpunk Dark**. Integra mecánicas de gestión macroeconómica, despliegues militares dinámicos sobre un planisferio de alta resolución y un árbol de desarrollo científico-militar de múltiples ramas interactivo.
 
 ---
 
-## 🛠️ Guía del Desarrollador (¿Cómo está construido?)
+## 🖥️ Arquitectura & Stack Tecnológico
 
-Si quieres modificar o expandir el código, aquí tienes un resumen sencillo de cómo funciona por dentro:
+El proyecto está diseñado bajo un paradigma modular enfocado en la responsividad táctil y la inmersión del usuario.
 
-### 1. Estructura de Archivos
-* **[src/App.tsx](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/App.tsx):** Contiene toda la lógica del juego, los estados principales, el bucle de tiempo y los componentes visuales de la interfaz.
-* **[src/TechTreeData.ts](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/TechTreeData.ts):** Almacena la base de datos de las tecnologías. Cada nodo tiene un ID, nombre, coste, prerrequisitos, categoría, coordenadas `x`/`y` para dibujarse en la rejilla, y el tipo de beneficio.
-* **[src/index.css](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/index.css):** Define fuentes digitales personalizadas y scrollbars estilizadas.
-
-### 2. Variables de Estado Principales (`App.tsx`)
-* `fechaVirtual`: El reloj digital del juego (avanza día a día).
-* `isPlaying` y `speedLevel`: Controlan si la simulación corre y a qué velocidad (`1` = 1s/día, `2` = 250ms/día, `3` = 80ms/día).
-* `paises`: Un diccionario que almacena los estados de los países conquistados o modificados (para no sobrecargar el render).
-* `presupuesto` y `tropas`: Recursos del jugador.
-* `habilidades`: La lista de tecnologías del árbol y su estado (`desbloqueada: true/false`).
-* `ataquesEnCola`: Lista de ofensivas militares que viajan en tiempo real hacia sus destinos.
-
-### 3. El Bucle del Tiempo (`useEffect` principal)
-Toda la lógica de avance ocurre en dos `useEffect` principales:
-* El primero gestiona el **reloj cronológico**, creando un intervalo que suma un día a la `fechaVirtual` según la velocidad elegida.
-* El segundo reacciona a cada cambio de `fechaVirtual` (cada nuevo día) para:
-  1. Reducir la cuenta de días para eventos aleatorios.
-  2. Comprobar si los ataques en cola han llegado a su fecha de impacto para resolver la batalla (calculando bajas aleatorias basadas en las fuerzas desplegadas y la defensa de la IA).
-
-### 4. El Mapamundi SVG
-* Utiliza `react-simple-maps` bajo una proyección `geoMercator` limpia que centra el mapa de forma proporcional.
-* Se envuelve en `TransformWrapper` para permitir que el jugador arrastre el mapa libremente o use los botones de **Zoom (+, -, Reset)** sin que el lienzo se deforme.
-* Los colores de los países cambian dinámicamente según si son conquistados, hostiles, seleccionados o si tienen un ataque en camino (`stroke` rojo parpadeante).
-
-### 5. Renderizado del Árbol de Tecnologías (I+D)
-* El modal dibuja en el fondo un lienzo `<svg>` que traza líneas discontinuas conectando las tecnologías basándose en las coordenadas `x` e `y` de `TechTreeData.ts`.
-* Si una tecnología prerrequisito se desbloquea, la línea cambia a un color azul activo; si la tecnología se desbloquea del todo, la línea se ilumina en verde con efecto de brillo.
+*   **Framework Principal:** [React 18](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) para tipado estricto y robustez del estado.
+*   **Gestión del Build:** [Vite](https://vitejs.dev/) para empaquetado ultra-rápido HMR (Hot Module Replacement).
+*   **Estilos y Temática:** [Tailwind CSS](https://tailwindcss.com/) complementado con animaciones personalizadas de pulso electromagnético, scanlines CRT analógicas y layouts adaptables (*Bulletproof Flexbox*).
+*   **Motor Geográfico (GIS):** [react-simple-maps](https://www.react-simple-maps.io/) + TopoJSON con proyección customizada de Miller (`d3-geo-projection`) para corregir la deformación polar.
+*   **Controlador de Cámara:** [react-zoom-pan-pinch](https://github.com/BetterTyped/react-zoom-pan-pinch) para zooms cinemáticos dinámicos y seguimiento automatizado del centro táctico (Satelital).
+*   **Iconografía:** [Lucide React](https://lucide.dev/) para el set de indicadores tácticos y corporativos.
 
 ---
 
-## 🚀 Instalación y Configuración Local
+## 🎮 Mecánicas del Simulador
 
-1. Instalar las dependencias del proyecto:
-   ```bash
-   npm install
-   ```
+1.  **Protocolo de Despliegue Satelital:** Al iniciar una simulación desde la sede central (HQ) seleccionada, la cámara realiza un zoom automático calibrado y centrado sobre el polígono geográfico del país inicial.
+2.  **Gestión Presupuestaria y de Fuerzas:** Operación simultánea sobre créditos globales de oro y 3 divisiones tácticas:
+    *   🛡️ **Infantería de Asalto** (Fuerza base)
+    *   🏎️ **Caballería Blindada** (Especialistas rápidos)
+    *   💥 **Artillería de Plasma** (Poder de demolición de defensas)
+3.  **Algoritmo de Combate e Impacto:** El lanzamiento de ofensivas calcula una ventana de trayectoria de 5 días en tiempo real. Al impactar, se procesan las variables aleatorias de defensa IA, bajas mutuas y la anexión del nodo al territorio aliado.
+4.  **SYS.LOG // Registro de Sucesos:** Un pool de 20 eventos probabilísticos (económicos, de sabotaje militar, corporativos y de inteligencia de redes) alteran el curso de la campaña en cada día virtual.
+5.  **Árbol de Patentes I+D:** Interfaz holográfica con trazador dinámico SVG para desbloquear mejoras pasivas en la rama militar y de desarrollo.
 
-2. Iniciar el servidor de desarrollo:
-   ```bash
-   npm run dev
-   ```
+---
 
-3. Generar la compilación para producción (comprueba errores de TypeScript):
-   ```bash
-   npm run build
-   ```
+## 📂 Estructura del Proyecto
+
+```bash
+CONQUEST_FRONTEND/
+├── src/
+│   ├── components/
+│   │   ├── Login.tsx            # Autenticación de Operario con interfaz de seguridad
+│   │   ├── StartMenu.tsx        # Menú principal con efectos de matriz holográfica
+│   │   ├── SaveFilesMenu.tsx    # Gestor responsivo de cargas de perfil
+│   │   ├── SelectHQ.tsx         # Selector de Sede Central con analizador de variables geográficas
+│   │   └── ...
+│   ├── database/
+│   │   └── mockAPI.ts           # Capa de datos privados, endpoints simulados y eventos globales
+│   ├── App.tsx                  # Núcleo del juego: bucle de simulación, estados y layout HUD
+│   ├── index.css                # Sistema de tokens CSS, custom scrollbars y efectos CRT
+│   └── d3-geo-projection.d.ts   # Definición de tipos para la proyección Miller
+├── package.json
+└── README.md
+```
+
+---
+
+## ⚡ Guía de Instalación y Ejecución
+
+### Requisitos previos
+*   [Node.js](https://nodejs.org/) (Versión 16 o superior)
+*   npm o yarn
+
+### Pasos
+1.  **Instalar dependencias:**
+    ```bash
+    npm install
+    ```
+2.  **Iniciar entorno de desarrollo local:**
+    ```bash
+    npm run dev
+    ```
+3.  **Validar y compilar para producción (producción bundle):**
+    ```bash
+    npm run build
+    ```
