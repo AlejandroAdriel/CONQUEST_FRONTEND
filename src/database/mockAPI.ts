@@ -178,33 +178,128 @@ const realPopulations: Record<string, number> = {
 };
 
 const eventosAleatorios = [
+  // ── ALERTAS (Pérdidas) ──────────────────────────────────────
   { 
     titulo: "SABOTAJE EN LA RED CLIMÁTICA",
-    mensaje: "Una tormenta de arena ionizada inducida por hackeo interrumpe los canales de extracción en los yacimientos de Medio Oriente. La infraestructura táctica reporta daños severos en los nodos. Impacto: -500 Créditos de Oro globales.", 
+    mensaje: "Una tormenta de arena ionizada inducida por hackeo interrumpe los canales de extracción en los yacimientos de Medio Oriente. La infraestructura táctica reporta daños severos en los nodos. Impacto: -500 Créditos de Oro.", 
     tipo: "alert" as const, 
     efecto: (oro: number, tropas: Tropas) => ({ oro: Math.max(0, oro - 500), tropas }) 
   },
   { 
-    titulo: "CAMPAÑA DE CONCRIPCIÓN SATELITAL",
-    mensaje: "Nuestra señal de propaganda de alta frecuencia ha sorteado los cortafuegos del hemisferio sur, motivando a reservistas locales. Se reporta un flujo de refuerzo táctico. Impacto: +200 Infantería en la reserva.", 
+    titulo: "DESERCIÓN MASIVA EN FRONTERA",
+    mensaje: "Un ciberataque de pulso electromagnético del enemigo desactiva los chips neurales de obediencia de un regimiento fronterizo, provocando su desconexión y retirada. Impacto: -100 Unidades de Caballería.", 
+    tipo: "alert" as const, 
+    efecto: (oro: number, tropas: Tropas) => ({ oro, tropas: { ...tropas, caballeria: Math.max(0, tropas.caballeria - 100) } }) 
+  },
+  { 
+    titulo: "VIRUS EN EL SISTEMA LOGÍSTICO",
+    mensaje: "Un ransomware cuántico de origen desconocido ha cifrado los manifiestos de suministro del sector norte, paralizando la distribución de armamento pesado. Impacto: -50 Artillería.", 
+    tipo: "alert" as const, 
+    efecto: (oro: number, tropas: Tropas) => ({ oro, tropas: { ...tropas, artilleria: Math.max(0, tropas.artilleria - 50) } }) 
+  },
+  { 
+    titulo: "COLAPSO DE NODO FINANCIERO",
+    mensaje: "El nodo bancario descentralizado de Nueva Shanghái ha sufrido un exploit de día cero. Los fondos de contingencia fueron drenados antes de que los cortafuegos reaccionaran. Impacto: -800 Créditos de Oro.", 
+    tipo: "alert" as const, 
+    efecto: (oro: number, tropas: Tropas) => ({ oro: Math.max(0, oro - 800), tropas }) 
+  },
+  { 
+    titulo: "MOTÍN EN GUARNICIÓN REMOTA",
+    mensaje: "Las tropas estacionadas en el complejo ártico Vostok-7 se han rebelado tras un fallo en los sistemas de calefacción neural. El destacamento se ha dispersado en la tundra. Impacto: -150 Infantería.", 
+    tipo: "alert" as const, 
+    efecto: (oro: number, tropas: Tropas) => ({ oro, tropas: { ...tropas, infanteria: Math.max(0, tropas.infanteria - 150) } }) 
+  },
+  { 
+    titulo: "SABOTAJE EN CONVOY BLINDADO",
+    mensaje: "Un convoy de suministros blindados fue emboscado en el corredor de los Balcanes por células insurgentes equipadas con EMP tácticos. Vehículos irrecuperables. Impacto: -75 Caballería.", 
+    tipo: "alert" as const, 
+    efecto: (oro: number, tropas: Tropas) => ({ oro, tropas: { ...tropas, caballeria: Math.max(0, tropas.caballeria - 75) } }) 
+  },
+  { 
+    titulo: "ATAQUE A CADENA DE SUMINISTRO",
+    mensaje: "Agentes hostiles infiltraron nuestra cadena de producción de municiones inteligentes, insertando firmware defectuoso. Lote completo inutilizado. Impacto: -300 Créditos de Oro.", 
+    tipo: "alert" as const, 
+    efecto: (oro: number, tropas: Tropas) => ({ oro: Math.max(0, oro - 300), tropas }) 
+  },
+
+  // ── ÉXITOS (Ganancias) ──────────────────────────────────────
+  { 
+    titulo: "CAMPAÑA DE CONSCRIPCIÓN SATELITAL",
+    mensaje: "Nuestra señal de propaganda de alta frecuencia ha sorteado los cortafuegos del hemisferio sur, motivando a reservistas locales. Se reporta un flujo de refuerzo táctico. Impacto: +200 Infantería.", 
     tipo: "success" as const, 
     efecto: (oro: number, tropas: Tropas) => ({ oro, tropas: { ...tropas, infanteria: tropas.infanteria + 200 } }) 
   },
   { 
     titulo: "EXTRACCIÓN DE CRIPTOMINAS SIBERIANAS",
-    mensaje: "Nuestras sondas autónomas reactivaron una granja de servidores de la ex-megacorporación siberiana en desuso, liquidando activos protegidos. Impacto: +1000 Créditos de Oro globales transferidos a tesorería.", 
+    mensaje: "Nuestras sondas autónomas reactivaron una granja de servidores de la ex-megacorporación siberiana en desuso, liquidando activos protegidos. Impacto: +1000 Créditos de Oro.", 
     tipo: "success" as const, 
     efecto: (oro: number, tropas: Tropas) => ({ oro: oro + 1000, tropas }) 
   },
   { 
-    titulo: "DESERCIÓN MASIVA EN FRONTERA",
-    mensaje: "Un ciberataque de pulso electromagnético del enemigo desactiva los chips neurales de obediencia de un regimiento fronterizo, provocando su desconexión y retirada. Impacto: -100 Unidades de Caballería táctica.", 
-    tipo: "alert" as const, 
-    efecto: (oro: number, tropas: Tropas) => ({ oro, tropas: { ...tropas, caballeria: Math.max(0, tropas.caballeria - 100) } }) 
+    titulo: "RECLUTAMIENTO DE MERCENARIOS NÓMADAS",
+    mensaje: "Un clan de mercenarios cibernéticos del desierto del Sahel ha aceptado nuestro contrato. Unidades blindadas experimentadas se integran al contingente. Impacto: +120 Caballería.", 
+    tipo: "success" as const, 
+    efecto: (oro: number, tropas: Tropas) => ({ oro, tropas: { ...tropas, caballeria: tropas.caballeria + 120 } }) 
   },
   { 
+    titulo: "DECOMISO DE ARSENAL ENEMIGO",
+    mensaje: "Operaciones especiales asaltaron un depósito subterráneo enemigo en los montes Urales. Se recuperaron piezas de artillería de plasma intactas. Impacto: +80 Artillería.", 
+    tipo: "success" as const, 
+    efecto: (oro: number, tropas: Tropas) => ({ oro, tropas: { ...tropas, artilleria: tropas.artilleria + 80 } }) 
+  },
+  { 
+    titulo: "CONTRATO CORPORATIVO SELLADO",
+    mensaje: "La megacorporación Nexus-Dynamics ha firmado un acuerdo de suministro exclusivo con nuestro comando. Transferencia inmediata de fondos al tesoro central. Impacto: +1500 Créditos de Oro.", 
+    tipo: "success" as const, 
+    efecto: (oro: number, tropas: Tropas) => ({ oro: oro + 1500, tropas }) 
+  },
+  { 
+    titulo: "COSECHA DE DATOS EXITOSA",
+    mensaje: "Nuestros bots de scraping cuántico infiltraron la base de datos fiscal de tres naciones-estado rivales. Información monetizada en el mercado negro digital. Impacto: +700 Créditos de Oro.", 
+    tipo: "success" as const, 
+    efecto: (oro: number, tropas: Tropas) => ({ oro: oro + 700, tropas }) 
+  },
+  { 
+    titulo: "REACTIVACIÓN DE AUTÓMATAS BÉLICOS",
+    mensaje: "Un almacén olvidado de la era pre-colapso fue descubierto en las catacumbas de Neo-Berlín. Autómatas de combate reactivados y asignados al frente. Impacto: +300 Infantería.", 
+    tipo: "success" as const, 
+    efecto: (oro: number, tropas: Tropas) => ({ oro, tropas: { ...tropas, infanteria: tropas.infanteria + 300 } }) 
+  },
+
+  // ── INFORMATIVOS (Sin efecto mecánico) ──────────────────────
+  { 
     titulo: "TREGUA DIGITAL ESTABLECIDA",
-    mensaje: "Los sistemas de cifrado de la megacorporación rival detectaron nuestras sondas de escaneo en los frentes fronterizos. Se firma una tregua digital temporal automática mientras se reconfiguran los firewalls. Sin cambios militares reportados.", 
+    mensaje: "Los sistemas de cifrado de la megacorporación rival detectaron nuestras sondas de escaneo en los frentes fronterizos. Se firma una tregua digital temporal automática mientras se reconfiguran los firewalls. Sin cambios reportados.", 
+    tipo: "info" as const, 
+    efecto: (oro: number, tropas: Tropas) => ({ oro, tropas }) 
+  },
+  { 
+    titulo: "ANOMALÍA ELECTROMAGNÉTICA DETECTADA",
+    mensaje: "Los sensores orbitales registraron una fluctuación magnética masiva sobre el Triángulo de las Bermudas. Los analistas no logran determinar si es fenómeno natural o arma experimental enemiga. Monitoreo activo.", 
+    tipo: "info" as const, 
+    efecto: (oro: number, tropas: Tropas) => ({ oro, tropas }) 
+  },
+  { 
+    titulo: "TRANSMISIÓN INTERCEPTADA",
+    mensaje: "Inteligencia descifró una comunicación encriptada entre dos facciones rivales. Aparentemente planean una alianza temporal contra nuestro sector. El Alto Mando evalúa contramedidas diplomáticas.", 
+    tipo: "info" as const, 
+    efecto: (oro: number, tropas: Tropas) => ({ oro, tropas }) 
+  },
+  { 
+    titulo: "MIGRACIÓN MASIVA EN FRONTERA SUR",
+    mensaje: "Oleadas de civiles desplazados por los conflictos en el corredor centroamericano se agolpan en los puntos de control. Los recursos humanitarios están siendo redistribuidos. Sin impacto militar directo.", 
+    tipo: "info" as const, 
+    efecto: (oro: number, tropas: Tropas) => ({ oro, tropas }) 
+  },
+  { 
+    titulo: "ACTUALIZACIÓN DE FIRMWARE GLOBAL",
+    mensaje: "El Comando Central ha desplegado el parche v7.41 en todos los exoesqueletos de combate. Tiempo de inactividad temporal de 6 horas en el hemisferio occidental. Operaciones restauradas con éxito.", 
+    tipo: "info" as const, 
+    efecto: (oro: number, tropas: Tropas) => ({ oro, tropas }) 
+  },
+  { 
+    titulo: "ECLIPSE SOLAR TÁCTICO",
+    mensaje: "Un eclipse solar ha interferido temporalmente con los paneles solares de los satélites de reconocimiento. Las comunicaciones de largo alcance operan al 40% de capacidad durante las próximas horas.", 
     tipo: "info" as const, 
     efecto: (oro: number, tropas: Tropas) => ({ oro, tropas }) 
   }

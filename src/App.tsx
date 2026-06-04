@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { 
-  Play, Pause, FastForward, Activity,
+  Play, Pause, FastForward, Activity, Terminal,
   ShieldAlert, ShieldCheck, Info,
   Flag, Swords, Hexagon, Zap, Skull, Map as MapIcon,
   ChevronsRight, Globe, Cpu
@@ -470,42 +470,71 @@ export default function App() {
       <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden z-10">
         {/* PANEL IZQUIERDO: Diario de Guerra */}
         <div className="w-full md:w-[35%] flex-1 md:flex-initial shrink-0 border-b md:border-b-0 md:border-r border-slate-800/80 bg-slate-950/60 flex flex-col overflow-hidden relative backdrop-blur-sm">
-          <div className="p-4 border-b border-slate-800/50 bg-slate-900/90 shadow-md shrink-0">
-            <h2 className="text-sm font-bold text-slate-300 tracking-[0.2em] uppercase flex items-center gap-2">
-              <Activity className="w-4 h-4 text-blue-500" />
-              Diario de Guerra
+          <div className="p-4 border-b border-cyan-900/30 bg-[#02040a] shadow-lg shadow-cyan-950/20 shrink-0">
+            <h2 className="text-xs font-bold text-cyan-500 tracking-[0.25em] uppercase flex items-center gap-2.5 font-mono">
+              <Terminal className="w-4 h-4 text-cyan-400 animate-pulse" />
+              REGISTRO DE SUCESOS GLOBALES // SYS.LOG
             </h2>
           </div>
           {/* Scrollable Alerts Container */}
-          <div className="flex-1 p-5 overflow-y-auto min-h-0 space-y-4 pb-8 custom-scrollbar relative">
+          <div className="flex-1 p-4 overflow-y-auto min-h-0 space-y-3 pb-8 custom-scrollbar relative">
             {diarioGuerra.map(ev => {
               const isAlert = ev.tipo === 'alert';
               const isSuccess = ev.tipo === 'success';
+              const accentColor = isAlert ? 'rose' : isSuccess ? 'emerald' : 'cyan';
               return (
                 <div 
                   key={ev.id} 
-                  className={`relative p-4 rounded-sm border-t border-r border-b backdrop-blur-md overflow-hidden transition-all hover:scale-[1.01] border-l-4 ${
-                    isSuccess ? 'bg-emerald-950/40 border-t-emerald-900/50 border-r-emerald-900/50 border-b-emerald-900/50 border-l-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.05)]' : 
-                    isAlert ? 'bg-red-950/40 border-t-red-900/50 border-r-red-900/50 border-b-red-900/50 border-l-rose-600 shadow-[0_0_15px_rgba(225,29,72,0.05)]' : 
-                    'bg-slate-900/50 border-t-slate-800/80 border-r-slate-800/80 border-b-slate-800/80 border-l-blue-600'
+                  className={`group relative p-3.5 rounded border overflow-hidden transition-all duration-300 hover:translate-x-0.5 ${
+                    isAlert 
+                      ? 'bg-gradient-to-r from-red-950/50 via-slate-950/80 to-slate-950/60 border-rose-800/40 hover:border-rose-600/60 shadow-[inset_0_0_30px_rgba(225,29,72,0.04)]' 
+                      : isSuccess 
+                        ? 'bg-gradient-to-r from-emerald-950/50 via-slate-950/80 to-slate-950/60 border-emerald-800/40 hover:border-emerald-600/60 shadow-[inset_0_0_30px_rgba(16,185,129,0.04)]' 
+                        : 'bg-gradient-to-r from-cyan-950/30 via-slate-950/80 to-slate-950/60 border-cyan-800/30 hover:border-cyan-600/50 shadow-[inset_0_0_30px_rgba(6,182,212,0.03)]'
                   }`}
                 >
-                  {isSuccess && (
-                    <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#10b981 1px, transparent 1px)', backgroundSize: '10px 10px' }} />
-                  )}
+                  {/* Scanline overlay */}
+                  <div className="absolute inset-0 opacity-[0.015] pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)', backgroundSize: '100% 4px' }} />
+                  
+                  {/* Accent glow stripe */}
+                  <div className={`absolute left-0 top-0 bottom-0 w-[3px] ${
+                    isAlert ? 'bg-gradient-to-b from-rose-500 via-rose-600 to-rose-500/30' 
+                    : isSuccess ? 'bg-gradient-to-b from-emerald-400 via-emerald-500 to-emerald-400/30' 
+                    : 'bg-gradient-to-b from-cyan-400 via-cyan-500 to-cyan-400/30'
+                  }`} />
+                  <div className={`absolute left-0 top-0 bottom-0 w-8 ${
+                    isAlert ? 'bg-rose-500/5' : isSuccess ? 'bg-emerald-500/5' : 'bg-cyan-500/5'
+                  } blur-xl pointer-events-none`} />
+
                   {isAlert && (
-                    <div className="absolute right-0 top-0 w-32 h-32 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
+                    <div className="absolute right-0 top-0 w-24 h-24 bg-red-600/8 rounded-full blur-3xl pointer-events-none" />
                   )}
 
-                  <div className="relative z-10 font-mono">
-                    <div className="flex items-center justify-between gap-2 mb-1.5 text-[10px]">
-                      <div className={`flex items-center gap-1.5 font-bold uppercase tracking-wider ${isAlert ? 'text-rose-400' : isSuccess ? 'text-emerald-400' : 'text-blue-400'}`}>
-                        {isAlert ? <ShieldAlert className="w-3.5 h-3.5" /> : isSuccess ? <ShieldCheck className="w-3.5 h-3.5" /> : <Info className="w-3.5 h-3.5" />}
-                        {ev.titulo}
+                  <div className="relative z-10 font-mono pl-2">
+                    {/* Header row */}
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.15em] leading-tight ${
+                        isAlert ? 'text-rose-400' : isSuccess ? 'text-emerald-400' : 'text-cyan-400'
+                      }`}>
+                        <span className={`flex items-center justify-center w-5 h-5 rounded-sm ${
+                          isAlert ? 'bg-rose-500/15 ring-1 ring-rose-500/30' 
+                          : isSuccess ? 'bg-emerald-500/15 ring-1 ring-emerald-500/30' 
+                          : 'bg-cyan-500/15 ring-1 ring-cyan-500/30'
+                        }`}>
+                          {isAlert ? <ShieldAlert className="w-3 h-3" /> : isSuccess ? <ShieldCheck className="w-3 h-3" /> : <Info className="w-3 h-3" />}
+                        </span>
+                        <span className="truncate">{ev.titulo}</span>
                       </div>
-                      <span className="text-amber-500/90 font-semibold">[{ev.fecha.toLocaleDateString('es-ES')}]</span>
+                      <span className="text-[9px] text-slate-500 font-semibold shrink-0 tabular-nums tracking-wider">{ev.fecha.toLocaleDateString('es-ES')}</span>
                     </div>
-                    <p className="text-[11px] leading-relaxed text-slate-300">{ev.mensaje}</p>
+                    {/* Body */}
+                    <p className="text-[11px] leading-[1.6] text-slate-400 group-hover:text-slate-300 transition-colors">{ev.mensaje}</p>
+                    {/* Separator line */}
+                    <div className={`mt-2.5 h-px w-full ${
+                      isAlert ? 'bg-gradient-to-r from-rose-800/30 via-rose-800/10 to-transparent' 
+                      : isSuccess ? 'bg-gradient-to-r from-emerald-800/30 via-emerald-800/10 to-transparent' 
+                      : 'bg-gradient-to-r from-cyan-800/20 via-cyan-800/10 to-transparent'
+                    }`} />
                   </div>
                 </div>
               );
