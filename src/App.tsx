@@ -101,7 +101,7 @@ export default function App() {
   const [playerHQ, setPlayerHQ] = useState<{id: string, nombre: string} | null>(null);
   const [showSaves, setShowSaves] = useState(false);
   const [isSystemMenuOpen, setIsSystemMenuOpen] = useState(false);
-  const [fechaVirtual, setFechaVirtual] = useState(new Date(2027, 4, 1));
+  const [fechaVirtual, setFechaVirtual] = useState(new Date(2099, 10, 12));
   const [isPlaying, setIsPlaying] = useState(false);
   const [speedLevel, setSpeedLevel] = useState<1 | 2 | 3>(1);
   const [paises, setPaises] = useState<Record<string, Pais>>({});
@@ -110,7 +110,7 @@ export default function App() {
   const [habilidades, setHabilidades] = useState<Habilidad[]>([]);
   const [ataquesEnCola, setAtaquesEnCola] = useState<AtaqueEnCola[]>([]);
   const [diarioGuerra, setDiarioGuerra] = useState<Evento[]>([
-    { id: "inicio", fecha: new Date(2027, 4, 1), titulo: "SISTEMA TÁCTICO INICIADO", mensaje: "Núcleo de inteligencia y comunicaciones satelitales en línea. Iniciando simulación y mapeo geopolítico...", tipo: "info" }
+    { id: "inicio", fecha: new Date(2099, 10, 12), titulo: "SISTEMA TÁCTICO INICIADO", mensaje: "Núcleo de inteligencia y comunicaciones satelitales en línea. Iniciando simulación y mapeo geopolítico...", tipo: "info" }
   ]);
 
   const [isDbLoading, setIsDbLoading] = useState(true);
