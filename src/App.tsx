@@ -317,7 +317,7 @@ export default function App() {
 
   if (isDbLoading) {
     return (
-      <div className="h-[100dvh] w-screen flex flex-col items-center justify-center bg-[#030712] font-mono text-slate-300 uppercase tracking-widest select-none">
+      <div className="h-[100dvh] w-full flex flex-col items-center justify-center overflow-hidden bg-[#030712] font-mono text-slate-300 uppercase tracking-widest select-none">
         <Hexagon className="w-16 h-16 text-cyan-500/40 animate-[spin_3s_linear_infinite] mb-6" strokeWidth={1.5} />
         <p className="text-sm text-cyan-400 animate-pulse tracking-[0.3em]">CARGANDO SISTEMA TÁCTICO...</p>
         <p className="text-[10px] text-slate-600 mt-2">ESTABLECIENDO ENLACE CON BASE DE DATOS</p>
@@ -376,9 +376,9 @@ export default function App() {
   }
 
   return (
-    <div className="h-[100dvh] w-screen flex flex-col bg-[#030712] text-slate-200 overflow-hidden select-none" onMouseMove={handleMouseMove}>
+    <div className="h-[100dvh] w-full flex flex-col bg-[#030712] text-slate-200 overflow-hidden select-none" onMouseMove={handleMouseMove}>
       {/* TOPBAR TÁCTICO - Con shrink-0 para evitar deformaciones */}
-      <header className="h-16 border-b border-slate-800/80 bg-slate-950/80 flex items-center justify-between px-6 shrink-0 z-20 shadow-[0_4px_30px_rgba(0,0,0,0.5)] backdrop-blur-md">
+      <header className="min-h-16 md:h-16 border-b border-slate-800/80 bg-slate-950/80 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-0 py-4 md:py-0 px-6 shrink-0 z-20 shadow-[0_4px_30px_rgba(0,0,0,0.5)] backdrop-blur-md">
         <div className="flex items-center gap-4">
           <div className="relative w-8 h-8 flex items-center justify-center shrink-0">
             <Hexagon className="absolute w-8 h-8 text-cyan-400/30 animate-[spin_12s_linear_infinite]" strokeWidth={1.5} />
@@ -402,7 +402,7 @@ export default function App() {
           </div>
         </div>
         
-        <div className="flex items-center gap-6">
+        <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6">
           <div className="text-xs font-bold tracking-widest text-slate-400 flex items-center gap-2">
             STATUS: 
             <span className={isPlaying ? (speedLevel === 1 ? "text-emerald-500" : speedLevel === 2 ? "text-amber-500" : "text-cyan-400") : "text-rose-500"}>
@@ -444,9 +444,9 @@ export default function App() {
       </header>
 
       {/* SECCIÓN CENTRAL FLEXIBLE (Diario + Mapa) - Uso de flex-1 y min-h-0 */}
-      <div className="flex-1 flex min-h-0 overflow-hidden z-10">
+      <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden z-10">
         {/* PANEL IZQUIERDO: Diario de Guerra */}
-        <div className="w-[35%] shrink-0 border-r border-slate-800/80 bg-slate-950/60 flex flex-col overflow-hidden relative backdrop-blur-sm">
+        <div className="w-full md:w-[35%] flex-1 md:flex-initial shrink-0 border-b md:border-b-0 md:border-r border-slate-800/80 bg-slate-950/60 flex flex-col overflow-hidden relative backdrop-blur-sm">
           <div className="p-4 border-b border-slate-800/50 bg-slate-900/90 shadow-md shrink-0">
             <h2 className="text-sm font-bold text-slate-300 tracking-[0.2em] uppercase flex items-center gap-2">
               <Activity className="w-4 h-4 text-blue-500" />
@@ -627,7 +627,7 @@ export default function App() {
 
       {/* DRAWER LATERAL */}
       {paisSeleccionado && (
-        <div className="absolute right-6 top-24 w-80 bg-slate-950/95 border border-slate-700 shadow-2xl rounded-sm backdrop-blur-xl overflow-hidden z-30">
+        <div className="absolute right-4 md:right-6 top-24 bottom-24 md:bottom-auto w-[calc(100%-2rem)] sm:w-80 bg-slate-950/95 border border-slate-700 shadow-2xl rounded-sm backdrop-blur-xl overflow-hidden z-30 flex flex-col max-h-[70vh] md:max-h-none">
           <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-gradient-to-r from-slate-900 to-slate-950">
             <h3 className="font-bold text-sm tracking-widest text-slate-100 uppercase flex items-center gap-2">
               <MapIcon className="w-4 h-4 text-blue-500" />
@@ -638,7 +638,7 @@ export default function App() {
             </button>
           </div>
           
-          <div className="p-5 space-y-4">
+          <div className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0 custom-scrollbar">
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="bg-slate-900/80 p-3 rounded-sm border border-slate-800">
                 <div className="text-slate-500 text-[10px] uppercase tracking-widest mb-1">Población</div>
@@ -688,8 +688,8 @@ export default function App() {
       )}
 
       {/* FOOTER (BARRA INFERIOR) - Con h-[90px] y shrink-0 fijado */}
-      <footer className="h-[90px] border-t border-slate-800/80 bg-slate-950/90 flex items-center justify-between px-6 shrink-0 z-20 backdrop-blur-md shadow-[0_-4px_30px_rgba(0,0,0,0.5)]">
-        <div className="flex gap-4 h-14">
+      <footer className="min-h-[90px] md:h-[90px] py-4 md:py-0 border-t border-slate-800/80 bg-slate-950/90 flex flex-col md:flex-row gap-4 md:gap-0 items-center justify-between px-6 shrink-0 z-20 backdrop-blur-md shadow-[0_-4px_30px_rgba(0,0,0,0.5)]">
+        <div className="flex flex-col sm:flex-row gap-4 h-auto md:h-14 w-full md:w-auto items-center">
           <div className="bg-slate-900 border border-slate-700/80 rounded-sm px-5 flex flex-col justify-center shadow-inner relative overflow-hidden group">
             <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Presupuesto Global</span>
             <div className="flex items-center gap-2">
@@ -698,7 +698,7 @@ export default function App() {
             </div>
           </div>
           
-          <div className="w-px bg-gradient-to-b from-transparent via-slate-700 to-transparent my-1"></div>
+          <div className="hidden sm:block w-px bg-gradient-to-b from-transparent via-slate-700 to-transparent my-1"></div>
           
           <div className="bg-slate-900 border border-slate-700/80 rounded-sm px-5 flex flex-col justify-center shadow-inner">
             <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1.5">Fuerzas de Reserva</span>
@@ -718,7 +718,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="w-px bg-gradient-to-b from-transparent via-slate-700 to-transparent my-1"></div>
+          <div className="hidden sm:block w-px bg-gradient-to-b from-transparent via-slate-700 to-transparent my-1"></div>
           
           <div className="bg-slate-900 border border-slate-700/80 rounded-sm px-5 flex flex-col justify-center shadow-inner">
             <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Dominio Global</span>
@@ -730,7 +730,7 @@ export default function App() {
           </div>
         </div>
 
-        <button onClick={() => setMostrarArbol(true)} className="group relative bg-slate-900 hover:bg-slate-800 border border-cyan-900/50 hover:border-cyan-500 text-cyan-100 h-14 px-8 rounded-sm shadow-md transition-all flex items-center gap-3">
+        <button onClick={() => setMostrarArbol(true)} className="w-full md:w-auto justify-center group relative bg-slate-900 hover:bg-slate-800 border border-cyan-900/50 hover:border-cyan-500 text-cyan-100 h-14 px-8 rounded-sm shadow-md transition-all flex items-center gap-3">
           <Cpu className="w-5 h-5 text-cyan-400 group-hover:text-cyan-300" />
           <span className="font-bold uppercase tracking-[0.2em] text-xs">[ MATRIZ DE PROTOCOLOS ]</span>
         </button>
@@ -738,10 +738,10 @@ export default function App() {
 
       {/* MODAL ÁRBOL DE HABILIDADES */}
       {mostrarArbol && (
-        <div className="fixed inset-0 bg-slate-950/95 z-50 flex flex-col backdrop-blur-xl p-8 animate-in fade-in">
-          <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4 shrink-0">
+        <div className="fixed inset-0 z-50 flex flex-col p-4 md:p-8 overflow-hidden bg-slate-950/95 backdrop-blur-xl animate-in fade-in">
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-0 justify-between items-center mb-6 border-b border-slate-800 pb-4 shrink-0">
             <div>
-              <h2 className="text-3xl font-black tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400 flex items-center gap-4">
+              <h2 className="text-xl md:text-3xl font-black tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400 flex items-center gap-4">
                 <Cpu className="w-8 h-8 text-cyan-500" />
                 MAINFRAME DE ASIMILACIÓN TÁCTICA
               </h2>
@@ -754,12 +754,12 @@ export default function App() {
             </button>
           </div>
 
-          <div className="flex gap-4 mb-4 shrink-0">
+          <div className="flex flex-col sm:flex-row gap-4 mb-4 shrink-0">
             <button onClick={() => setTabIyd("desarrollo")} className={`px-6 py-3 font-bold text-xs uppercase tracking-widest border rounded-sm transition-all ${tabIyd === "desarrollo" ? "bg-cyan-900/50 border-cyan-500 text-cyan-200" : "bg-slate-900/50 border-slate-800 text-slate-500 hover:text-slate-300"}`}>[ ⚙ REDES DE INFRAESTRUCTURA ]</button>
             <button onClick={() => setTabIyd("militar")} className={`px-6 py-3 font-bold text-xs uppercase tracking-widest border rounded-sm transition-all ${tabIyd === "militar" ? "bg-rose-900/50 border-rose-500 text-rose-200" : "bg-slate-900/50 border-slate-800 text-slate-500 hover:text-slate-300"}`}>[ ⚔ DOCTRINA DE ANIQUILACIÓN ]</button>
           </div>
 
-          <div className="flex-1 w-full relative overflow-hidden bg-[#02040a] rounded-lg border border-cyan-900/30 shadow-inner">
+          <div className="flex-1 w-full relative overflow-hidden bg-[#02040a] rounded-lg border border-cyan-900/30 shadow-inner min-h-0">
             <TransformWrapper
               minScale={0.2}
               maxScale={2}

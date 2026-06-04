@@ -53,7 +53,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onCancel }) => {
   };
 
   return (
-    <div className="h-[100dvh] w-screen flex items-center justify-center bg-[#030712] font-mono text-slate-300 uppercase tracking-widest relative overflow-hidden select-none">
+    <div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-[#030712] font-mono text-slate-300 uppercase tracking-widest relative overflow-hidden select-none p-4 md:p-8">
       
       {/* Background Radar/Grid Pattern */}
       <div 

@@ -99,7 +99,7 @@ export default function SelectHQ({ onDeploy, onCancel }: SelectHQProps) {
   const selectedStats = selected ? computeStats(selected, maxPop, maxEco) : null;
 
   return (
-    <div className="h-[100dvh] w-screen flex flex-col bg-[#030712] font-mono text-slate-300 uppercase tracking-widest select-none overflow-hidden">
+    <div className="h-[100dvh] w-full flex flex-col bg-[#030712] font-mono text-slate-300 uppercase tracking-widest select-none overflow-hidden">
 
       {/* Fondo de rejilla táctica */}
       <div
@@ -140,10 +140,10 @@ export default function SelectHQ({ onDeploy, onCancel }: SelectHQProps) {
       </div>
 
       {/* Contenido principal: Grid de 2 columnas */}
-      <div className="relative z-10 flex flex-1 min-h-0">
+      <div className="relative z-10 flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
 
         {/* IZQUIERDA — Lista de países con buscador */}
-        <div className="w-1/3 border-r border-slate-800/60 flex flex-col min-h-0">
+        <div className="w-full md:w-1/3 border-b md:border-b-0 md:border-r border-slate-800/60 flex flex-col min-h-0 flex-1 md:flex-none">
 
           {/* Buscador pegajoso */}
           <div className="shrink-0 p-4 pb-2 border-b border-slate-800/40">
@@ -225,7 +225,7 @@ export default function SelectHQ({ onDeploy, onCancel }: SelectHQProps) {
         </div>
 
         {/* DERECHA — Panel de análisis */}
-        <div className="w-2/3 flex flex-col p-6 min-h-0 overflow-y-auto">
+        <div className="w-full md:w-2/3 flex flex-col p-4 md:p-6 min-h-0 overflow-y-auto flex-1">
           {!selected || !selectedStats ? (
             // Estado vacío
             <div className="flex-1 flex flex-col items-center justify-center text-center opacity-40">
@@ -250,7 +250,7 @@ export default function SelectHQ({ onDeploy, onCancel }: SelectHQProps) {
               </div>
 
               {/* Grid de stats */}
-              <div className="shrink-0 grid grid-cols-2 gap-4 mb-6">
+              <div className="shrink-0 grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 <div className="border border-slate-800/60 bg-slate-950/40 p-4">
                   <div className="text-[8px] text-slate-500 mb-1 flex items-center gap-1.5">
                     <Users className="w-3 h-3" />
@@ -314,7 +314,7 @@ export default function SelectHQ({ onDeploy, onCancel }: SelectHQProps) {
               <div className="flex-1" />
 
               {/* Botón de acción */}
-              <div className="shrink-0 flex items-center justify-between pt-4 border-t border-slate-800/40">
+              <div className="shrink-0 flex flex-col sm:flex-row gap-4 sm:gap-0 items-center justify-between pt-4 border-t border-slate-800/40">
                 <button
                   onClick={onCancel}
                   className="text-[10px] font-bold text-slate-500 hover:text-rose-500 transition-colors border border-transparent hover:border-rose-900/50 py-2.5 px-5 bg-slate-950/50"

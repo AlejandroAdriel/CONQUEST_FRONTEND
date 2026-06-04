@@ -43,7 +43,7 @@ export default function StartMenu({ onStartGame, onOpenLogin, onOpenSaves, isLog
 
   return (
     <div 
-      className="relative w-screen h-screen bg-[#030712] overflow-hidden font-mono flex flex-col justify-between p-8 select-none text-slate-300"
+      className="relative h-[100dvh] w-full bg-[#030712] overflow-hidden font-mono flex flex-col justify-between p-4 md:p-8 select-none text-slate-300"
       onMouseMove={handleMouseMove}
     >
       {/* CAPA 1: Fondo lejano (Cuadrícula táctica) */}
@@ -90,7 +90,7 @@ export default function StartMenu({ onStartGame, onOpenLogin, onOpenSaves, isLog
       </div>
 
       {/* BARRA SUPERIOR (HEADER HUD) */}
-      <header className="relative z-10 w-full flex items-center justify-between border-b border-slate-800/80 pb-4 backdrop-blur-sm bg-slate-950/10">
+      <header className="relative z-10 w-full flex flex-col md:flex-row items-center justify-between gap-4 md:gap-0 border-b border-slate-800/80 pb-4 backdrop-blur-sm bg-slate-950/10 shrink-0">
         <div className="flex items-center gap-3">
           <Terminal className="w-5 h-5 text-cyan-400" />
           <div>
@@ -181,7 +181,7 @@ export default function StartMenu({ onStartGame, onOpenLogin, onOpenSaves, isLog
       </main>
 
       {/* BARRA INFERIOR (CONTROLES ADICIONALES) */}
-      <footer className="relative z-10 w-full flex items-center justify-between border-t border-slate-800/80 pt-4 backdrop-blur-sm bg-slate-950/10">
+      <footer className="relative z-10 w-full flex flex-col md:flex-row gap-4 md:gap-0 items-center justify-between border-t border-slate-800/80 pt-4 backdrop-blur-sm bg-slate-950/10 shrink-0">
         <button 
           onClick={handleLoadSaves}
           className="group flex items-center gap-2 text-xs font-bold tracking-widest text-slate-400 hover:text-cyan-400 transition-colors py-2 px-4 border border-transparent hover:border-slate-800 rounded-sm bg-slate-950/20"

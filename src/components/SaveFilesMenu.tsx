@@ -61,7 +61,7 @@ export default function SaveFilesMenu({ onClose, onLoadSave, onNewGame }: SaveFi
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col p-6 md:p-12 bg-[#030712]/95 backdrop-blur-xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex flex-col p-4 md:p-8 bg-[#030712]/95 backdrop-blur-xl overflow-hidden">
       <div className="relative w-full max-w-4xl mx-auto flex flex-col bg-[#050915]/95 border-t border-b border-cyan-500/30 p-1 flex-1 min-h-0">
         {/* Adornos esquinas HUD */}
         <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-cyan-400" />
@@ -71,7 +71,7 @@ export default function SaveFilesMenu({ onClose, onLoadSave, onNewGame }: SaveFi
 
         <div className="bg-[#050915] border border-slate-900 px-8 py-8 flex flex-col flex-1 min-h-0 font-mono text-slate-300 uppercase tracking-widest overflow-hidden">
           {/* CABECERA */}
-          <div className="shrink-0 flex justify-between items-center mb-6 pb-4 border-b border-cyan-900/50">
+          <div className="shrink-0 flex flex-col sm:flex-row gap-4 sm:gap-0 justify-between items-center mb-6 pb-4 border-b border-cyan-900/50">
             <div className="flex items-center gap-3">
               <Database className="w-6 h-6 text-cyan-400" />
               <div>
@@ -145,8 +145,7 @@ export default function SaveFilesMenu({ onClose, onLoadSave, onNewGame }: SaveFi
                       </div>
                     </div>
 
-                    {/* CENTRO: Estadísticas */}
-                    <div className="md:col-span-5 grid grid-cols-2 gap-4 border-t border-b md:border-t-0 md:border-b-0 border-slate-800/50 py-3 md:py-0">
+                      <div className="md:col-span-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 border-t border-b md:border-t-0 md:border-b-0 border-slate-800/50 py-3 md:py-0">
                       <div>
                         <div className="text-[8px] text-slate-500">DÍAS CAMPAÑA</div>
                         <div className="text-xs font-bold text-slate-300 font-mono flex items-center gap-1.5 mt-0.5">
@@ -185,7 +184,7 @@ export default function SaveFilesMenu({ onClose, onLoadSave, onNewGame }: SaveFi
                   </div>
 
                   {/* Acciones */}
-                  <div className="flex justify-between items-center border-t border-slate-800/40 pt-3 mt-1">
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-0 justify-between items-center border-t border-slate-800/40 pt-3 mt-1">
                     <button 
                       onClick={() => handlePurge(save.id)}
                       className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 hover:text-rose-500 transition-colors border border-transparent hover:border-rose-950/20 py-1.5 px-3 bg-slate-950/40"
