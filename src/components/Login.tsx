@@ -128,7 +128,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onCancel }) => {
 
   // ── FIELD HELPERS ────────────────────────────────────────────
   const fieldClass = (errKey?: string) =>
-    `w-full bg-slate-900/50 border rounded-none px-4 py-3 text-sm text-cyan-100 placeholder:text-slate-600 
+    `w-full bg-slate-900/50 border rounded-none px-3 py-2.5 text-sm text-cyan-100 placeholder:text-slate-600 
      focus:outline-none focus:ring-1 transition-all font-mono
      ${errKey && regErrors[errKey]
        ? 'border-rose-500/80 focus:border-rose-400 focus:ring-rose-400/30'
@@ -169,10 +169,10 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onCancel }) => {
         <div className="absolute -bottom-1 -left-1 w-5 h-5 border-b-2 border-l-2 border-cyan-500/50" />
         <div className="absolute -bottom-1 -right-1 w-5 h-5 border-b-2 border-r-2 border-cyan-500/50" />
 
-        <div className="bg-[#050915]/85 backdrop-blur-md border border-cyan-900/50 shadow-[0_0_40px_rgba(6,182,212,0.08)] flex flex-col p-7">
+        <div className="bg-[#050915]/85 backdrop-blur-md border border-cyan-900/50 shadow-[0_0_40px_rgba(6,182,212,0.08)] flex flex-col p-5 md:p-6 h-auto max-h-[85vh] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800">
 
           {/* Header */}
-          <div className="flex items-center gap-4 border-b border-slate-800 pb-5 mb-6 relative">
+          <div className="flex items-center gap-4 border-b border-slate-800 pb-4 mb-4 relative">
             <div className="relative shrink-0">
               <Hexagon className="w-10 h-10 text-cyan-400/80 animate-pulse" strokeWidth={1.5} />
               <Cpu className="w-4 h-4 text-cyan-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
@@ -192,7 +192,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onCancel }) => {
           </div>
 
           {/* Mode Tabs */}
-          <div className="flex mb-6 border border-slate-800 rounded-sm overflow-hidden shrink-0">
+          <div className="flex mb-4 border border-slate-800 rounded-sm overflow-hidden shrink-0">
             <button
               onClick={() => { setMode('login'); setIsLoading(false); }}
               className={`flex-1 py-2.5 text-[10px] font-bold tracking-[0.2em] transition-all flex items-center justify-center gap-2
@@ -215,7 +215,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onCancel }) => {
 
           {/* ═══════ LOGIN FORM ═══════ */}
           {mode === 'login' && (
-            <form onSubmit={handleLogin} className="flex flex-col gap-5">
+            <form onSubmit={handleLogin} className="flex flex-col gap-4">
               {/* Username */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] text-cyan-400/70 flex items-center gap-2">
@@ -244,7 +244,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onCancel }) => {
                     value={loginPass}
                     onChange={e => { setLoginPass(e.target.value); setLoginError(null); }}
                     placeholder="[ INGRESE CONTRASEÑA ]"
-                    className={`w-full bg-slate-900/50 border rounded-none px-4 py-3 pr-11 text-sm font-mono text-cyan-100 placeholder:text-slate-600
+                    className={`w-full bg-slate-900/50 border rounded-none px-3 py-2.5 pr-11 text-sm font-mono text-cyan-100 placeholder:text-slate-600
                       focus:outline-none focus:ring-1 transition-all
                       ${loginError === 'wrong_pass'
                         ? 'border-rose-500 focus:border-rose-400 focus:ring-rose-400/30 shadow-[0_0_10px_rgba(244,63,94,0.15)]'
@@ -312,7 +312,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onCancel }) => {
 
           {/* ═══════ REGISTER FORM ═══════ */}
           {mode === 'register' && (
-            <form onSubmit={handleRegister} className="flex flex-col gap-4">
+            <form onSubmit={handleRegister} className="flex flex-col gap-3">
 
               {/* Nombre */}
               <div className="flex flex-col gap-1">
