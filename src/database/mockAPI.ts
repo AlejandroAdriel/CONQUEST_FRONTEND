@@ -318,7 +318,7 @@ const initialHabilidades: Habilidad[] = [
   // Expansión (X=1100): 5 nodos
   { id: "D_EXP_1", nombre: "Minería Suboceánica", costo: 700, desbloqueada: false, prerrequisitos: ["D_B1_1"], tipo_bono: "+10% Ingresos Oro", categoria: "desarrollo", rama: "Expansion", nivel: 3, x: 1100, y: 1000 },
   { id: "D_EXP_2", nombre: "Procesadores Cuánticos", costo: 800, desbloqueada: false, prerrequisitos: ["D_B1_1", "D_B1_2"], tipo_bono: "+10% Eficiencia Global", categoria: "desarrollo", rama: "Expansion", nivel: 3, x: 1100, y: 1500 },
-  { id: "D_EXP_3", nombre: "Sabotaje Financiero", costo: 1000, desbloqueada: false, prerrequisitos: ["D_B1_2"], tipo_bono: "+10% Robo de Fondos", categoria: "desarrollo", rama: "Expansion", nivel: 3, x: 1100, y: 2000 },
+  { id: "D_EXP_3", nombre: "Algoritmos Financieros", costo: 1000, desbloqueada: false, prerrequisitos: ["D_B1_2"], tipo_bono: "+15% Ingresos Oro", categoria: "desarrollo", rama: "Expansion", nivel: 3, x: 1100, y: 2000 },
   { id: "D_EXP_4", nombre: "Nodos Logísticos Subterráneos", costo: 750, desbloqueada: false, prerrequisitos: ["D_B1_2", "D_B1_3"], tipo_bono: "-10% Costo Despliegue", categoria: "desarrollo", rama: "Expansion", nivel: 3, x: 1100, y: 2500 },
   { id: "D_EXP_5", nombre: "Lanzamiento de Microsatélites", costo: 600, desbloqueada: false, prerrequisitos: ["D_B1_3"], tipo_bono: "+10% Visión Táctica", categoria: "desarrollo", rama: "Expansion", nivel: 3, x: 1100, y: 3000 },
 

@@ -39,7 +39,7 @@ const formatPopulation = (n: number): string => n.toLocaleString("es-ES");
 const formatEconomy = (n: number): string => {
   if (n >= 1000000) return `$${(n / 1000000).toFixed(1)}T`;
   if (n >= 1000) return `$${(n / 1000).toFixed(0)}B`;
-  return `$${n}M`;
+  return `$${Math.floor(n).toLocaleString("es-ES")}M`;
 };
 
 export default function SelectHQ({ onDeploy, onCancel }: SelectHQProps) {
@@ -65,7 +65,7 @@ export default function SelectHQ({ onDeploy, onCancel }: SelectHQProps) {
           } else {
             gdpPerCapita = 3000 + (seed % 10) * 500;
           }
-          const economia = Math.floor((pop * gdpPerCapita) / 1000000);
+          const economia = Math.max(1, Math.floor((pop * gdpPerCapita) / 100000000));
 
           // Ejército
           const ejercito = Math.floor(Math.sqrt(pop) * (5 + (seed % 5)));
