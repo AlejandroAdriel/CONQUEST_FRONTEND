@@ -3,7 +3,7 @@ import {
   Globe, Shield, Users, DollarSign, Swords, Crosshair,
   ChevronRight, X, Hexagon, MapPin, Zap, Search
 } from "lucide-react";
-import { fetchCountryStats } from "../database/mockAPI";
+import { fetchCountryStats, translateCountry } from "../database/mockAPI";
 
 interface CountryData {
   id: string;
@@ -72,14 +72,14 @@ export default function SelectHQ({ onDeploy, onCancel }: SelectHQProps) {
 
           return {
             id: name,
-            nombre: name,
+            nombre: translateCountry(name),
             poblacion: pop,
             economia,
             ejercito
           };
         });
 
-        countries.sort((a, b) => a.nombre.localeCompare(b.nombre));
+        countries.sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
         setAllCountries(countries);
       } finally {
         setIsLoading(false);

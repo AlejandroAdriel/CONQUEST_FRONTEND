@@ -7,7 +7,7 @@ import {
   Flag, Swords, Hexagon, Zap, Skull, Map as MapIcon,
   ChevronsRight, Globe, Cpu
 } from "lucide-react";
-import { fetchInitialGameState, fetchRandomEvents, fetchTechTree, fetchCountryStats } from "./database/mockAPI";
+import { fetchInitialGameState, fetchRandomEvents, fetchTechTree, fetchCountryStats, translateCountry } from "./database/mockAPI";
 import type { Habilidad, OperarioUser } from "./database/mockAPI";
 import Login from "./components/Login";
 import StartMenu from "./components/StartMenu";
@@ -165,18 +165,19 @@ export default function App() {
 
   const generarStatsPais = (geo: any): Pais => {
     const id = geo.id || "000";
-    const name = geo.properties.name || "Unknown";
+    const nameEN = geo.properties.name || "Unknown";
+    const nombre = translateCountry(nameEN);
     const seed = id.charCodeAt(0) + (id.length > 1 ? id.charCodeAt(1) : 0);
     
-    const isAliado = playerHQ !== null && (id === playerHQ.id || name === playerHQ.nombre);
+    const isAliado = playerHQ !== null && (id === playerHQ.id || nameEN === playerHQ.nombre || nombre === playerHQ.nombre);
 
-    const poblacion = getRealPopulation(name, seed, countryStatsRef.current);
-    const economia = getRealEconomy(name, poblacion, seed);
+    const poblacion = getRealPopulation(nameEN, seed, countryStatsRef.current);
+    const economia = getRealEconomy(nameEN, poblacion, seed);
     const ejercito_ia = getRealEjercito(isAliado, poblacion, seed);
 
     return {
       id: id,
-      nombre: name,
+      nombre: nombre,
       economia: economia,
       poblacion: poblacion,
       ejercito_ia: ejercito_ia,
@@ -247,17 +248,18 @@ export default function App() {
           
           geometries.forEach((geo: any) => {
             const id = geo.id || "000";
-            const name = geo.properties ? geo.properties.name : "Unknown";
+            const nameEN = geo.properties ? geo.properties.name : "Unknown";
+            const nombre = translateCountry(nameEN);
             const seed = id.charCodeAt(0) + (id.length > 1 ? id.charCodeAt(1) : 0);
-            const isAliado = id === playerHQ.id || name === playerHQ.nombre;
+            const isAliado = id === playerHQ.id || nameEN === playerHQ.nombre || nombre === playerHQ.nombre;
             
-            const poblacion = getRealPopulation(name, seed, countryStatsRef.current);
-            const economia = getRealEconomy(name, poblacion, seed);
+            const poblacion = getRealPopulation(nameEN, seed, countryStatsRef.current);
+            const economia = getRealEconomy(nameEN, poblacion, seed);
             const ejercito_ia = getRealEjercito(isAliado, poblacion, seed);
             
             initialCountries[id] = {
               id: id,
-              nombre: name,
+              nombre: nombre,
               economia: economia,
               poblacion: poblacion,
               ejercito_ia: ejercito_ia,
