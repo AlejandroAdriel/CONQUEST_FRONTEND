@@ -1092,7 +1092,8 @@ export default function App() {
                 initialScale={0.6}
                 centerOnInit={false}
                 limitToBounds={false}
-                wheel={{ step: 0.02, wheelDisabled: false }}
+                wheel={{ step: 0.01, wheelDisabled: false }}
+                doubleClick={{ disabled: true }}
                 panning={{ disabled: false }}
               >
                 <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }}>
