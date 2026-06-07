@@ -628,13 +628,13 @@ export default function App() {
     <div className="h-[100dvh] w-full flex flex-col bg-[#030712] text-slate-200 overflow-hidden select-none" onMouseMove={handleMouseMove}>
       {/* TOPBAR TÁCTICO - Con shrink-0 para evitar deformaciones */}
       <header className="min-h-16 md:h-16 border-b border-slate-800/80 bg-slate-950/80 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-0 py-4 md:py-0 px-6 shrink-0 z-20 shadow-[0_4px_30px_rgba(0,0,0,0.5)] backdrop-blur-md">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4 shrink-0">
           <div className="relative w-8 h-8 flex items-center justify-center shrink-0">
             <Hexagon className="absolute w-8 h-8 text-cyan-400/30 animate-[spin_12s_linear_infinite]" strokeWidth={1.5} />
             <Globe className="absolute w-4 h-4 text-cyan-400 animate-pulse" strokeWidth={2} />
           </div>
 
-          <div className="flex flex-col justify-center">
+          <div className="flex flex-col justify-center shrink-0">
             <h1 className="text-2xl font-black tracking-[0.3em] text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]">
               CONQUEST
             </h1>
@@ -646,32 +646,32 @@ export default function App() {
           {currentUser ? (
             <button
               onClick={() => setShowUserProfile(true)}
-              className="group flex items-center gap-2 text-xs font-mono tracking-widest text-slate-400
-                border-l border-slate-800 pl-4 ml-2 hover:text-cyan-400 transition-colors"
+              className="group flex items-center text-xs font-mono tracking-widest text-slate-400
+                border-l border-slate-800 pl-2 ml-1 md:pl-3 md:ml-2 hover:text-cyan-400 transition-colors whitespace-nowrap gap-1"
               title="Ver perfil de operario"
             >
-              OPERARIO: [ <span className="text-cyan-400 font-bold group-hover:drop-shadow-[0_0_6px_rgba(34,211,238,0.6)] transition-all">{currentUser.username}</span> ]
+              OPERARIO: [ <span className="text-cyan-400 font-bold group-hover:drop-shadow-[0_0_6px_rgba(34,211,238,0.6)] transition-all max-w-[80px] md:max-w-[100px] truncate">{currentUser.username}</span> ]
             </button>
           ) : (
-            <div className="text-xs font-mono tracking-widest text-slate-400 border-l border-slate-800 pl-4 ml-2">
+            <div className="text-xs font-mono tracking-widest text-slate-400 border-l border-slate-800 pl-2 ml-1 md:pl-3 md:ml-2 whitespace-nowrap">
               OPERARIO: [ <span className="text-slate-500 font-bold">INVITADO</span> ]
             </div>
           )}
-          <div className="ml-4 pl-4 border-l border-slate-800 text-xs font-mono text-slate-400">
-            SEDE: [ <span className="text-emerald-400 font-bold">{playerHQ ? playerHQ.nombre.toUpperCase() : "DESCONOCIDA"}</span> ]
+          <div className="ml-2 pl-2 md:ml-3 md:pl-3 border-l border-slate-800 text-xs font-mono text-slate-400 whitespace-nowrap flex items-center">
+            SEDE: [&nbsp;<span className="text-emerald-400 font-bold max-w-[70px] sm:max-w-[100px] md:max-w-[120px] lg:max-w-[150px] xl:max-w-[220px] truncate" title={playerHQ ? playerHQ.nombre.toUpperCase() : "DESCONOCIDA"}>{playerHQ ? playerHQ.nombre.toUpperCase() : "DESCONOCIDA"}</span>&nbsp;]
           </div>
         </div>
         
-        <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6">
-          <div className="text-xs font-bold tracking-widest text-slate-400 flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2.5 md:gap-4 shrink-0">
+          <div className="text-xs font-bold tracking-widest text-slate-400 flex items-center gap-1.5 shrink-0">
             STATUS: 
             <span className={isPlaying ? (speedLevel === 1 ? "text-emerald-500" : speedLevel === 2 ? "text-amber-500" : "text-cyan-400") : "text-rose-500"}>
               {isPlaying ? (speedLevel === 1 ? "SIMULATING [>]" : speedLevel === 2 ? "SIMULATING [>>]" : "SIMULATING [>>>]") : "PAUSED [||]"}
             </span>
           </div>
 
-          <div className="bg-slate-900 px-5 py-2 rounded-sm border border-slate-700/80 shadow-inner flex items-center justify-center min-w-[160px]">
-            <span className="text-digital text-amber-500 text-lg font-bold tracking-wider">
+          <div className="bg-slate-900 px-3 md:px-4 py-1.5 rounded-sm border border-slate-700/80 shadow-inner flex items-center justify-center min-w-[110px] md:min-w-[140px] shrink-0">
+            <span className="text-digital text-amber-500 text-base md:text-lg font-bold tracking-wider">
               {fechaVirtual.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).replace('.', '')}
             </span>
           </div>
