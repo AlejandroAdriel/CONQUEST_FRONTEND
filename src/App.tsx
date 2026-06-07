@@ -149,6 +149,19 @@ export default function App() {
   const diasParaEventoRef = useRef(10 + Math.floor(Math.random() * 6));
   const isPanningRef = useRef(false);
   const transformComponentRef = useRef<any>(null);
+  const techTreeTransformRef = useRef<any>(null);
+
+  // Alinear el Árbol de Habilidades al extremo izquierdo al abrir o cambiar de pestaña
+  useEffect(() => {
+    if (mostrarArbol) {
+      const timer = setTimeout(() => {
+        if (techTreeTransformRef.current) {
+          techTreeTransformRef.current.setTransform(50, -950, 0.6);
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [mostrarArbol, tabIyd]);
 
   const generarStatsPais = (geo: any): Pais => {
     const id = geo.id || "000";
@@ -1073,12 +1086,13 @@ export default function App() {
 
             <div className="flex-1 w-full relative overflow-hidden bg-[#02040a] rounded-lg border border-cyan-900/30 shadow-inner min-h-0">
               <TransformWrapper
+                ref={techTreeTransformRef}
                 minScale={0.2}
                 maxScale={2}
                 initialScale={0.6}
-                centerOnInit={true}
+                centerOnInit={false}
                 limitToBounds={false}
-                wheel={{ step: 0.1 }}
+                wheel={{ step: 0.02, wheelDisabled: false }}
                 panning={{ disabled: false }}
               >
                 <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }}>
