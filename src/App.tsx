@@ -438,6 +438,36 @@ export default function App() {
       }
     });
 
+    // 6b. Procesar cola de investigación (I+D)
+    let habilidadesCambiadas = false;
+    const updatedHabilidades = currentHabilidades.map(hab => {
+      if (hab.enDesarrollo) {
+        const nextTiempo = (hab.tiempoRestante ?? 1) - 1;
+        habilidadesCambiadas = true;
+        if (nextTiempo <= 0) {
+          nuevosMensajes.push({
+            id: Math.random().toString(),
+            fecha: fechaVirtual,
+            titulo: `I+D COMPLETO: ${hab.nombre.toUpperCase()}`,
+            mensaje: `La red de investigación ha descifrado e integrado la patente: ${hab.nombre}. Atributos tácticos y bonificaciones globales activados.`,
+            tipo: "info"
+          });
+          return {
+            ...hab,
+            desbloqueada: true,
+            enDesarrollo: false,
+            tiempoRestante: 0
+          };
+        } else {
+          return {
+            ...hab,
+            tiempoRestante: nextTiempo
+          };
+        }
+      }
+      return hab;
+    });
+
     // Si hay nuevos mensajes, agregarlos al Diario de Guerra
     if (nuevosMensajes.length > 0) {
       setDiarioGuerra(prevDiario => [...nuevosMensajes, ...prevDiario]);
@@ -448,6 +478,9 @@ export default function App() {
     setTropas(nuevasTropas);
     setPresupuesto(currentPresupuesto);
     setAtaquesEnCola(ataquesPendientes);
+    if (habilidadesCambiadas) {
+      setHabilidades(updatedHabilidades);
+    }
 
   }, [fechaVirtual]);
 
@@ -487,8 +520,14 @@ export default function App() {
   };
 
   const handleDesbloquearHabilidad = (habilidad: Habilidad) => {
-    if (habilidad.desbloqueada) return;
-    if (presupuesto < habilidad.costo) {
+    if (habilidad.desbloqueada || habilidad.enDesarrollo) return;
+
+    const conqueredCount = Object.values(paises).filter(p => p.conquistado).length;
+    const multiplicadorBurocracia = 1 + 0.05 * conqueredCount;
+    const costoFinal = Math.floor(habilidad.costo * multiplicadorBurocracia);
+    const tiempoFinal = Math.max(1, Math.floor((habilidad.tiempo_investigacion_dias || 30) * multiplicadorBurocracia));
+
+    if (presupuesto < costoFinal) {
       alert("No hay suficiente presupuesto.");
       return;
     }
@@ -503,14 +542,14 @@ export default function App() {
       return;
     }
 
-    setPresupuesto(prev => prev - habilidad.costo);
-    setHabilidades(prev => prev.map(h => h.id === habilidad.id ? { ...h, desbloqueada: true } : h));
+    setPresupuesto(prev => prev - costoFinal);
+    setHabilidades(prev => prev.map(h => h.id === habilidad.id ? { ...h, enDesarrollo: true, tiempoRestante: tiempoFinal } : h));
     setDiarioGuerra(prev => [{
       id: Math.random().toString(),
       fecha: fechaVirtual,
-      titulo: "INTEGRACIÓN I+D EXITOSA",
-      mensaje: `La red de investigación ha descifrado y asimilado la patente táctica: ${habilidad.nombre}. Atributos actualizados en la base de datos del teatro de operaciones global.`,
-      tipo: "success"
+      titulo: `I+D INICIADO: ${habilidad.nombre.toUpperCase()}`,
+      mensaje: `Se ha asignado presupuesto y comenzado el desarrollo de: ${habilidad.nombre}. Tiempo estimado de integración: T-${tiempoFinal} días. Costo deducido: $${costoFinal.toLocaleString()}.`,
+      tipo: "info"
     }, ...prev]);
   };
 
@@ -1006,107 +1045,159 @@ export default function App() {
       </footer>
 
       {/* MODAL ÁRBOL DE HABILIDADES */}
-      {mostrarArbol && (
-        <div className="fixed inset-0 z-50 flex flex-col p-4 md:p-8 overflow-hidden bg-slate-950/95 backdrop-blur-xl animate-in fade-in">
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-0 justify-between items-center mb-6 border-b border-slate-800 pb-4 shrink-0">
-            <div>
-              <h2 className="text-xl md:text-3xl font-black tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400 flex items-center gap-4">
-                <Cpu className="w-8 h-8 text-cyan-500" />
-                MAINFRAME DE ASIMILACIÓN TÁCTICA
-              </h2>
-              <p className="text-slate-400 mt-2 text-sm tracking-widest uppercase">
-                Presupuesto Asignable: <span className="text-emerald-400 font-mono font-bold">${presupuesto.toLocaleString()}</span>
-              </p>
+      {mostrarArbol && (() => {
+        const conqueredCount = Object.values(paises).filter(p => p.conquistado).length;
+        const multiplicadorBurocracia = 1 + 0.05 * conqueredCount;
+        return (
+          <div className="fixed inset-0 z-50 flex flex-col p-4 md:p-8 overflow-hidden bg-slate-950/95 backdrop-blur-xl animate-in fade-in">
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-0 justify-between items-center mb-6 border-b border-slate-800 pb-4 shrink-0">
+              <div>
+                <h2 className="text-xl md:text-3xl font-black tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400 flex items-center gap-4">
+                  <Cpu className="w-8 h-8 text-cyan-500" />
+                  MAINFRAME DE ASIMILACIÓN TÁCTICA
+                </h2>
+                <p className="text-slate-400 mt-2 text-sm tracking-widest uppercase flex flex-wrap gap-x-6 gap-y-1">
+                  <span>Presupuesto Asignable: <span className="text-emerald-400 font-mono font-bold">${presupuesto.toLocaleString()}</span></span>
+                  <span className="text-purple-400 font-mono">Multiplicador por Expansión: <span className="font-bold">x{multiplicadorBurocracia.toFixed(2)}</span></span>
+                </p>
+              </div>
+              <button onClick={() => setMostrarArbol(false)} className="p-3 bg-slate-900 hover:bg-rose-950/40 hover:text-rose-400 border border-slate-800 rounded-sm text-slate-400 transition-colors">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
             </div>
-            <button onClick={() => setMostrarArbol(false)} className="p-3 bg-slate-900 hover:bg-rose-950/40 hover:text-rose-400 border border-slate-800 rounded-sm text-slate-400 transition-colors">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
-          </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 mb-4 shrink-0">
-            <button onClick={() => setTabIyd("desarrollo")} className={`px-6 py-3 font-bold text-xs uppercase tracking-widest border rounded-sm transition-all ${tabIyd === "desarrollo" ? "bg-cyan-900/50 border-cyan-500 text-cyan-200" : "bg-slate-900/50 border-slate-800 text-slate-500 hover:text-slate-300"}`}>[ ⚙ REDES DE INFRAESTRUCTURA ]</button>
-            <button onClick={() => setTabIyd("militar")} className={`px-6 py-3 font-bold text-xs uppercase tracking-widest border rounded-sm transition-all ${tabIyd === "militar" ? "bg-rose-900/50 border-rose-500 text-rose-200" : "bg-slate-900/50 border-slate-800 text-slate-500 hover:text-slate-300"}`}>[ ⚔ DOCTRINA DE ANIQUILACIÓN ]</button>
-          </div>
+            <div className="flex flex-col sm:flex-row gap-4 mb-4 shrink-0">
+              <button onClick={() => setTabIyd("desarrollo")} className={`px-6 py-3 font-bold text-xs uppercase tracking-widest border rounded-sm transition-all ${tabIyd === "desarrollo" ? "bg-cyan-900/50 border-cyan-500 text-cyan-200" : "bg-slate-900/50 border-slate-800 text-slate-500 hover:text-slate-300"}`}>[ ⚙ REDES DE INFRAESTRUCTURA ]</button>
+              <button onClick={() => setTabIyd("militar")} className={`px-6 py-3 font-bold text-xs uppercase tracking-widest border rounded-sm transition-all ${tabIyd === "militar" ? "bg-rose-900/50 border-rose-500 text-rose-200" : "bg-slate-900/50 border-slate-800 text-slate-500 hover:text-slate-300"}`}>[ ⚔ DOCTRINA DE ANIQUILACIÓN ]</button>
+            </div>
 
-          <div className="flex-1 w-full relative overflow-hidden bg-[#02040a] rounded-lg border border-cyan-900/30 shadow-inner min-h-0">
-            <TransformWrapper
-              minScale={0.2}
-              maxScale={2}
-              initialScale={0.6}
-              centerOnInit={true}
-              limitToBounds={false}
-              wheel={{ step: 0.1 }}
-              panning={{ disabled: false }}
-            >
-              <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }}>
-                <div className="relative w-[6000px] h-[4000px] bg-transparent">
-                  <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
-                    {habilidades.filter(h => h.categoria === tabIyd).flatMap(hab => {
-                      return (hab.prerrequisitos || []).map(preId => {
-                        const pre = habilidades.find(h => h.id === preId);
-                        if (!pre) return null;
-                        const isAvailable = pre.desbloqueada;
-                        return (
-                          <line 
-                            key={`line-${pre.id}-${hab.id}`} 
-                            x1={pre.x + 208} 
-                            y1={pre.y + 45} 
-                            x2={hab.x} 
-                            y2={hab.y + 45} 
-                            stroke={hab.desbloqueada ? "#06b6d4" : isAvailable ? "#0891b2" : "#1e293b"} 
-                            strokeWidth={hab.desbloqueada ? "3" : "2"} 
-                            strokeDasharray={hab.desbloqueada ? "none" : isAvailable ? "none" : "8,8"} 
-                            style={hab.desbloqueada ? { filter: "drop-shadow(0 0 8px #06b6d4)", transition: "all 0.5s ease" } : { transition: "all 0.5s ease" }}
-                          />
-                        );
-                      });
-                    })}
-                  </svg>
-
-                  {habilidades.filter(h => h.categoria === tabIyd).map(hab => {
-                    const canUnlock = !hab.desbloqueada && 
-                      (hab.prerrequisitos.length === 0 || 
-                       hab.prerrequisitos.every(preId => habilidades.find(h => h.id === preId)?.desbloqueada === true));
-                    
-                    return (
-                      <div 
-                        key={hab.id} 
-                        className={`absolute p-3 w-52 rounded-sm border transition-all duration-300 text-xs font-mono z-10 
-                          ${hab.desbloqueada 
-                            ? 'bg-cyan-950/40 border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.3)]' 
-                            : canUnlock 
-                              ? 'bg-slate-900 border-cyan-500 animate-pulse hover:animate-none hover:bg-slate-800 cursor-pointer shadow-[0_0_8px_rgba(6,182,212,0.2)]' 
-                              : 'bg-slate-950 border-slate-800/50 opacity-40 grayscale pointer-events-none'
-                          }`} 
-                        style={{ left: hab.x, top: hab.y }} 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (canUnlock) handleDesbloquearHabilidad(hab);
-                        }}
-                      >
-                        <div className={`font-bold mb-1 truncate ${hab.desbloqueada ? 'text-cyan-50' : canUnlock ? 'text-slate-100' : 'text-slate-600'}`} title={hab.nombre}>{hab.nombre}</div>
-                        <div className="text-[10px] text-cyan-500/80 mb-3 font-semibold">{hab.tipo_bono}</div>
-                        <div className="flex justify-between items-center text-[10px] border-t border-slate-800/80 pt-2 mt-2">
-                          {hab.desbloqueada 
-                            ? <span className="text-cyan-400 font-bold uppercase tracking-wider">Investigado</span> 
-                            : <>
-                                <span className="text-amber-500/80 font-mono">${hab.costo}</span>
-                                {canUnlock 
-                                  ? <span className="text-cyan-400 font-bold uppercase tracking-wider">Investigar</span> 
-                                  : <span className="text-slate-700 uppercase tracking-wider">Bloqueado</span>
-                                }
-                              </>
+            <div className="flex-1 w-full relative overflow-hidden bg-[#02040a] rounded-lg border border-cyan-900/30 shadow-inner min-h-0">
+              <TransformWrapper
+                minScale={0.2}
+                maxScale={2}
+                initialScale={0.6}
+                centerOnInit={true}
+                limitToBounds={false}
+                wheel={{ step: 0.1 }}
+                panning={{ disabled: false }}
+              >
+                <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }}>
+                  <div className="relative w-[6000px] h-[4000px] bg-transparent">
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
+                      {habilidades.filter(h => h.categoria === tabIyd).flatMap(hab => {
+                        return (hab.prerrequisitos || []).map(preId => {
+                          const pre = habilidades.find(h => h.id === preId);
+                          if (!pre) return null;
+                          const isAvailable = pre.desbloqueada;
+                          const isTargetEnDesarrollo = hab.enDesarrollo;
+                          let strokeColor = "#1e293b";
+                          if (hab.desbloqueada) {
+                            strokeColor = "#06b6d4";
+                          } else if (isTargetEnDesarrollo) {
+                            strokeColor = "#a855f7";
+                          } else if (isAvailable) {
+                            strokeColor = "#0891b2";
                           }
+                          return (
+                            <line 
+                              key={`line-${pre.id}-${hab.id}`} 
+                              x1={pre.x + 208} 
+                              y1={pre.y + 45} 
+                              x2={hab.x} 
+                              y2={hab.y + 45} 
+                              stroke={strokeColor} 
+                              strokeWidth={hab.desbloqueada ? "3" : isTargetEnDesarrollo ? "2.5" : "2"} 
+                              strokeDasharray={hab.desbloqueada ? "none" : isTargetEnDesarrollo ? "4,4" : isAvailable ? "none" : "8,8"} 
+                              style={hab.desbloqueada ? { filter: "drop-shadow(0 0 8px #06b6d4)", transition: "all 0.5s ease" } : isTargetEnDesarrollo ? { filter: "drop-shadow(0 0 6px #a855f7)", transition: "all 0.5s ease" } : { transition: "all 0.5s ease" }}
+                            />
+                          );
+                        });
+                      })}
+                    </svg>
+
+                    {habilidades.filter(h => h.categoria === tabIyd).map(hab => {
+                      const canUnlock = !hab.desbloqueada && !hab.enDesarrollo &&
+                        (hab.prerrequisitos.length === 0 || 
+                         hab.prerrequisitos.every(preId => habilidades.find(h => h.id === preId)?.desbloqueada === true));
+                      
+                      const costoFinal = Math.floor(hab.costo * multiplicadorBurocracia);
+                      const totalCalculatedTime = Math.max(1, Math.floor((hab.tiempo_investigacion_dias || 30) * multiplicadorBurocracia));
+                      const progressPercent = hab.enDesarrollo
+                        ? Math.min(100, Math.max(0, ((totalCalculatedTime - (hab.tiempoRestante || 0)) / totalCalculatedTime) * 100))
+                        : 0;
+
+                      let cardClass = "";
+                      if (hab.desbloqueada) {
+                        cardClass = "bg-cyan-950/40 border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.3)]";
+                      } else if (hab.enDesarrollo) {
+                        cardClass = "bg-purple-950/20 border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.25)]";
+                      } else if (canUnlock) {
+                        cardClass = "bg-slate-900 border-cyan-500 animate-pulse hover:animate-none hover:bg-slate-800 cursor-pointer shadow-[0_0_8px_rgba(6,182,212,0.2)]";
+                      } else {
+                        cardClass = "bg-slate-950 border-slate-800/50 opacity-40 grayscale pointer-events-none";
+                      }
+                      
+                      return (
+                        <div 
+                          key={hab.id} 
+                          className={`absolute p-3 w-52 rounded-sm border transition-all duration-300 text-xs font-mono z-10 ${cardClass}`} 
+                          style={{ left: hab.x, top: hab.y }} 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (canUnlock) handleDesbloquearHabilidad(hab);
+                          }}
+                        >
+                          <div className={`font-bold mb-1 truncate ${
+                            hab.desbloqueada 
+                              ? 'text-cyan-50' 
+                              : hab.enDesarrollo
+                                ? 'text-purple-300 font-bold'
+                                : canUnlock 
+                                  ? 'text-slate-100' 
+                                  : 'text-slate-600'
+                          }`} title={hab.nombre}>{hab.nombre}</div>
+                          <div className={`text-[10px] mb-3 font-semibold ${
+                            hab.desbloqueada 
+                              ? 'text-cyan-500/80' 
+                              : hab.enDesarrollo
+                                ? 'text-purple-400/80'
+                                : 'text-cyan-500/80'
+                          }`}>{hab.tipo_bono}</div>
+                          
+                          {/* Progress Bar inside card if enDesarrollo */}
+                          {hab.enDesarrollo && (
+                            <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden mb-2 border border-slate-800/50">
+                              <div className="bg-purple-500 h-full transition-all duration-300" style={{ width: `${progressPercent}%` }} />
+                            </div>
+                          )}
+
+                          <div className="flex justify-between items-center text-[10px] border-t border-slate-800/80 pt-2 mt-2">
+                            {hab.desbloqueada 
+                              ? <span className="text-cyan-400 font-bold uppercase tracking-wider">Investigado</span> 
+                              : hab.enDesarrollo
+                                ? <>
+                                    <span className="text-purple-400 font-bold uppercase tracking-wider font-mono">T-{hab.tiempoRestante} días</span>
+                                    <span className="text-purple-500/80 font-mono">{Math.round(progressPercent)}%</span>
+                                  </>
+                                : <>
+                                    <span className="text-amber-500/80 font-mono">${costoFinal.toLocaleString()}</span>
+                                    {canUnlock 
+                                      ? <span className="text-cyan-400 font-bold uppercase tracking-wider">Investigar</span> 
+                                      : <span className="text-slate-700 uppercase tracking-wider">Bloqueado</span>
+                                    }
+                                  </>
+                            }
+                          </div>
                         </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </TransformComponent>
-            </TransformWrapper>
+                      );
+                    })}
+                  </div>
+                </TransformComponent>
+              </TransformWrapper>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {showSaves && (
         <SaveFilesMenu 
