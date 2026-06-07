@@ -1,16 +1,19 @@
 import { useState, useEffect } from "react";
 import { 
-  Terminal, ShieldAlert, ShieldCheck, Play, Key, Database, Cpu, Wifi, Activity 
+  Terminal, ShieldAlert, ShieldCheck, Play, Key, Database, Cpu, Wifi, Activity, User
 } from "lucide-react";
+import type { OperarioUser } from '../database/mockAPI';
 
 interface StartMenuProps {
   onStartGame: () => void;
   onOpenLogin: () => void;
   onOpenSaves: () => void;
-  isLoggedIn: boolean;
+  onOpenProfile: () => void;
+  currentUser: OperarioUser | null;
 }
 
-export default function StartMenu({ onStartGame, onOpenLogin, onOpenSaves, isLoggedIn }: StartMenuProps) {
+export default function StartMenu({ onStartGame, onOpenLogin, onOpenSaves, onOpenProfile, currentUser }: StartMenuProps) {
+  const isLoggedIn = !!currentUser;
   const [alertMessage, setAlertMessage] = useState("");
   const [alertType, setAlertType] = useState<"success" | "error" | null>(null);
   const [isStartHovered, setIsStartHovered] = useState(false);
@@ -99,7 +102,7 @@ export default function StartMenu({ onStartGame, onOpenLogin, onOpenSaves, isLog
           </div>
         </div>
 
-        <div className="flex items-center gap-6 text-[10px] text-slate-400">
+          <div className="flex items-center gap-6 text-[10px] text-slate-400">
           <div className="flex items-center gap-2">
             <Cpu className="w-3.5 h-3.5 text-cyan-500/80 animate-pulse" />
             <span>NUCLEO: 98.4%</span>
@@ -110,7 +113,9 @@ export default function StartMenu({ onStartGame, onOpenLogin, onOpenSaves, isLog
           </div>
           <div className="flex items-center gap-2">
             <Activity className="w-3.5 h-3.5 text-cyan-500/80" />
-            <span className="text-cyan-400 font-bold uppercase">{isLoggedIn ? "CONECTADO" : "INVITADO"}</span>
+            <span className={`font-bold uppercase ${isLoggedIn ? 'text-emerald-400' : 'text-slate-500'}`}>
+              {isLoggedIn ? currentUser?.username ?? 'CONECTADO' : 'INVITADO'}
+            </span>
           </div>
         </div>
       </header>
@@ -195,17 +200,17 @@ export default function StartMenu({ onStartGame, onOpenLogin, onOpenSaves, isLog
         </div>
 
         <button 
-          onClick={onOpenLogin}
+          onClick={isLoggedIn ? onOpenProfile : onOpenLogin}
           className={`group flex items-center gap-2 text-xs font-bold tracking-widest transition-all py-2 px-4 border rounded-sm ${
             isLoggedIn 
-              ? "text-emerald-400 border-emerald-500/20 bg-emerald-950/10 hover:bg-emerald-900/10" 
+              ? "text-emerald-400 border-emerald-500/20 bg-emerald-950/10 hover:bg-emerald-900/20 hover:border-emerald-400/40" 
               : "text-slate-400 hover:text-cyan-400 border-transparent hover:border-slate-800 bg-slate-950/20"
           }`}
         >
-          <Key className={`w-4 h-4 transition-colors ${
-            isLoggedIn ? "text-emerald-400" : "text-slate-500 group-hover:text-cyan-400"
-          }`} />
-          {isLoggedIn ? "[ OPERARIO AUTENTICADO ]" : "[ ACCESO DE OPERARIO ]"}
+          {isLoggedIn 
+            ? <><User className="w-4 h-4 text-emerald-400" />[ {currentUser?.username ?? 'OPERARIO'} ]</>
+            : <><Key className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 transition-colors" />[ ACCESO DE OPERARIO ]</>
+          }
         </button>
       </footer>
     </div>

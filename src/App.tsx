@@ -8,11 +8,12 @@ import {
   ChevronsRight, Globe, Cpu
 } from "lucide-react";
 import { fetchInitialGameState, fetchRandomEvents, fetchTechTree, fetchCountryStats } from "./database/mockAPI";
-import type { Habilidad } from "./database/mockAPI";
+import type { Habilidad, OperarioUser } from "./database/mockAPI";
 import Login from "./components/Login";
 import StartMenu from "./components/StartMenu";
 import SaveFilesMenu from "./components/SaveFilesMenu";
 import SelectHQ from "./components/SelectHQ";
+import UserProfile from "./components/UserProfile";
 import { geoMiller } from "d3-geo-projection";
 // Geometría del mapa del mundo (TopoJSON)
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
@@ -96,7 +97,8 @@ const getRealEjercito = (isAliado: boolean, population: number, seed: number): n
 };
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<OperarioUser | null>(null);
+  const [showUserProfile, setShowUserProfile] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<'start' | 'login' | 'select_hq' | 'game'>('start');
   const [playerHQ, setPlayerHQ] = useState<{id: string, nombre: string} | null>(null);
   const [showSaves, setShowSaves] = useState(false);
@@ -355,7 +357,8 @@ export default function App() {
           onStartGame={() => setCurrentScreen('select_hq')} 
           onOpenLogin={() => setCurrentScreen('login')} 
           onOpenSaves={() => setShowSaves(true)}
-          isLoggedIn={isAuthenticated} 
+          onOpenProfile={() => setShowUserProfile(true)}
+          currentUser={currentUser}
         />
         {showSaves && (
           <SaveFilesMenu 
@@ -370,6 +373,16 @@ export default function App() {
             }}
           />
         )}
+        {showUserProfile && currentUser && (
+          <UserProfile
+            user={currentUser}
+            onClose={() => setShowUserProfile(false)}
+            onLogout={() => {
+              setCurrentUser(null);
+              setShowUserProfile(false);
+            }}
+          />
+        )}
       </>
     );
   }
@@ -377,8 +390,8 @@ export default function App() {
   if (currentScreen === 'login') {
     return (
       <Login 
-        onLoginSuccess={() => {
-          setIsAuthenticated(true);
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
           setCurrentScreen('start');
         }} 
         onCancel={() => setCurrentScreen('start')} 
@@ -417,9 +430,20 @@ export default function App() {
             </span>
           </div>
 
-          <div className="text-xs font-mono tracking-widest text-slate-400 border-l border-slate-800 pl-4 ml-2">
-            OPERARIO: [ <span className="text-cyan-400 font-bold">{isAuthenticated ? "ALEJANDRO" : "INVITADO"}</span> ]
-          </div>
+          {currentUser ? (
+            <button
+              onClick={() => setShowUserProfile(true)}
+              className="group flex items-center gap-2 text-xs font-mono tracking-widest text-slate-400
+                border-l border-slate-800 pl-4 ml-2 hover:text-cyan-400 transition-colors"
+              title="Ver perfil de operario"
+            >
+              OPERARIO: [ <span className="text-cyan-400 font-bold group-hover:drop-shadow-[0_0_6px_rgba(34,211,238,0.6)] transition-all">{currentUser.username}</span> ]
+            </button>
+          ) : (
+            <div className="text-xs font-mono tracking-widest text-slate-400 border-l border-slate-800 pl-4 ml-2">
+              OPERARIO: [ <span className="text-slate-500 font-bold">INVITADO</span> ]
+            </div>
+          )}
           <div className="ml-4 pl-4 border-l border-slate-800 text-xs font-mono text-slate-400">
             SEDE: [ <span className="text-emerald-400 font-bold">{playerHQ ? playerHQ.nombre.toUpperCase() : "DESCONOCIDA"}</span> ]
           </div>
@@ -948,7 +972,7 @@ export default function App() {
                 <button 
                   onClick={() => {
                     setIsSystemMenuOpen(false);
-                    setIsAuthenticated(false);
+                    setCurrentUser(null);
                     setCurrentScreen('start');
                   }}
                   className="w-full border border-slate-800 hover:border-rose-500 bg-slate-950/50 hover:bg-rose-950/20 text-slate-500 hover:text-rose-500 py-3 px-4 transition-all duration-300 rounded-sm font-bold"
@@ -959,6 +983,27 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+      {showUserProfile && currentUser && (
+        <UserProfile
+          user={currentUser}
+          onClose={() => setShowUserProfile(false)}
+          onLogout={() => {
+            setCurrentUser(null);
+            setShowUserProfile(false);
+            setIsSystemMenuOpen(false);
+            setCurrentScreen('start');
+          }}
+          gameStats={{
+            paisesConquistados: Object.values(paises).filter(p => p.conquistado).length,
+            totalPaises: 177,
+            presupuesto,
+            tropas: tropas.infanteria + tropas.caballeria + tropas.artilleria,
+            diasCampana: Math.floor(
+              (fechaVirtual.getTime() - new Date(2099, 10, 12).getTime()) / (1000 * 3600 * 24)
+            )
+          }}
+        />
       )}
     </div>
   );
