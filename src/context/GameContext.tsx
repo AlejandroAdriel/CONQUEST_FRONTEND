@@ -1,6 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import type { DecayingNotification, CriticalEvent } from '../types/tacticalEvents';
 
+export interface ActionLogEntry {
+  id: string;
+  timestamp: Date;
+  action: string;
+  details: string;
+}
+
 interface GameContextType {
   oro: number;
   tropas: any;
@@ -8,6 +15,7 @@ interface GameContextType {
   notifications: DecayingNotification[];
   activeCriticalEvent: CriticalEvent | null;
   isPaused: boolean;
+  actionLog: ActionLogEntry[];
   setOro: (val: number | ((prev: number) => number)) => void;
   setTropas: (val: any | ((prev: any) => any)) => void;
   setPaises: (val: any | ((prev: any) => any)) => void;
@@ -20,6 +28,7 @@ interface GameContextType {
   pendingCriticalEvent: CriticalEvent | null;
   criticalCountdown: number | null;
   triggerCriticalEventModal: (event: CriticalEvent) => void;
+  logAction: (action: string, details: string) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -28,6 +37,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [notifications, setNotifications] = useState<DecayingNotification[]>([]);
   const [activeCriticalEvent, setActiveCriticalEvent] = useState<CriticalEvent | null>(null);
+  const [actionLog, setActionLog] = useState<ActionLogEntry[]>([]);
   
   const bridgeRef = useRef<{
     presupuesto: number;
@@ -82,6 +92,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addNotification = (n: DecayingNotification) => setNotifications(prev => [...prev, n]);
   const removeNotification = (id: string) => setNotifications(prev => prev.filter(n => n.id !== id));
 
+  const logAction = (action: string, details: string) => {
+    setActionLog(prev => [...prev, {
+      id: Math.random().toString(),
+      timestamp: new Date(),
+      action,
+      details
+    }]);
+  };
+
   const triggerCriticalEvent = (event: CriticalEvent) => {
     setIsPaused(true); 
     setActiveCriticalEvent(event);
@@ -101,6 +120,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     notifications,
     activeCriticalEvent,
     isPaused,
+    actionLog,
     setOro: (val: any) => bridgeRef.current?.setPresupuesto(val),
     setTropas: (val: any) => bridgeRef.current?.setTropas(val),
     setPaises: (val: any) => bridgeRef.current?.setPaises(val),
@@ -110,6 +130,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     triggerCriticalEvent,
     resolveCriticalEvent,
     registerBridge,
+    logAction,
     triggerCriticalEventModal: (event: CriticalEvent) => {
       triggerCriticalEvent(event);
       if (bridgeRef.current?.setCriticalCountdown) {

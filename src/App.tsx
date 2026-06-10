@@ -17,6 +17,7 @@ import StartMenu from "./components/StartMenu";
 import SaveFilesMenu from "./components/SaveFilesMenu";
 import SelectHQ from "./components/SelectHQ";
 import UserProfile from "./components/UserProfile";
+import { ActionLog } from "./components/ActionLog";
 import { geoMiller } from "d3-geo-projection";
 // Geometría del mapa del mundo (TopoJSON)
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
@@ -201,6 +202,7 @@ export default function App() {
   const [playerHQ, setPlayerHQ] = useState<{ id: string, nombre: string } | null>(null);
   const [showSaves, setShowSaves] = useState(false);
   const [isSystemMenuOpen, setIsSystemMenuOpen] = useState(false);
+  const [showActionLog, setShowActionLog] = useState(false);
   const [fechaVirtual, setFechaVirtual] = useState(new Date(2099, 10, 12));
   const [isPlaying, setIsPlaying] = useState(false);
   const [speedLevel, setSpeedLevel] = useState<1 | 2 | 3>(1);
@@ -212,7 +214,7 @@ export default function App() {
   const [paisesInicializados, setPaisesInicializados] = useState(false);
 
   const gameState = useGame();
-  const { addNotification, triggerCriticalEvent, isPaused } = gameState;
+  const { addNotification, triggerCriticalEvent, isPaused, logAction } = gameState;
 
   const [criticalCountdown, setCriticalCountdown] = useState<number | null>(null);
   const [pendingCriticalEvent, setPendingCriticalEvent] = useState<any | null>(null);
@@ -264,7 +266,7 @@ export default function App() {
   const [mostrarArbol, setMostrarArbol] = useState(false);
   const [tabIyd, setTabIyd] = useState<"desarrollo" | "militar">("desarrollo");
   const diasParaEventoRef = useRef(10 + Math.floor(Math.random() * 6));
-  const diasParaEventoEspecialRef = useRef(15 + Math.floor(Math.random() * 10)); // Cada 15 a 25 días
+  const diasParaEventoEspecialRef = useRef(30 + Math.floor(Math.random() * 20)); // Cada 30 a 50 días (mitad de frecuencia)
   const isPanningRef = useRef(false);
   const transformComponentRef = useRef<any>(null);
   const techTreeTransformRef = useRef<any>(null);
@@ -434,6 +436,12 @@ export default function App() {
 
     return () => clearTimeout(timer);
   }, [criticalCountdown, pendingCriticalEvent]);
+
+  // Helper para valores proporcionales al presupuesto
+  const getProportionalValue = (basePercent: number = 0.1, minValue: number = 1000): number => {
+    const value = Math.floor(presupuestoRef.current * basePercent);
+    return Math.max(value, minValue);
+  };
 
   const lanzarEventoEspecial = () => {
     const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes que antes
@@ -848,16 +856,19 @@ export default function App() {
         duration: 35000,
         timeLeft: 35000,
         type: 'warning' as const,
-        costDescription: "800€ de refrigerante líquido",
-        benefitDescription: "+2,000€ netos (Beneficio neto +1,200€)",
+        costDescription: `${Math.floor(getProportionalValue(0.05))}€ de refrigerante líquido`,
+        benefitDescription: `+${Math.floor(getProportionalValue(0.15))}€ netos`,
         options: [
           {
             id: "net_choice1",
             label: "Instalar disipadores criogénicos",
-            consequence: "-800€, +2,000€ netos",
+            consequence: `${Math.floor(getProportionalValue(0.05))}€ invertidos, ganancia neta de ${Math.floor(getProportionalValue(0.1))}€`,
             style: 'positive',
             action: (gState: any) => {
-              gState.setOro((o: number) => o + 2000 - 800);
+              const cost = getProportionalValue(0.05);
+              const gain = getProportionalValue(0.15);
+              gState.setOro((o: number) => o + gain - cost);
+              logAction('Evento Importante', `Instalación de disipadores criogénicos: -${cost}€, +${gain}€`);
             }
           },
           {
@@ -875,16 +886,17 @@ export default function App() {
                   return copy;
                 });
               }
+              logAction('Evento Importante', 'Reducción de cargas de criptominería');
             }
           }
         ],
         onExpire: (gState: any) => {
-          // Penalización: daña economía del HQ
+          // Penalización menos severa
           if (hqId) {
             gState.setPaises((prev: any) => {
               const copy = { ...prev };
               if (copy[hqId]) {
-                copy[hqId] = { ...copy[hqId], economia: Math.floor(copy[hqId].economia * 0.9) };
+                copy[hqId] = { ...copy[hqId], economia: Math.floor(copy[hqId].economia * 0.95) };
               }
               return copy;
             });
@@ -901,27 +913,31 @@ export default function App() {
         duration: 40000,
         timeLeft: 40000,
         type: 'info' as const,
-        costDescription: "1,200€ en créditos",
+        costDescription: `${Math.floor(getProportionalValue(0.06))}€ en créditos`,
         benefitDescription: "+15 divisiones de Artillería pesada",
         options: [
           {
             id: "black_choice1",
             label: "Abastecer artillería completa",
-            consequence: "-1,200€, +15 artillería",
+            consequence: `${Math.floor(getProportionalValue(0.06))}€ invertidos, +15 artillería`,
             style: 'positive',
             action: (gState: any) => {
-              gState.setOro((o: number) => Math.max(0, o - 1200));
+              const cost = getProportionalValue(0.06);
+              gState.setOro((o: number) => Math.max(0, o - cost));
               gState.setTropas((t: any) => ({ ...t, artilleria: t.artilleria + 15 }));
+              logAction('Evento Importante', `Compra de artillería de plasma: -${cost}€`);
             }
           },
           {
             id: "black_choice2",
             label: "Negociar un cargamento más pequeño",
-            consequence: "-700€, +8 artillería",
+            consequence: `${Math.floor(getProportionalValue(0.03))}€ invertidos, +8 artillería`,
             style: 'tradeoff',
             action: (gState: any) => {
-              gState.setOro((o: number) => Math.max(0, o - 700));
+              const cost = getProportionalValue(0.03);
+              gState.setOro((o: number) => Math.max(0, o - cost));
               gState.setTropas((t: any) => ({ ...t, artilleria: t.artilleria + 8 }));
+              logAction('Evento Importante', `Compra pequeña de plasma: -${cost}€`);
             }
           }
         ]
@@ -936,13 +952,13 @@ export default function App() {
         duration: 45000,
         timeLeft: 45000,
         type: 'benefit' as const,
-        costDescription: "20% de Población de tu Cuartel General",
+        costDescription: "15% de Población de tu Cuartel General",
         benefitDescription: "+350 Infanterías y +5 Caballerías blindadas",
         options: [
           {
             id: "nano_choice1",
             label: "Permitir las pruebas de combate",
-            consequence: "+350 infantería, +5 caballería, -20% población",
+            consequence: "+350 infantería, +5 caballería, -15% población",
             style: 'tradeoff',
             action: (gState: any) => {
               gState.setTropas((t: any) => ({ ...t, infanteria: t.infanteria + 350, caballeria: t.caballeria + 5 }));
@@ -950,11 +966,12 @@ export default function App() {
                 gState.setPaises((prev: any) => {
                   const copy = { ...prev };
                   if (copy[hqId]) {
-                    copy[hqId] = { ...copy[hqId], poblacion: Math.floor(copy[hqId].poblacion * 0.8) };
+                    copy[hqId] = { ...copy[hqId], poblacion: Math.floor(copy[hqId].poblacion * 0.85) };
                   }
                   return copy;
                 });
               }
+              logAction('Evento Importante', 'Experimento nano autorizado: +350 infantería, -15% población');
             }
           },
           {
@@ -962,7 +979,9 @@ export default function App() {
             label: "Rechazar el experimento",
             consequence: "Preservas población, sin ganancia de tropas",
             style: 'negative',
-            action: () => { }
+            action: () => {
+              logAction('Evento Importante', 'Rechazado experimento nano');
+            }
           }
         ]
       });
@@ -978,23 +997,24 @@ export default function App() {
           duration: 35000,
           timeLeft: 35000,
           type: 'alert' as const,
-          costDescription: "Economía de colony -10%",
+          costDescription: "Economía de colony -8%",
           benefitDescription: "+600 Infantería reclutada de emergencia",
           options: [
             {
               id: "ration_choice1",
               label: "Desviar energía al frente militar",
-              consequence: "-10% economía, +600 infantería",
+              consequence: "-8% economía, +600 infantería",
               style: 'tradeoff',
               action: (gState: any) => {
                 gState.setTropas((t: any) => ({ ...t, infanteria: t.infanteria + 600 }));
                 gState.setPaises((prev: any) => {
                   const copy = { ...prev };
                   if (copy[targetAllied.id]) {
-                    copy[targetAllied.id] = { ...copy[targetAllied.id], economia: Math.floor(copy[targetAllied.id].economia * 0.9) };
+                    copy[targetAllied.id] = { ...copy[targetAllied.id], economia: Math.floor(copy[targetAllied.id].economia * 0.92) };
                   }
                   return copy;
                 });
+                logAction('Evento Importante', `Racionamiento energético - Desviación militar: +600 infantería en ${targetAllied.nombre}`);
               }
             },
             {
@@ -1002,15 +1022,17 @@ export default function App() {
               label: "Mantener servicios civiles intactos",
               consequence: "Sin tropas adicionales, riesgo de disturbios",
               style: 'negative',
-              action: () => { }
+              action: () => {
+                logAction('Evento Importante', `Racionamiento energético rechazado en ${targetAllied.nombre}`);
+              }
             }
           ],
           onExpire: (gState: any) => {
-            // Penalización: disturbios reducen población
+            // Penalización más leve: disturbios reducen población menos
             gState.setPaises((prev: any) => {
               const copy = { ...prev };
               if (copy[targetAllied.id]) {
-                copy[targetAllied.id] = { ...copy[targetAllied.id], poblacion: Math.floor(copy[targetAllied.id].poblacion * 0.95) };
+                copy[targetAllied.id] = { ...copy[targetAllied.id], poblacion: Math.floor(copy[targetAllied.id].poblacion * 0.97) };
               }
               return copy;
             });
@@ -1030,23 +1052,25 @@ export default function App() {
           duration: 40000,
           timeLeft: 40000,
           type: 'info' as const,
-          costDescription: "-200€ en coste de redirección",
-          benefitDescription: "Ejército defensivo de enemigo -25% (Mainframe vulnerable)",
+          costDescription: `${Math.floor(getProportionalValue(0.02))}€ en coste de redirección`,
+          benefitDescription: "Ejército defensivo de enemigo -20% (Mainframe vulnerable)",
           options: [
             {
               id: "sat_choice1",
               label: "Redirigir satélites sobre el objetivo",
-              consequence: "-200€, ejército enemigo -25%",
+              consequence: `${Math.floor(getProportionalValue(0.02))}€, ejército enemigo -20%`,
               style: 'positive',
               action: (gState: any) => {
-                gState.setOro((o: number) => Math.max(0, o - 200));
+                const cost = getProportionalValue(0.02);
+                gState.setOro((o: number) => Math.max(0, o - cost));
                 gState.setPaises((prev: any) => {
                   const copy = { ...prev };
                   if (copy[targetHostile.id]) {
-                    copy[targetHostile.id] = { ...copy[targetHostile.id], ejercito_ia: Math.floor(copy[targetHostile.id].ejercito_ia * 0.75) };
+                    copy[targetHostile.id] = { ...copy[targetHostile.id], ejercito_ia: Math.floor(copy[targetHostile.id].ejercito_ia * 0.8) };
                   }
                   return copy;
                 });
+                logAction('Evento Importante', `Redirección satelital: -${cost}€, -20% ejército de ${targetHostile.nombre}`);
               }
             },
             {
@@ -1054,11 +1078,13 @@ export default function App() {
               label: "Mantener satélites en patrulla defensiva",
               consequence: "Sin coste inmediato, riesgo de perder ventaja táctica",
               style: 'negative',
-              action: () => { }
+              action: () => {
+                logAction('Evento Importante', 'Patrulla defensiva de satélites mantenida');
+              }
             }
           ],
           onExpire: (gState: any) => {
-            // Penalización: hackeo reduce economía del HQ
+            // Penalización más leve: hackeo reduce economía del HQ
             if (hqId) {
               gState.setPaises((prev: any) => {
                 const copy = { ...prev };
@@ -1276,7 +1302,7 @@ export default function App() {
     // 5b. Procesamiento de Eventos Especiales (Interactivos o Críticos)
     diasParaEventoEspecialRef.current -= 1;
     if (diasParaEventoEspecialRef.current <= 0) {
-      diasParaEventoEspecialRef.current = 15 + Math.floor(Math.random() * 10);
+      diasParaEventoEspecialRef.current = 30 + Math.floor(Math.random() * 20);
       lanzarEventoEspecial();
     }
 
@@ -1747,6 +1773,14 @@ export default function App() {
               <ChevronsRight className="w-4.5 h-4.5 fill-current" />
             </button>
           </div>
+
+          <button
+            onClick={() => setShowActionLog(true)}
+            className="text-xs font-bold text-slate-400 hover:text-amber-400 transition-colors py-2 px-4 border border-slate-700 hover:border-amber-500 bg-slate-900/80 rounded-sm"
+            title="Abrir registro de acciones"
+          >
+            [ LOG ]
+          </button>
 
           <button
             onClick={() => {
@@ -2636,6 +2670,7 @@ export default function App() {
         />
       )}
       <CriticalEventModal />
+      <ActionLog isOpen={showActionLog} onClose={() => setShowActionLog(false)} />
     </div>
   );
 }
