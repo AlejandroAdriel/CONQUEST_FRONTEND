@@ -50,7 +50,7 @@ export const TacticalNotifications: React.FC = () => {
               onClick={() => {
                 item.onAccept(gameState);
                 // Filtrar el elemento del estado local de inmediato tras interactuar
-                gameState.setOro(o => o); // Gatillo de refresco seguro
+                gameState.removeNotification(item.id);
               }}
               className="mt-2 w-full bg-slate-950/80 hover:bg-slate-900 border border-slate-800 text-center py-1 text-slate-300 font-bold tracking-wide transition-colors cursor-pointer text-[10px] uppercase hover:border-slate-600"
             >

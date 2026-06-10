@@ -1,3 +1,6 @@
+import { useGame } from "./context/GameContext";
+import { TacticalNotifications } from "./components/TacticalNotifications";
+import { CriticalEventModal } from "./components/CriticalEventModal";
 import { useState, useEffect, useRef } from "react";
 import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
@@ -120,6 +123,22 @@ export default function App() {
   const [ataquesEnCola, setAtaquesEnCola] = useState<AtaqueEnCola[]>([]);
   const [paisesInicializados, setPaisesInicializados] = useState(false);
 
+  const gameState = useGame();
+  const { addNotification, triggerCriticalEvent, isPaused } = gameState;
+
+  // Registrar el bridge en cada renderizado para pasar valores actualizados al context
+  gameState.registerBridge({
+    presupuesto,
+    setPresupuesto,
+    tropas,
+    setTropas,
+    paises,
+    setPaises
+  });
+
+  const [criticalCountdown, setCriticalCountdown] = useState<number | null>(null);
+  const [pendingCriticalEvent, setPendingCriticalEvent] = useState<any | null>(null);
+
   // Referencias para evitar cierres obsoletos en la simulación
   const presupuestoRef = useRef(presupuesto);
   const tropasRef = useRef(tropas);
@@ -147,6 +166,7 @@ export default function App() {
   const [mostrarArbol, setMostrarArbol] = useState(false);
   const [tabIyd, setTabIyd] = useState<"desarrollo" | "militar">("desarrollo");
   const diasParaEventoRef = useRef(10 + Math.floor(Math.random() * 6));
+  const diasParaEventoEspecialRef = useRef(15 + Math.floor(Math.random() * 10)); // Cada 15 a 25 días
   const isPanningRef = useRef(false);
   const transformComponentRef = useRef<any>(null);
   const techTreeTransformRef = useRef<any>(null);
@@ -278,8 +298,577 @@ export default function App() {
     }
   }, [currentScreen, playerHQ, paisesInicializados]);
 
+  const isSimulationPaused = isPaused || (criticalCountdown !== null);
+
   useEffect(() => {
-    if (!isPlaying) return;
+    if (criticalCountdown === null) return;
+
+    if (criticalCountdown === 0) {
+      if (pendingCriticalEvent) {
+        triggerCriticalEvent(pendingCriticalEvent);
+      }
+      setCriticalCountdown(null);
+      setPendingCriticalEvent(null);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setCriticalCountdown(prev => (prev !== null ? prev - 1 : null));
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [criticalCountdown, pendingCriticalEvent, triggerCriticalEvent]);
+
+  const lanzarEventoEspecial = () => {
+    const isCritical = Math.random() < 0.5; // 50% de probabilidad de crítico vs temporal
+
+    // Obtener listas de países dinámicamente
+    const currentPaises = { ...paisesRef.current };
+    const allied = Object.values(currentPaises).filter(p => p.conquistado);
+    const hostile = Object.values(currentPaises).filter(p => !p.conquistado);
+    const hqId = playerHQ?.id;
+
+    if (isCritical) {
+      // Lista de eventos críticos posibles
+      const criticalTemplates = [];
+
+      // 1. CORP_MERGER_OFFER
+      criticalTemplates.push({
+        id: Math.random().toString(),
+        code: "CORP_MERGER_OFFER",
+        title: "PROPUESTA DE FUSIÓN DE CORP. BIOMÉDICA",
+        description: `La corporación Arasaka ofrece una inyección inmediata de capital a cambio de adquirir la exclusividad de tus laboratorios del cuartel general en ${playerHQ?.nombre || 'tu sede'}.`,
+        choices: [
+          {
+            id: "choice1_1",
+            label: "Firmar acuerdo corporativo",
+            consequence: "+5,000€, +200 Infantería, Economía HQ -15%",
+            action: (gState: any) => {
+              gState.setOro((o: number) => o + 5000);
+              gState.setTropas((t: any) => ({ ...t, infanteria: t.infanteria + 200 }));
+              if (hqId && currentPaises[hqId]) {
+                gState.setPaises((prev: any) => {
+                  const copy = { ...prev };
+                  if (copy[hqId]) {
+                    copy[hqId] = { ...copy[hqId], economia: Math.floor(copy[hqId].economia * 0.85) };
+                  }
+                  return copy;
+                });
+              }
+            }
+          },
+          {
+            id: "choice1_2",
+            label: "Rechazar interferencia externa",
+            consequence: "-800€ por aranceles punitivos corporativos",
+            action: (gState: any) => {
+              gState.setOro((o: number) => Math.max(0, o - 800));
+            }
+          }
+        ]
+      });
+
+      // 2. NANOBOT_OUTBREAK
+      criticalTemplates.push({
+        id: Math.random().toString(),
+        code: "NANOBOT_OUTBREAK",
+        title: "BROTE DE NANOBOTS DESCONTROLADOS",
+        description: `Se detecta una replicación descontrolada de nanobots médicos obsoletos en la red de abastecimiento del Cuartel General. Se requiere desinfección inmediata.`,
+        choices: [
+          {
+            id: "choice2_1",
+            label: "Desplegar contención armada",
+            consequence: "-150 Infantería (cuarentena estricta), Población a salvo",
+            action: (gState: any) => {
+              gState.setTropas((t: any) => ({ ...t, infanteria: Math.max(0, t.infanteria - 150) }));
+            }
+          },
+          {
+            id: "choice2_2",
+            label: "Emitir pulso EMP de alta potencia",
+            consequence: "-1,200€ en coste operativo del pulso",
+            action: (gState: any) => {
+              gState.setOro((o: number) => Math.max(0, o - 1200));
+            }
+          },
+          {
+            id: "choice2_3",
+            label: "Ignorar brote temporalmente",
+            consequence: "Población HQ -20%, Economía HQ -10%",
+            action: (gState: any) => {
+              if (hqId && currentPaises[hqId]) {
+                gState.setPaises((prev: any) => {
+                  const copy = { ...prev };
+                  if (copy[hqId]) {
+                    copy[hqId] = {
+                      ...copy[hqId],
+                      poblacion: Math.floor(copy[hqId].poblacion * 0.8),
+                      economia: Math.floor(copy[hqId].economia * 0.9)
+                    };
+                  }
+                  return copy;
+                });
+              }
+            }
+          }
+        ]
+      });
+
+      // 3. UNION_SABOTAGE
+      criticalTemplates.push({
+        id: Math.random().toString(),
+        code: "UNION_SABOTAGE",
+        title: "SABOTAJE SINDICAL EN MATRIZ ENERGÉTICA",
+        description: `Un sindicato de operarios cibernéticos ha bloqueado la red de enfriamiento de reactores demandando subsidios salariales.`,
+        choices: [
+          {
+            id: "choice3_1",
+            label: "Subsanar demandas del sindicato",
+            consequence: "-1,000€ de presupuesto, Economía HQ +5% por optimización",
+            action: (gState: any) => {
+              gState.setOro((o: number) => Math.max(0, o - 1000));
+              if (hqId && currentPaises[hqId]) {
+                gState.setPaises((prev: any) => {
+                  const copy = { ...prev };
+                  if (copy[hqId]) {
+                    copy[hqId] = { ...copy[hqId], economia: Math.floor(copy[hqId].economia * 1.05) };
+                  }
+                  return copy;
+                });
+              }
+            }
+          },
+          {
+            id: "choice3_2",
+            label: "Autorizar disolución táctica armada",
+            consequence: "-80 Infantería por bajas civiles, Economía HQ -5%",
+            action: (gState: any) => {
+              gState.setTropas((t: any) => ({ ...t, infanteria: Math.max(0, t.infanteria - 80) }));
+              if (hqId && currentPaises[hqId]) {
+                gState.setPaises((prev: any) => {
+                  const copy = { ...prev };
+                  if (copy[hqId]) {
+                    copy[hqId] = { ...copy[hqId], economia: Math.floor(copy[hqId].economia * 0.95) };
+                  }
+                  return copy;
+                });
+              }
+            }
+          }
+        ]
+      });
+
+      // 4. TACTICAL_ALLIANCE_OFFER
+      if (hostile.length > 0) {
+        const targetCountry = hostile[Math.floor(Math.random() * hostile.length)];
+        criticalTemplates.push({
+          id: Math.random().toString(),
+          code: "TACTICAL_ALLIANCE_OFFER",
+          title: `OFERTA DE ANEXIÓN PACÍFICA: ${targetCountry.nombre.toUpperCase()}`,
+          description: `Diplomáticos de ${targetCountry.nombre} ofrecen desactivar sus cortafuegos y unirse a tu coalición a cambio de una inyección de desarrollo tecnológico.`,
+          choices: [
+            {
+              id: "choice4_1",
+              label: `Asimilar pacíficamente a ${targetCountry.nombre}`,
+              consequence: `-2,500€, ${targetCountry.nombre} se une como aliado`,
+              action: (gState: any) => {
+                gState.setOro((o: number) => Math.max(0, o - 2500));
+                gState.setPaises((prev: any) => {
+                  const copy = { ...prev };
+                  if (copy[targetCountry.id]) {
+                    copy[targetCountry.id] = { ...copy[targetCountry.id], conquistado: true, ejercito_ia: 0 };
+                  }
+                  return copy;
+                });
+              }
+            },
+            {
+              id: "choice4_2",
+              label: "Rechazar y mantener hostilidad",
+              consequence: `Ejército defensivo de ${targetCountry.nombre} aumenta +30%`,
+              action: (gState: any) => {
+                gState.setPaises((prev: any) => {
+                  const copy = { ...prev };
+                  if (copy[targetCountry.id]) {
+                    copy[targetCountry.id] = { ...copy[targetCountry.id], ejercito_ia: Math.floor(copy[targetCountry.id].ejercito_ia * 1.3) };
+                  }
+                  return copy;
+                });
+              }
+            }
+          ]
+        });
+      }
+
+      // 5. SPY_NETWORK_LEAK
+      if (hostile.length > 0) {
+        const targetCountry = hostile[Math.floor(Math.random() * hostile.length)];
+        criticalTemplates.push({
+          id: Math.random().toString(),
+          code: "SPY_NETWORK_LEAK",
+          title: `INFILTRACIÓN RED DE DATOS: ${targetCountry.nombre.toUpperCase()}`,
+          description: `Agentes encubiertos detectan una brecha crítica en el mainframe defensivo de ${targetCountry.nombre}. Podemos ejecutar un hackeo masivo o monetizar la información.`,
+          choices: [
+            {
+              id: "choice5_1",
+              label: "Infiltrar virus desestabilizador",
+              consequence: "-1,200€, Fuerza defensiva enemiga se reduce un 60%",
+              action: (gState: any) => {
+                gState.setOro((o: number) => Math.max(0, o - 1200));
+                gState.setPaises((prev: any) => {
+                  const copy = { ...prev };
+                  if (copy[targetCountry.id]) {
+                    copy[targetCountry.id] = { ...copy[targetCountry.id], ejercito_ia: Math.floor(copy[targetCountry.id].ejercito_ia * 0.4) };
+                  }
+                  return copy;
+                });
+              }
+            },
+            {
+              id: "choice5_2",
+              label: "Vender coordenadas en el mercado negro",
+              consequence: "+2,000€, Defensa enemiga aumenta +20% por parches",
+              action: (gState: any) => {
+                gState.setOro((o: number) => o + 2000);
+                gState.setPaises((prev: any) => {
+                  const copy = { ...prev };
+                  if (copy[targetCountry.id]) {
+                    copy[targetCountry.id] = { ...copy[targetCountry.id], ejercito_ia: Math.floor(copy[targetCountry.id].ejercito_ia * 1.2) };
+                  }
+                  return copy;
+                });
+              }
+            }
+          ]
+        });
+      }
+
+      // 6. BORDER_MOBILIZATION
+      if (allied.length > 0 && hostile.length > 0) {
+        const targetHostile = hostile[Math.floor(Math.random() * hostile.length)];
+        const targetAllied = allied[Math.floor(Math.random() * allied.length)];
+        criticalTemplates.push({
+          id: Math.random().toString(),
+          code: "BORDER_MOBILIZATION",
+          title: "MOVILIZACIÓN HOSTIL DETECTADA",
+          description: `Sensores satelitales revelan que ${targetHostile.nombre} está acumulando blindados en la frontera con tu territorio de ${targetAllied.nombre}.`,
+          choices: [
+            {
+              id: "choice6_1",
+              label: "Lanzar ataque preventivo rápido",
+              consequence: "-250 Infantería de reserva, Ejército de IA hostil -50%",
+              action: (gState: any) => {
+                gState.setTropas((t: any) => ({ ...t, infanteria: Math.max(0, t.infanteria - 250) }));
+                gState.setPaises((prev: any) => {
+                  const copy = { ...prev };
+                  if (copy[targetHostile.id]) {
+                    copy[targetHostile.id] = { ...copy[targetHostile.id], ejercito_ia: Math.floor(copy[targetHostile.id].ejercito_ia * 0.5) };
+                  }
+                  return copy;
+                });
+              }
+            },
+            {
+              id: "choice6_2",
+              label: "Comprar pacto de no agresión",
+              consequence: "-1,500€ de soborno diplomático directo",
+              action: (gState: any) => {
+                gState.setOro((o: number) => Math.max(0, o - 1500));
+              }
+            },
+            {
+              id: "choice6_3",
+              label: `Fortificar fronteras de ${targetAllied.nombre}`,
+              consequence: `-800€, Economía de ${targetAllied.nombre} -5%`,
+              action: (gState: any) => {
+                gState.setOro((o: number) => Math.max(0, o - 800));
+                gState.setPaises((prev: any) => {
+                  const copy = { ...prev };
+                  if (copy[targetAllied.id]) {
+                    copy[targetAllied.id] = { ...copy[targetAllied.id], economia: Math.floor(copy[targetAllied.id].economia * 0.95) };
+                  }
+                  return copy;
+                });
+              }
+            }
+          ]
+        });
+      }
+
+      // 7. BORDER_SMUGGLING_RAID
+      if (allied.length > 0 && hostile.length > 0) {
+        const targetAllied = allied[Math.floor(Math.random() * allied.length)];
+        const targetHostile = hostile[Math.floor(Math.random() * hostile.length)];
+        criticalTemplates.push({
+          id: Math.random().toString(),
+          code: "BORDER_SMUGGLING_RAID",
+          title: `REDADA DE CONTRABANDO EN ${targetAllied.nombre.toUpperCase()}`,
+          description: `Tus patrullas de frontera en ${targetAllied.nombre} han interceptado un contrabando masivo de implantes militares con destino al gobierno hostil de ${targetHostile.nombre}.`,
+          choices: [
+            {
+              id: "choice7_1",
+              label: "Confiscar y rearmar reservas",
+              consequence: "+150 Infanterías, +5 Caballerías, Economía de colony -5% por represalias",
+              action: (gState: any) => {
+                gState.setTropas((t: any) => ({ ...t, infanteria: t.infanteria + 150, caballeria: t.caballeria + 5 }));
+                gState.setPaises((prev: any) => {
+                  const copy = { ...prev };
+                  if (copy[targetAllied.id]) {
+                    copy[targetAllied.id] = { ...copy[targetAllied.id], economia: Math.floor(copy[targetAllied.id].economia * 0.95) };
+                  }
+                  return copy;
+                });
+              }
+            },
+            {
+              id: "choice7_2",
+              label: "Dejar pasar por soborno diplomático",
+              consequence: "+2,000€ de soborno, Ejército de IA de enemigo +25%",
+              action: (gState: any) => {
+                gState.setOro((o: number) => o + 2000);
+                gState.setPaises((prev: any) => {
+                  const copy = { ...prev };
+                  if (copy[targetHostile.id]) {
+                    copy[targetHostile.id] = { ...copy[targetHostile.id], ejercito_ia: Math.floor(copy[targetHostile.id].ejercito_ia * 1.25) };
+                  }
+                  return copy;
+                });
+              }
+            },
+            {
+              id: "choice7_3",
+              label: "Destruir el cargamento públicamente",
+              consequence: "Economía de colony +5% por prestigio civil",
+              action: (gState: any) => {
+                gState.setPaises((prev: any) => {
+                  const copy = { ...prev };
+                  if (copy[targetAllied.id]) {
+                    copy[targetAllied.id] = { ...copy[targetAllied.id], economia: Math.floor(copy[targetAllied.id].economia * 1.05) };
+                  }
+                  return copy;
+                });
+              }
+            }
+          ]
+        });
+      }
+
+      // 8. DISSIDENT_TREATY
+      if (allied.length > 0 && hostile.length > 0) {
+        const targetAllied = allied[Math.floor(Math.random() * allied.length)];
+        const targetHostile = hostile[Math.floor(Math.random() * hostile.length)];
+        criticalTemplates.push({
+          id: Math.random().toString(),
+          code: "DISSIDENT_TREATY",
+          title: "PACTO CON LA DISIDENCIA GEOPOLÍTICA",
+          description: `Líderes insurgentes perseguidos por el régimen de ${targetHostile.nombre} solicitan asilo político y financiamiento secreto en tu territorio aliado de ${targetAllied.nombre}.`,
+          choices: [
+            {
+              id: "choice8_1",
+              label: "Patrocinar la insurgencia armada",
+              consequence: "-1,500€, Ejército enemigo -50% (Guerra Civil), Pierdes 50 Infanterías por escaramuzas",
+              action: (gState: any) => {
+                gState.setOro((o: number) => Math.max(0, o - 1500));
+                gState.setTropas((t: any) => ({ ...t, infanteria: Math.max(0, t.infanteria - 50) }));
+                gState.setPaises((prev: any) => {
+                  const copy = { ...prev };
+                  if (copy[targetHostile.id]) {
+                    copy[targetHostile.id] = { ...copy[targetHostile.id], ejercito_ia: Math.floor(copy[targetHostile.id].ejercito_ia * 0.5) };
+                  }
+                  return copy;
+                });
+              }
+            },
+            {
+              id: "choice8_2",
+              label: "Extraditar disidentes por ventajas comerciales",
+              consequence: "+2,500€ de fondos comerciales, Ejército enemigo +10%",
+              action: (gState: any) => {
+                gState.setOro((o: number) => o + 2500);
+                gState.setPaises((prev: any) => {
+                  const copy = { ...prev };
+                  if (copy[targetHostile.id]) {
+                    copy[targetHostile.id] = { ...copy[targetHostile.id], ejercito_ia: Math.floor(copy[targetHostile.id].ejercito_ia * 1.1) };
+                  }
+                  return copy;
+                });
+              }
+            },
+            {
+              id: "choice8_3",
+              label: "Rechazar asilo (Declarar neutralidad)",
+              consequence: "Sin alteraciones operativas",
+              action: () => {}
+            }
+          ]
+        });
+      }
+
+      // Elegir uno aleatorio y comenzar cuenta regresiva de preaviso
+      if (criticalTemplates.length > 0) {
+        const picked = criticalTemplates[Math.floor(Math.random() * criticalTemplates.length)];
+        setPendingCriticalEvent(picked);
+        setCriticalCountdown(3); 
+      }
+    } else {
+      // Lanzar un DecayingNotification (Eventos temporales con balances de recursos profundos y expiraciones)
+      const decayTemplates = [];
+
+      // 1. NET_MINING_OVERLOAD
+      decayTemplates.push({
+        id: Math.random().toString(),
+        code: "NET_MINING_OVERLOAD",
+        title: "SOBRECARGA DE NODOS CRIPTO",
+        description: "Los servidores de criptominería están sobrecalentados. Debes enfriarlos instalando disipadores criogénicos, o arriesgar daños estructurales permanentes.",
+        duration: 35000,
+        timeLeft: 35000,
+        type: 'warning' as const,
+        costDescription: "800€ de refrigerante líquido",
+        benefitDescription: "+2,000€ netos (Beneficio neto +1,200€)",
+        onAccept: (gState: any) => {
+          gState.setOro((o: number) => o + 2000 - 800);
+        },
+        onExpire: (gState: any) => {
+          // Penalización: daña economía del HQ
+          if (hqId) {
+            gState.setPaises((prev: any) => {
+              const copy = { ...prev };
+              if (copy[hqId]) {
+                copy[hqId] = { ...copy[hqId], economia: Math.floor(copy[hqId].economia * 0.9) };
+              }
+              return copy;
+            });
+          }
+        }
+      });
+
+      // 2. BLACK_MARKET_PLASMA (Puro beneficio si se atiende)
+      decayTemplates.push({
+        id: Math.random().toString(),
+        code: "BLACK_MARKET_PLASMA",
+        title: "CONTRABANDO DE PLASMA DISPONIBLE",
+        description: "Contrabandistas independientes ofrecen un cargamento rápido de artillería de plasma a bajo costo para tus fuerzas tácticas.",
+        duration: 40000,
+        timeLeft: 40000,
+        type: 'info' as const,
+        costDescription: "1,200€ en créditos",
+        benefitDescription: "+15 divisiones de Artillería pesada",
+        onAccept: (gState: any) => {
+          gState.setOro((o: number) => Math.max(0, o - 1200));
+          gState.setTropas((t: any) => ({ ...t, artilleria: t.artilleria + 15 }));
+        }
+        // No tiene onExpire (expira la oferta limpiamente)
+      });
+
+      // 3. MIL_NANO_INJECTION
+      decayTemplates.push({
+        id: Math.random().toString(),
+        code: "MIL_NANO_INJECTION",
+        title: "PRUEBAS CLÍNICAS DE COMBATE NANO",
+        description: "TraumaCorp solicita permiso para probar nanobots de reflejos en tus reclutas locales. Generará bajas poblacionales, pero creará combatientes implacables.",
+        duration: 45000,
+        timeLeft: 45000,
+        type: 'benefit' as const,
+        costDescription: "20% de Población de tu Cuartel General",
+        benefitDescription: "+350 Infanterías y +5 Caballerías blindadas",
+        onAccept: (gState: any) => {
+          gState.setTropas((t: any) => ({ ...t, infanteria: t.infanteria + 350, caballeria: t.caballeria + 5 }));
+          if (hqId) {
+            gState.setPaises((prev: any) => {
+              const copy = { ...prev };
+              if (copy[hqId]) {
+                copy[hqId] = { ...copy[hqId], poblacion: Math.floor(copy[hqId].poblacion * 0.8) };
+              }
+              return copy;
+            });
+          }
+        }
+      });
+
+      // 4. TERRITORIAL_RATIONING (Territorio)
+      if (allied.length > 0) {
+        const targetAllied = allied[Math.floor(Math.random() * allied.length)];
+        decayTemplates.push({
+          id: Math.random().toString(),
+          code: "TERRITORIAL_RATIONING",
+          title: `RACIONAMIENTO DE ENERGÍA: ${targetAllied.nombre.toUpperCase()}`,
+          description: `Problemas de suministro en ${targetAllied.nombre}. Puedes desviar su producción civil al complejo militar o dejar que lo resuelvan, arriesgando disturbios civiles.`,
+          duration: 35000,
+          timeLeft: 35000,
+          type: 'alert' as const,
+          costDescription: "Economía de colony -10%",
+          benefitDescription: "+600 Infantería reclutada de emergencia",
+          onAccept: (gState: any) => {
+            gState.setTropas((t: any) => ({ ...t, infanteria: t.infanteria + 600 }));
+            gState.setPaises((prev: any) => {
+              const copy = { ...prev };
+              if (copy[targetAllied.id]) {
+                copy[targetAllied.id] = { ...copy[targetAllied.id], economia: Math.floor(copy[targetAllied.id].economia * 0.9) };
+              }
+              return copy;
+            });
+          },
+          onExpire: (gState: any) => {
+            // Penalización: disturbios reducen población
+            gState.setPaises((prev: any) => {
+              const copy = { ...prev };
+              if (copy[targetAllied.id]) {
+                copy[targetAllied.id] = { ...copy[targetAllied.id], poblacion: Math.floor(copy[targetAllied.id].poblacion * 0.95) };
+              }
+              return copy;
+            });
+          }
+        });
+      }
+
+      // 5. SATELLITE_REDIRECT (Territorio y Geopolítica)
+      if (allied.length > 0 && hostile.length > 0) {
+        const targetAllied = allied[Math.floor(Math.random() * allied.length)];
+        const targetHostile = hostile[Math.floor(Math.random() * hostile.length)];
+        decayTemplates.push({
+          id: Math.random().toString(),
+          code: "SATELLITE_REDIRECT",
+          title: `MONITORIZACIÓN TÁCTICA DE ${targetHostile.nombre.toUpperCase()}`,
+          description: `Se detecta tráfico inusual en ${targetHostile.nombre}. Puedes redireccionar satélites desde tu territorio aliado en ${targetAllied.nombre} para espiarlos, o arriesgar fallas defensivas.`,
+          duration: 40000,
+          timeLeft: 40000,
+          type: 'info' as const,
+          costDescription: "-200€ en coste de redirección",
+          benefitDescription: "Ejército defensivo de enemigo -25% (Mainframe vulnerable)",
+          onAccept: (gState: any) => {
+            gState.setOro((o: number) => Math.max(0, o - 200));
+            gState.setPaises((prev: any) => {
+              const copy = { ...prev };
+              if (copy[targetHostile.id]) {
+                copy[targetHostile.id] = { ...copy[targetHostile.id], ejercito_ia: Math.floor(copy[targetHostile.id].ejercito_ia * 0.75) };
+              }
+              return copy;
+            });
+          },
+          onExpire: (gState: any) => {
+            // Penalización: hackeo reduce economía del HQ
+            if (hqId) {
+              gState.setPaises((prev: any) => {
+                const copy = { ...prev };
+                if (copy[hqId]) {
+                  copy[hqId] = { ...copy[hqId], economia: Math.floor(copy[hqId].economia * 0.95) };
+                }
+                return copy;
+              });
+            }
+          }
+        });
+      }
+
+      if (decayTemplates.length > 0) {
+        const picked = decayTemplates[Math.floor(Math.random() * decayTemplates.length)];
+        addNotification(picked);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!isPlaying || isSimulationPaused) return;
     const intervalTime = speedLevel === 1 ? 1000 : speedLevel === 2 ? 250 : 80;
     const interval = setInterval(() => {
       setFechaVirtual(prev => {
@@ -289,10 +878,10 @@ export default function App() {
       });
     }, intervalTime);
     return () => clearInterval(interval);
-  }, [isPlaying, speedLevel]);
+  }, [isPlaying, speedLevel, isSimulationPaused]);
 
   useEffect(() => {
-    if (currentScreen !== 'game' || !isPlaying) return;
+    if (currentScreen !== 'game' || !isPlaying || isSimulationPaused) return;
 
     // 1. Obtener valores actuales desde las referencias para evitar stale closures
     const currentPaises = { ...paisesRef.current };
@@ -414,6 +1003,13 @@ export default function App() {
       }
     }
 
+    // 5b. Procesamiento de Eventos Especiales (Interactivos o Críticos)
+    diasParaEventoEspecialRef.current -= 1;
+    if (diasParaEventoEspecialRef.current <= 0) {
+      diasParaEventoEspecialRef.current = 15 + Math.floor(Math.random() * 10);
+      lanzarEventoEspecial();
+    }
+
     // 6. Procesar ataques en cola (impactos de combate)
     const ataquesPendientes: AtaqueEnCola[] = [];
     const copiaAtaques = [...ataquesEnCola];
@@ -497,7 +1093,7 @@ export default function App() {
       setHabilidades(updatedHabilidades);
     }
 
-  }, [fechaVirtual]);
+  }, [fechaVirtual, isSimulationPaused]);
 
   const handleDeclararGuerra = () => {
     if (!paisSeleccionado || paisSeleccionado.conquistado) return;
@@ -641,6 +1237,18 @@ export default function App() {
 
   return (
     <div className="h-[100dvh] w-full flex flex-col bg-[#030712] text-slate-200 overflow-hidden select-none" onMouseMove={handleMouseMove}>
+      {/* HUD preaviso parpadeante */}
+      {criticalCountdown !== null && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-red-950/45 backdrop-blur-[2px] animate-pulse pointer-events-none select-none font-mono">
+          <div className="border border-red-500 bg-black/90 p-8 text-center max-w-md shadow-[0_0_50px_rgba(239,68,68,0.3)] pointer-events-auto">
+            <span className="h-4 w-4 rounded-full bg-red-500 inline-block animate-ping mb-2" />
+            <h2 className="text-red-500 text-lg font-black tracking-[0.25em] mb-1">WARNING: CRITICAL EVENT</h2>
+            <p className="text-slate-400 text-xs tracking-widest uppercase mb-4">INCOMING SECURE CONTEXT CONNECTION</p>
+            <div className="text-4xl text-red-500 font-black tabular-nums animate-[bounce_1s_infinite]">T - {criticalCountdown}</div>
+            <p className="text-[10px] text-red-700 font-bold mt-4 tracking-widest animate-pulse">// SYSTEM PAUSE INITIATION SEQUENCE</p>
+          </div>
+        </div>
+      )}
       {/* TOPBAR TÁCTICO - Con shrink-0 para evitar deformaciones */}
       <header className="min-h-16 md:h-16 border-b border-slate-800/80 bg-slate-950/80 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-0 py-4 md:py-0 px-6 shrink-0 z-20 shadow-[0_4px_30px_rgba(0,0,0,0.5)] backdrop-blur-md">
         <div className="flex items-center gap-2 md:gap-4 shrink-0">
@@ -730,6 +1338,7 @@ export default function App() {
           </div>
           {/* Scrollable Alerts Container */}
           <div className="flex-1 p-4 overflow-y-auto min-h-0 space-y-3 pb-8 custom-scrollbar relative">
+            <TacticalNotifications />
             {diarioGuerra.map(ev => {
               const isAlert = ev.tipo === 'alert';
               const isSuccess = ev.tipo === 'success';
@@ -1304,6 +1913,7 @@ export default function App() {
           }}
         />
       )}
+      <CriticalEventModal />
     </div>
   );
 }

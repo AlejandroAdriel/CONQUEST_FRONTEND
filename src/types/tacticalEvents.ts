@@ -14,6 +14,8 @@ export interface DecayingNotification extends BaseEvent {
   benefitDescription: string;
   // Acción inmediata si el jugador decide tomar la opción con un clic antes de que expire
   onAccept: (gameState: any) => void;
+  // Acción desencadenada cuando el tiempo llega a 0 sin haber sido aceptado
+  onExpire?: (gameState: any) => void;
 }
 
 // Opciones interactivas de los Eventos Críticos (Pausa global)
