@@ -298,7 +298,7 @@ export default function App() {
     }
   }, [currentScreen, playerHQ, paisesInicializados]);
 
-  const isSimulationPaused = isPaused || (criticalCountdown !== null);
+  const isSimulationPaused = isPaused;
 
   useEffect(() => {
     if (criticalCountdown === null) return;
@@ -320,7 +320,7 @@ export default function App() {
   }, [criticalCountdown, pendingCriticalEvent, triggerCriticalEvent]);
 
   const lanzarEventoEspecial = () => {
-    const isCritical = Math.random() < 0.5; // 50% de probabilidad de crítico vs temporal
+const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes que antes
 
     // Obtener listas de países dinámicamente
     const currentPaises = { ...paisesRef.current };
@@ -464,33 +464,42 @@ export default function App() {
         criticalTemplates.push({
           id: Math.random().toString(),
           code: "TACTICAL_ALLIANCE_OFFER",
-          title: `OFERTA DE ANEXIÓN PACÍFICA: ${targetCountry.nombre.toUpperCase()}`,
-          description: `Diplomáticos de ${targetCountry.nombre} ofrecen desactivar sus cortafuegos y unirse a tu coalición a cambio de una inyección de desarrollo tecnológico.`,
+          title: `OFERTA TÁCTICA DE ACCESO SEGURO: ${targetCountry.nombre.toUpperCase()}`,
+          description: `Diplomáticos de ${targetCountry.nombre} ofrecen compartir tecnología de defensa a cambio de un acuerdo de no agresión. No se propone conquista inmediata.`,
           choices: [
             {
               id: "choice4_1",
-              label: `Asimilar pacíficamente a ${targetCountry.nombre}`,
-              consequence: `-2,500€, ${targetCountry.nombre} se une como aliado`,
+              label: `Negociar acuerdo tecnológico con ${targetCountry.nombre}`,
+              consequence: `-2,500€, Ejército enemigo -20%, economía propia +5%`,
               action: (gState: any) => {
                 gState.setOro((o: number) => Math.max(0, o - 2500));
                 gState.setPaises((prev: any) => {
                   const copy = { ...prev };
                   if (copy[targetCountry.id]) {
-                    copy[targetCountry.id] = { ...copy[targetCountry.id], conquistado: true, ejercito_ia: 0 };
+                    copy[targetCountry.id] = { ...copy[targetCountry.id], ejercito_ia: Math.floor(copy[targetCountry.id].ejercito_ia * 0.8) };
                   }
                   return copy;
                 });
+                if (hqId && currentPaises[hqId]) {
+                  gState.setPaises((prev: any) => {
+                    const copy = { ...prev };
+                    if (copy[hqId]) {
+                      copy[hqId] = { ...copy[hqId], economia: Math.floor(copy[hqId].economia * 1.05) };
+                    }
+                    return copy;
+                  });
+                }
               }
             },
             {
               id: "choice4_2",
-              label: "Rechazar y mantener hostilidad",
-              consequence: `Ejército defensivo de ${targetCountry.nombre} aumenta +30%`,
+              label: "Rechazar la oferta y conservar distancia tácticamente",
+              consequence: `No hay concesiones, pero la tensión aumenta +15%`,
               action: (gState: any) => {
                 gState.setPaises((prev: any) => {
                   const copy = { ...prev };
                   if (copy[targetCountry.id]) {
-                    copy[targetCountry.id] = { ...copy[targetCountry.id], ejercito_ia: Math.floor(copy[targetCountry.id].ejercito_ia * 1.3) };
+                    copy[targetCountry.id] = { ...copy[targetCountry.id], ejercito_ia: Math.floor(copy[targetCountry.id].ejercito_ia * 1.15) };
                   }
                   return copy;
                 });
@@ -725,9 +734,34 @@ export default function App() {
         type: 'warning' as const,
         costDescription: "800€ de refrigerante líquido",
         benefitDescription: "+2,000€ netos (Beneficio neto +1,200€)",
-        onAccept: (gState: any) => {
-          gState.setOro((o: number) => o + 2000 - 800);
-        },
+        options: [
+          {
+            id: "net_choice1",
+            label: "Instalar disipadores criogénicos",
+            consequence: "-800€, +2,000€ netos",
+            style: 'positive',
+            action: (gState: any) => {
+              gState.setOro((o: number) => o + 2000 - 800);
+            }
+          },
+          {
+            id: "net_choice2",
+            label: "Reducir cargas y enfriar progresivamente",
+            consequence: "-10% de economía HQ, evita daños inmediatos",
+            style: 'tradeoff',
+            action: (gState: any) => {
+              if (hqId) {
+                gState.setPaises((prev: any) => {
+                  const copy = { ...prev };
+                  if (copy[hqId]) {
+                    copy[hqId] = { ...copy[hqId], economia: Math.floor(copy[hqId].economia * 0.9) };
+                  }
+                  return copy;
+                });
+              }
+            }
+          }
+        ],
         onExpire: (gState: any) => {
           // Penalización: daña economía del HQ
           if (hqId) {
@@ -753,11 +787,28 @@ export default function App() {
         type: 'info' as const,
         costDescription: "1,200€ en créditos",
         benefitDescription: "+15 divisiones de Artillería pesada",
-        onAccept: (gState: any) => {
-          gState.setOro((o: number) => Math.max(0, o - 1200));
-          gState.setTropas((t: any) => ({ ...t, artilleria: t.artilleria + 15 }));
-        }
-        // No tiene onExpire (expira la oferta limpiamente)
+        options: [
+          {
+            id: "black_choice1",
+            label: "Abastecer artillería completa",
+            consequence: "-1,200€, +15 artillería",
+            style: 'positive',
+            action: (gState: any) => {
+              gState.setOro((o: number) => Math.max(0, o - 1200));
+              gState.setTropas((t: any) => ({ ...t, artilleria: t.artilleria + 15 }));
+            }
+          },
+          {
+            id: "black_choice2",
+            label: "Negociar un cargamento más pequeño",
+            consequence: "-700€, +8 artillería",
+            style: 'tradeoff',
+            action: (gState: any) => {
+              gState.setOro((o: number) => Math.max(0, o - 700));
+              gState.setTropas((t: any) => ({ ...t, artilleria: t.artilleria + 8 }));
+            }
+          }
+        ]
       });
 
       // 3. MIL_NANO_INJECTION
@@ -771,18 +822,33 @@ export default function App() {
         type: 'benefit' as const,
         costDescription: "20% de Población de tu Cuartel General",
         benefitDescription: "+350 Infanterías y +5 Caballerías blindadas",
-        onAccept: (gState: any) => {
-          gState.setTropas((t: any) => ({ ...t, infanteria: t.infanteria + 350, caballeria: t.caballeria + 5 }));
-          if (hqId) {
-            gState.setPaises((prev: any) => {
-              const copy = { ...prev };
-              if (copy[hqId]) {
-                copy[hqId] = { ...copy[hqId], poblacion: Math.floor(copy[hqId].poblacion * 0.8) };
+        options: [
+          {
+            id: "nano_choice1",
+            label: "Permitir las pruebas de combate",
+            consequence: "+350 infantería, +5 caballería, -20% población",
+            style: 'tradeoff',
+            action: (gState: any) => {
+              gState.setTropas((t: any) => ({ ...t, infanteria: t.infanteria + 350, caballeria: t.caballeria + 5 }));
+              if (hqId) {
+                gState.setPaises((prev: any) => {
+                  const copy = { ...prev };
+                  if (copy[hqId]) {
+                    copy[hqId] = { ...copy[hqId], poblacion: Math.floor(copy[hqId].poblacion * 0.8) };
+                  }
+                  return copy;
+                });
               }
-              return copy;
-            });
+            }
+          },
+          {
+            id: "nano_choice2",
+            label: "Rechazar el experimento",
+            consequence: "Preservas población, sin ganancia de tropas",
+            style: 'negative',
+            action: () => {}
           }
-        }
+        ]
       });
 
       // 4. TERRITORIAL_RATIONING (Territorio)
@@ -798,16 +864,31 @@ export default function App() {
           type: 'alert' as const,
           costDescription: "Economía de colony -10%",
           benefitDescription: "+600 Infantería reclutada de emergencia",
-          onAccept: (gState: any) => {
-            gState.setTropas((t: any) => ({ ...t, infanteria: t.infanteria + 600 }));
-            gState.setPaises((prev: any) => {
-              const copy = { ...prev };
-              if (copy[targetAllied.id]) {
-                copy[targetAllied.id] = { ...copy[targetAllied.id], economia: Math.floor(copy[targetAllied.id].economia * 0.9) };
+          options: [
+            {
+              id: "ration_choice1",
+              label: "Desviar energía al frente militar",
+              consequence: "-10% economía, +600 infantería",
+              style: 'tradeoff',
+              action: (gState: any) => {
+                gState.setTropas((t: any) => ({ ...t, infanteria: t.infanteria + 600 }));
+                gState.setPaises((prev: any) => {
+                  const copy = { ...prev };
+                  if (copy[targetAllied.id]) {
+                    copy[targetAllied.id] = { ...copy[targetAllied.id], economia: Math.floor(copy[targetAllied.id].economia * 0.9) };
+                  }
+                  return copy;
+                });
               }
-              return copy;
-            });
-          },
+            },
+            {
+              id: "ration_choice2",
+              label: "Mantener servicios civiles intactos",
+              consequence: "Sin tropas adicionales, riesgo de disturbios",
+              style: 'negative',
+              action: () => {}
+            }
+          ],
           onExpire: (gState: any) => {
             // Penalización: disturbios reducen población
             gState.setPaises((prev: any) => {
@@ -835,16 +916,31 @@ export default function App() {
           type: 'info' as const,
           costDescription: "-200€ en coste de redirección",
           benefitDescription: "Ejército defensivo de enemigo -25% (Mainframe vulnerable)",
-          onAccept: (gState: any) => {
-            gState.setOro((o: number) => Math.max(0, o - 200));
-            gState.setPaises((prev: any) => {
-              const copy = { ...prev };
-              if (copy[targetHostile.id]) {
-                copy[targetHostile.id] = { ...copy[targetHostile.id], ejercito_ia: Math.floor(copy[targetHostile.id].ejercito_ia * 0.75) };
+          options: [
+            {
+              id: "sat_choice1",
+              label: "Redirigir satélites sobre el objetivo",
+              consequence: "-200€, ejército enemigo -25%",
+              style: 'positive',
+              action: (gState: any) => {
+                gState.setOro((o: number) => Math.max(0, o - 200));
+                gState.setPaises((prev: any) => {
+                  const copy = { ...prev };
+                  if (copy[targetHostile.id]) {
+                    copy[targetHostile.id] = { ...copy[targetHostile.id], ejercito_ia: Math.floor(copy[targetHostile.id].ejercito_ia * 0.75) };
+                  }
+                  return copy;
+                });
               }
-              return copy;
-            });
-          },
+            },
+            {
+              id: "sat_choice2",
+              label: "Mantener satélites en patrulla defensiva",
+              consequence: "Sin coste inmediato, riesgo de perder ventaja táctica",
+              style: 'negative',
+              action: () => {}
+            }
+          ],
           onExpire: (gState: any) => {
             // Penalización: hackeo reduce economía del HQ
             if (hqId) {
@@ -1239,13 +1335,15 @@ export default function App() {
     <div className="h-[100dvh] w-full flex flex-col bg-[#030712] text-slate-200 overflow-hidden select-none" onMouseMove={handleMouseMove}>
       {/* HUD preaviso parpadeante */}
       {criticalCountdown !== null && (
-        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-red-950/45 backdrop-blur-[2px] animate-pulse pointer-events-none select-none font-mono">
-          <div className="border border-red-500 bg-black/90 p-8 text-center max-w-md shadow-[0_0_50px_rgba(239,68,68,0.3)] pointer-events-auto">
-            <span className="h-4 w-4 rounded-full bg-red-500 inline-block animate-ping mb-2" />
-            <h2 className="text-red-500 text-lg font-black tracking-[0.25em] mb-1">WARNING: CRITICAL EVENT</h2>
-            <p className="text-slate-400 text-xs tracking-widest uppercase mb-4">INCOMING SECURE CONTEXT CONNECTION</p>
-            <div className="text-4xl text-red-500 font-black tabular-nums animate-[bounce_1s_infinite]">T - {criticalCountdown}</div>
-            <p className="text-[10px] text-red-700 font-bold mt-4 tracking-widest animate-pulse">// SYSTEM PAUSE INITIATION SEQUENCE</p>
+        <div className="fixed right-4 top-20 z-[100] w-[320px] bg-red-950/85 border border-red-700 shadow-[0_0_40px_rgba(220,38,38,0.25)] backdrop-blur-sm animate-fade-in pointer-events-none select-none font-mono">
+          <div className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-red-400 font-bold text-xs uppercase tracking-[0.3em]">CRITICAL EVENT WARNING</span>
+            </div>
+            <div className="text-slate-200 text-sm font-black tracking-[0.2em]">T - {criticalCountdown}</div>
+            <p className="text-slate-400 text-[11px] leading-snug">Evento crítico inminente. El sistema continúa ejecutando simulación hasta que la ventana emergente se abra.</p>
+            <div className="text-[10px] text-red-500 uppercase tracking-[0.25em] font-bold">ALERTA RÁPIDA</div>
           </div>
         </div>
       )}

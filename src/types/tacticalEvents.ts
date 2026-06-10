@@ -6,14 +6,21 @@ export interface BaseEvent {
 }
 
 // Evento periférico con barra de degradación de señal (Auto-decay con mutación activa)
+export interface NotificationOption {
+  id: string;
+  label: string;
+  consequence: string;
+  action: (gameState: any) => void;
+  style?: 'positive' | 'tradeoff' | 'negative';
+}
+
 export interface DecayingNotification extends BaseEvent {
   duration: number;        // Tiempo de vida inicial en ms (ej: 30000 para 30s)
   timeLeft: number;        // Tiempo restante en ms
   type: 'info' | 'warning' | 'alert' | 'benefit';
-  costDescription: string;
-  benefitDescription: string;
-  // Acción inmediata si el jugador decide tomar la opción con un clic antes de que expire
-  onAccept: (gameState: any) => void;
+  costDescription?: string;
+  benefitDescription?: string;
+  options: NotificationOption[];
   // Acción desencadenada cuando el tiempo llega a 0 sin haber sido aceptado
   onExpire?: (gameState: any) => void;
 }
