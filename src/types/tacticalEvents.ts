@@ -5,15 +5,25 @@ export interface BaseEvent {
   description: string;
 }
 
+// Opción interactiva para eventos de decay
+export interface DecayingOption {
+  id: string;
+  label: string;
+  costDescription: string;
+  benefitDescription: string;
+  action: (gameState: any) => void;
+}
+
 // Evento periférico con barra de degradación de señal (Auto-decay con mutación activa)
 export interface DecayingNotification extends BaseEvent {
   duration: number;        // Tiempo de vida inicial en ms (ej: 30000 para 30s)
   timeLeft: number;        // Tiempo restante en ms
   type: 'info' | 'warning' | 'alert' | 'benefit';
-  costDescription: string;
-  benefitDescription: string;
+  options?: DecayingOption[];  // Múltiples opciones (nuevo)
+  costDescription?: string;
+  benefitDescription?: string;
   // Acción inmediata si el jugador decide tomar la opción con un clic antes de que expire
-  onAccept: (gameState: any) => void;
+  onAccept?: (gameState: any) => void;
   // Acción desencadenada cuando el tiempo llega a 0 sin haber sido aceptado
   onExpire?: (gameState: any) => void;
 }
