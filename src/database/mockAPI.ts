@@ -469,6 +469,8 @@ export interface PaisPreset {
   };
   multiplicadorReclutamiento?: number;
   multiplicadorPesadas?: number;
+  tasa_natalidad?: number;
+  tasa_mortalidad?: number;
 }
 
 export const COUNTRY_PRESETS: Record<string, PaisPreset> = {
@@ -476,35 +478,47 @@ export const COUNTRY_PRESETS: Record<string, PaisPreset> = {
     gdpPerCapita: 65000,
     ejercitoMultiplicador: 2.5,
     composicion: { infanteria: 0.50, caballeria: 0.30, artilleria: 0.20 },
-    multiplicadorPesadas: 0.85
+    multiplicadorPesadas: 0.85,
+    tasa_natalidad: 0.0030,
+    tasa_mortalidad: 0.0023
   },
   "india": {
     gdpPerCapita: 15000,
     ejercitoMultiplicador: 1.8,
     composicion: { infanteria: 0.85, caballeria: 0.10, artilleria: 0.05 },
-    multiplicadorReclutamiento: 0.8
+    multiplicadorReclutamiento: 0.8,
+    tasa_natalidad: 0.0045,
+    tasa_mortalidad: 0.0019
   },
   "russia": {
     gdpPerCapita: 12000,
     ejercitoMultiplicador: 2.2,
     composicion: { infanteria: 0.40, caballeria: 0.20, artilleria: 0.40 },
-    multiplicadorPesadas: 0.85
+    multiplicadorPesadas: 0.85,
+    tasa_natalidad: 0.0024,
+    tasa_mortalidad: 0.0035
   },
   "china": {
     gdpPerCapita: 25000,
     ejercitoMultiplicador: 2.8,
     composicion: { infanteria: 0.70, caballeria: 0.20, artilleria: 0.10 },
-    multiplicadorReclutamiento: 0.8
+    multiplicadorReclutamiento: 0.8,
+    tasa_natalidad: 0.0017,
+    tasa_mortalidad: 0.0020
   },
   "brazil": {
     gdpPerCapita: 10000,
     ejercitoMultiplicador: 0.9,
-    composicion: { infanteria: 0.60, caballeria: 0.30, artilleria: 0.10 }
+    composicion: { infanteria: 0.60, caballeria: 0.30, artilleria: 0.10 },
+    tasa_natalidad: 0.0038,
+    tasa_mortalidad: 0.0016
   },
   "mexico": {
     gdpPerCapita: 10000,
     ejercitoMultiplicador: 0.9,
-    composicion: { infanteria: 0.60, caballeria: 0.30, artilleria: 0.10 }
+    composicion: { infanteria: 0.60, caballeria: 0.30, artilleria: 0.10 },
+    tasa_natalidad: 0.0038,
+    tasa_mortalidad: 0.0016
   }
 };
 
@@ -546,10 +560,72 @@ export const getPresetForCountry = (name: string): PaisPreset => {
     gdpPerCapita = 3000;
   }
 
+  // Generador Demográfico Geopolítico Realista por región y desarrollo
+  let baseNatalidad = 12.0; // por cada 1000 al año (base global promedio)
+  let baseMortalidad = 8.0;  // por cada 1000 al año (base global promedio)
+
+  const isAfrica = ["nigeria", "congo", "ethiopia", "uganda", "angola", "mali", "niger", "chad", "somalia", "sudan", "kenya", "tanzania", "mozambique", "ghana", "madagascar", "cameroon", "cote", "ivory", "burkina", "zambia", "malawi", "senegal", "zimbabwe", "guinea", "rwanda", "benin", "burundi", "togo", "eritrea", "namibia", "gambia", "botswana", "gabon", "lesotho", "liberia", "sierra", "mauritania", "central african", "libya", "tunisia", "algeria", "morocco", "egipto", "egypt", "sudáfrica", "south africa"].some(c => norm.includes(c));
+  
+  const isEuropeEastAsia = ["germany", "france", "united kingdom", "italy", "spain", "poland", "japan", "south korea", "ukraine", "romania", "netherlands", "belgium", "switzerland", "sweden", "austria", "belarus", "bulgaria", "hungary", "portugal", "greece", "czech", "denmark", "finland", "norway", "ireland", "croatia", "slovakia", "lithuania", "latvia", "estonia", "taiwan", "singapore", "alemania", "francia", "reino unido", "italia", "españa", "polonia", "japón", "corea del sur", "ucrania", "rumania", "países bajos", "bélgica", "suiza", "suecia", "austria", "bielorrusia", "bulgaria", "hungría", "portugal", "grecia", "república checa", "dinamarca", "finlandia", "noruega", "irlanda", "croacia", "eslovaquia", "lituania", "letonia", "estonia", "taiwán", "singapur", "australia", "canada", "canadá", "new zealand", "nueva zelanda"].some(c => norm.includes(c));
+
+  const isLatinAmerica = ["mexico", "brazil", "colombia", "argentina", "peru", "venezuela", "chile", "ecuador", "guatemala", "cuba", "bolivia", "dominican", "honduras", "paraguay", "el salvador", "nicaragua", "costa rica", "panama", "uruguay", "puerto rico", "méxico", "brasil", "república dominicana", "panamá"].some(c => norm.includes(c));
+
+  const isMiddleEastSouthAsia = ["pakistan", "bangladesh", "indonesia", "philippines", "vietnam", "turkey", "iran", "thailand", "saudi", "iraq", "afghanistan", "yemen", "nepal", "sri lanka", "kazakhstan", "syria", "cambodia", "jordan", "azerbaijan", "uae", "united arab", "israel", "pakistán", "turquía", "irán", "tailandia", "arabia", "afganistán", "siria", "camboya", "jordania", "azerbaiyán", "emiratos"].some(c => norm.includes(c));
+
+  if (isAfrica) {
+    // Tasas altas de natalidad, mortalidad moderada a baja (poblaciones jóvenes)
+    baseNatalidad = 25.0 + (gdpPerCapita < 5000 ? 10.0 : 0.0);
+    baseMortalidad = 6.5 + (gdpPerCapita < 5000 ? 2.5 : 0.0);
+  } else if (isEuropeEastAsia) {
+    // Tasas muy bajas de natalidad, mortalidad moderada-alta (poblaciones envejecidas)
+    baseNatalidad = 7.5;
+    baseMortalidad = 9.5;
+  } else if (isLatinAmerica) {
+    // Transición demográfica: natalidad moderada, mortalidad baja (bono demográfico)
+    baseNatalidad = 13.5;
+    baseMortalidad = 6.0;
+  } else if (isMiddleEastSouthAsia) {
+    // Crecimiento sostenido moderado-alto
+    baseNatalidad = 17.5;
+    baseMortalidad = 6.5;
+  } else {
+    // Fallback general basado en GDP per capita
+    if (gdpPerCapita >= 60000) {
+      baseNatalidad = 9.0;
+      baseMortalidad = 8.5;
+    } else if (gdpPerCapita >= 25000) {
+      baseNatalidad = 11.5;
+      baseMortalidad = 7.5;
+    } else {
+      baseNatalidad = 15.0;
+      baseMortalidad = 7.0;
+    }
+  }
+
+  // Introducir variaciones estocásticas únicas y deterministas usando un simple hash del nombre
+  let nameHash = 0;
+  for (let i = 0; i < norm.length; i++) {
+    nameHash += norm.charCodeAt(i) * (i + 1);
+  }
+  
+  // Variación natalidad: +/- 15%
+  const varNatalidad = 0.85 + ((nameHash % 30) / 100);
+  // Variación mortalidad: +/- 15%
+  const varMortalidad = 0.85 + (((nameHash * 7) % 30) / 100);
+
+  const finalNatalidadAnual = baseNatalidad * varNatalidad;
+  const finalMortalidadAnual = baseMortalidad * varMortalidad;
+
+  // Convertir tasa anualizada por cada 1,000 habitantes a porcentaje diario (%)
+  const tasa_natalidad = Number((finalNatalidadAnual / 3650).toFixed(6));
+  const tasa_mortalidad = Number((finalMortalidadAnual / 3650).toFixed(6));
+
   return {
     gdpPerCapita,
     ejercitoMultiplicador: 1.0,
-    composicion: { infanteria: 0.70, caballeria: 0.20, artilleria: 0.10 }
+    composicion: { infanteria: 0.70, caballeria: 0.20, artilleria: 0.10 },
+    tasa_natalidad,
+    tasa_mortalidad
   };
 };
 
@@ -719,7 +795,7 @@ const initialHabilidades: Habilidad[] = [
   // Expansión y Especialización (X=1100): 6 Nodos
   { id: "M_EXP_1", nombre: "Implantes de Reflejos Neurales", costo: 18000, desbloqueada: false, prerrequisitos: ["M_B1_1"], tipo_bono: "+20% Daño Infantería", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 1000, tiempo_investigacion_dias: 180 },
   { id: "M_EXP_2", nombre: "Chasis de Combate Exo", costo: 18000, desbloqueada: false, prerrequisitos: ["M_B1_1", "M_B1_2"], tipo_bono: "+15% HP Infantería", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 1400, tiempo_investigacion_dias: 180 },
-  { id: "M_EXP_3", nombre: "Nanocapas Autoreparables", costo: 18000, desbloqueada: false, prerrequisitos: ["M_B1_2"], tipo_bono: "+20% Armadura Blindados", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 1800, tiempo_investigacion_dias: 180 },
+  { id: "M_EXP_3", nombre: "Inyecciones de Nanobots Médicos", costo: 18000, desbloqueada: false, prerrequisitos: ["M_B1_2"], tipo_bono: "-15% Tasa de Mortalidad Global", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 1800, tiempo_investigacion_dias: 180 },
   { id: "M_EXP_4", nombre: "Cargas de Plasma Térmico", costo: 18000, desbloqueada: false, prerrequisitos: ["M_B1_3"], tipo_bono: "+20% Perforación Artillería", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 2200, tiempo_investigacion_dias: 180 },
   { id: "M_EXP_5", nombre: "Inhibidores de Espectro", costo: 18000, desbloqueada: false, prerrequisitos: ["M_B1_3", "M_B1_4"], tipo_bono: "-15% Precisión Enemiga", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 2600, tiempo_investigacion_dias: 180 },
   { id: "M_EXP_6", nombre: "Algoritmos de Ciberataque", costo: 18000, desbloqueada: false, prerrequisitos: ["M_B1_4"], tipo_bono: "Sabotaje de Sistemas IA", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 3000, tiempo_investigacion_dias: 180 },

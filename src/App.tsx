@@ -36,6 +36,9 @@ type Pais = {
   conquistado: boolean;
   oro_ia: number;
   ejercito_ia_detalle: Tropas;
+  tasa_natalidad: number;
+  tasa_mortalidad: number;
+  dias_reclutamiento_agresivo?: number;
 };
 
 type AtaqueEnCola = {
@@ -111,6 +114,82 @@ const getRealEjercitoDetalle = (isAliado: boolean, population: number, seed: num
     infanteria: Math.floor(baseSize * preset.composicion.infanteria),
     caballeria: Math.floor(baseSize * preset.composicion.caballeria),
     artilleria: Math.floor(baseSize * preset.composicion.artilleria),
+  };
+};
+
+const getDemographicsInfo = (
+  pais: Pais,
+  currentPresupuesto: number,
+  ataquesEnCola: AtaqueEnCola[],
+  habilidades: Habilidad[]
+) => {
+  let tasaNatalidadEfectiva = pais.tasa_natalidad ?? 0.0033;
+  let tasaMortalidadEfectiva = pais.tasa_mortalidad ?? 0.0022;
+
+  // 1. Reclutamiento Agresivo: penalización natalidad -20%
+  const tieneReclutamientoAgresivo = pais.dias_reclutamiento_agresivo !== undefined && pais.dias_reclutamiento_agresivo > 0;
+  if (tieneReclutamientoAgresivo) {
+    tasaNatalidadEfectiva *= 0.8;
+  }
+
+  // 2. Colapso por Invasión: mortalidad 4.0x
+  const isUnderAttack = ataquesEnCola.some(a => a.pais_destino_id === pais.id);
+  if (isUnderAttack) {
+    tasaMortalidadEfectiva *= 4.0;
+  }
+
+  // 3. Hambruna / Bancarrota Global: si presupuesto global es 0 y es conquistado, mortalidad +50%
+  const tieneBancarrota = currentPresupuesto <= 0 && pais.conquistado;
+  if (tieneBancarrota) {
+    tasaMortalidadEfectiva *= 1.5;
+  }
+
+  // 4. Sinergias de I+D: -15% de mortalidad permanente
+  const tieneMedicos = habilidades.some(h => (h.id === "M_EXP_3" || h.nombre === "Inyecciones de Nanobots Médicos") && h.desbloqueada);
+  if (tieneMedicos && pais.conquistado) {
+    tasaMortalidadEfectiva *= 0.85;
+  }
+
+  // Crecimiento Neto Diario
+  const netRate = tasaNatalidadEfectiva - tasaMortalidadEfectiva;
+  
+  let tendencia = "Estable / Lineal";
+  let tendenciaColor = "text-cyan-400";
+
+  if (isUnderAttack) {
+    tendencia = "Colapso (Guerra)";
+    tendenciaColor = "text-rose-500 font-bold animate-pulse";
+  } else if (tieneBancarrota) {
+    tendencia = "Crisis (Bancarrota)";
+    tendenciaColor = "text-rose-500 font-bold animate-pulse";
+  } else {
+    if (netRate > 0.002) {
+      tendencia = "Crecimiento Agresivo";
+      tendenciaColor = "text-emerald-400 font-bold";
+    } else if (netRate > 0.0005) {
+      tendencia = "Crecimiento Saludable";
+      tendenciaColor = "text-emerald-500";
+    } else if (netRate > -0.0002 && netRate <= 0.0005) {
+      tendencia = "Estable / Lineal";
+      tendenciaColor = "text-cyan-400";
+    } else if (netRate > -0.001 && netRate <= -0.0002) {
+      tendencia = "Estancamiento / Decreciente";
+      tendenciaColor = "text-amber-500";
+    } else {
+      tendencia = "Crecimiento Negativo / Crisis";
+      tendenciaColor = "text-rose-500 font-bold";
+    }
+  }
+
+  return {
+    tasaNatalidad: tasaNatalidadEfectiva,
+    tasaMortalidad: tasaMortalidadEfectiva,
+    tendencia,
+    tendenciaColor,
+    tieneReclutamientoAgresivo,
+    isUnderAttack,
+    tieneBancarrota,
+    tieneMedicos
   };
 };
 
@@ -214,6 +293,10 @@ export default function App() {
     const ejercito_ia_detalle = getRealEjercitoDetalle(isAliado, poblacion, seed, nameEN);
     const ejercito_ia = isAliado ? 0 : (ejercito_ia_detalle.infanteria + ejercito_ia_detalle.caballeria + ejercito_ia_detalle.artilleria);
 
+    const preset = getPresetForCountry(nameEN);
+    const tasa_natalidad = preset.tasa_natalidad ?? 0.0033;
+    const tasa_mortalidad = preset.tasa_mortalidad ?? 0.0022;
+
     return {
       id: id,
       nombre: nombre,
@@ -222,7 +305,10 @@ export default function App() {
       ejercito_ia: ejercito_ia,
       conquistado: isAliado,
       oro_ia: 0,
-      ejercito_ia_detalle: ejercito_ia_detalle
+      ejercito_ia_detalle: ejercito_ia_detalle,
+      tasa_natalidad: tasa_natalidad,
+      tasa_mortalidad: tasa_mortalidad,
+      dias_reclutamiento_agresivo: 0
     };
   };
 
@@ -298,6 +384,10 @@ export default function App() {
             const ejercito_ia_detalle = getRealEjercitoDetalle(isAliado, poblacion, seed, nameEN);
             const ejercito_ia = isAliado ? 0 : (ejercito_ia_detalle.infanteria + ejercito_ia_detalle.caballeria + ejercito_ia_detalle.artilleria);
             
+            const preset = getPresetForCountry(nameEN);
+            const tasa_natalidad = preset.tasa_natalidad ?? 0.0033;
+            const tasa_mortalidad = preset.tasa_mortalidad ?? 0.0022;
+
             initialCountries[id] = {
               id: id,
               nombre: nombre,
@@ -306,7 +396,10 @@ export default function App() {
               ejercito_ia: ejercito_ia,
               conquistado: isAliado,
               oro_ia: 0,
-              ejercito_ia_detalle: ejercito_ia_detalle
+              ejercito_ia_detalle: ejercito_ia_detalle,
+              tasa_natalidad: tasa_natalidad,
+              tasa_mortalidad: tasa_mortalidad,
+              dias_reclutamiento_agresivo: 0
             };
           });
           
@@ -1018,8 +1111,37 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
     Object.keys(currentPaises).forEach(id => {
       const pais = { ...currentPaises[id] };
       
-      // A. Población dinámica (Crecimiento orgánico: +0.005% diario)
-      pais.poblacion = Math.floor(pais.poblacion * (1 + 0.00005));
+      // A. Población dinámica (Cálculo demográfico realista y asimétrico con modificadores dinámicos)
+      let tasaNatalidadEfectiva = pais.tasa_natalidad ?? 0.0033;
+      let tasaMortalidadEfectiva = pais.tasa_mortalidad ?? 0.0022;
+
+      // 1. Reclutamiento Agresivo: penalización natalidad -20%
+      if (pais.dias_reclutamiento_agresivo && pais.dias_reclutamiento_agresivo > 0) {
+        tasaNatalidadEfectiva *= 0.8;
+        pais.dias_reclutamiento_agresivo -= 1;
+      }
+
+      // 2. Colapso por Invasión: mortalidad 4.0x
+      const isUnderAttack = ataquesEnCola.some(a => a.pais_destino_id === pais.id);
+      if (isUnderAttack) {
+        tasaMortalidadEfectiva *= 4.0;
+      }
+
+      // 3. Hambruna / Bancarrota Global: si presupuesto <= 0 en conquistado, mortalidad +50%
+      if (currentPresupuesto <= 0 && pais.conquistado) {
+        tasaMortalidadEfectiva *= 1.5;
+      }
+
+      // 4. Sinergias de I+D: investigación médica M_EXP_3 reduce -15% mortalidad en conquistados
+      const tieneMedicos = currentHabilidades.some(h => (h.id === "M_EXP_3" || h.nombre === "Inyecciones de Nanobots Médicos") && h.desbloqueada);
+      if (tieneMedicos && pais.conquistado) {
+        tasaMortalidadEfectiva *= 0.85;
+      }
+
+      // Ecuación demográfica neta diaria
+      const nacimientosDia = pais.poblacion * (tasaNatalidadEfectiva / 100);
+      const defuncionesDia = pais.poblacion * (tasaMortalidadEfectiva / 100);
+      pais.poblacion = Math.round(pais.poblacion + nacimientosDia - defuncionesDia);
 
       // B. Economía dinámica (Crecimiento orgánico: +0.005% diario)
       pais.economia = pais.economia * (1 + 0.00005);
@@ -1393,12 +1515,14 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
     }
 
     // Aplicar los cambios
+    const esMasiva = totalMovilizado >= livePais.poblacion * 0.01;
     setPaises(prev => {
       const updated = { ...prev };
       if (updated[livePais.id]) {
         updated[livePais.id] = {
           ...updated[livePais.id],
-          poblacion: updated[livePais.id].poblacion - totalMovilizado
+          poblacion: updated[livePais.id].poblacion - totalMovilizado,
+          dias_reclutamiento_agresivo: esMasiva ? 90 : (updated[livePais.id].dias_reclutamiento_agresivo || 0)
         };
       }
       return updated;
@@ -1415,7 +1539,7 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
       id: Math.random().toString(),
       fecha: fechaVirtual,
       titulo: `MOVILIZACIÓN DE RESERVAS: ${livePais.nombre.toUpperCase()}`,
-      mensaje: `Movilización exitosa en ${livePais.nombre}. Se convirtieron ${totalMovilizado} ciudadanos en tropas de reserva: 👤+${infanteriaAMovilizar} Inf, ⚡+${caballeriaAMovilizar} Cab, 💀+${artilleriaAMovilizar} Art. Costo total deducido: €${costoTotal.toLocaleString()}.`,
+      mensaje: `Movilización exitosa en ${livePais.nombre}. Se convirtieron ${totalMovilizado} ciudadanos en tropas de reserva: 👤+${infanteriaAMovilizar} Inf, ⚡+${caballeriaAMovilizar} Cab, 💀+${artilleriaAMovilizar} Art.${esMasiva ? " ADVERTENCIA: La movilización masiva de personal reduce temporalmente la natalidad local en un -20% durante los siguientes 90 días virtuales por sustracción de mano de obra civil." : ""} Costo total deducido: €${costoTotal.toLocaleString()}.`,
       tipo: "success"
     }, ...prev]);
 
@@ -1788,9 +1912,10 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
           {/* TOOLTIP FLOTANTE */}
           {hoveredPais && !paisSeleccionado && (() => {
             const livePais = paises[hoveredPais.id] || hoveredPais;
-            const isNearBottom = window.innerHeight - tooltipPos.y < 280;
+            const demo = getDemographicsInfo(livePais, presupuesto, ataquesEnCola, habilidades);
+            const isNearBottom = window.innerHeight - tooltipPos.y < 320;
             const isNearRight = window.innerWidth - tooltipPos.x < 240;
-            const topStyle = isNearBottom ? tooltipPos.y - 190 : tooltipPos.y + 20;
+            const topStyle = isNearBottom ? tooltipPos.y - 280 : tooltipPos.y + 20;
             const leftStyle = isNearRight ? tooltipPos.x - 220 : tooltipPos.x + 20;
             return (
               <div 
@@ -1812,6 +1937,27 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                   <span className="text-emerald-400 text-right font-mono">{formatEconomy(livePais.economia)}</span>
                   <span className="text-slate-500">Fuerza:</span>
                   <span className="text-rose-400 text-right font-mono">{livePais.conquistado ? '-' : livePais.ejercito_ia.toLocaleString()}</span>
+                </div>
+
+                {/* Reporte Demográfico en Tooltip */}
+                <div className="mt-2 pt-2 border-t border-slate-800 text-[10px] font-mono space-y-1 text-slate-400">
+                  <div className="text-[9px] text-slate-500 uppercase tracking-wider font-bold">// REPORTE DEMOGRÁFICO</div>
+                  <div className="flex justify-between">
+                    <span>Natalidad:</span>
+                    <span className="text-cyan-400 font-bold">
+                      {(demo.tasaNatalidad * 100).toFixed(4)}% {demo.tieneReclutamientoAgresivo && <span className="text-rose-500 text-[8px] animate-pulse">(-20%)</span>}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Mortalidad:</span>
+                    <span className="text-rose-400 font-bold">
+                      {(demo.tasaMortalidad * 100).toFixed(4)}% {demo.isUnderAttack && <span className="text-rose-600 text-[8px] animate-pulse">(4x)</span>} {demo.tieneBancarrota && <span className="text-rose-600 text-[8px]">(+50%)</span>} {demo.tieneMedicos && <span className="text-emerald-500 text-[8px]">(-15%)</span>}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-[9px] pt-1">
+                    <span className="text-slate-500">TENDENCIA:</span>
+                    <span className={demo.tendenciaColor}>{demo.tendencia.toUpperCase()}</span>
+                  </div>
                 </div>
                 <button
                   onClick={(e) => {
@@ -1853,6 +1999,7 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
       {/* DRAWER LATERAL */}
       {paisSeleccionado && (() => {
         const livePais = paises[paisSeleccionado.id] || paisSeleccionado;
+        const demo = getDemographicsInfo(livePais, presupuesto, ataquesEnCola, habilidades);
         const preset = getPresetForCountry(livePais.nombre);
         const multGral = preset.multiplicadorReclutamiento ?? 1.0;
         const multPesadas = preset.multiplicadorPesadas ?? 1.0;
@@ -1893,6 +2040,32 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                     </div>
                   </div>
                   {livePais.conquistado ? <ShieldCheck className="w-6 h-6 text-blue-500 opacity-50" /> : <ShieldAlert className="w-6 h-6 text-rose-600 opacity-50" />}
+                </div>
+
+                {/* Tarjeta de Demografía Detallada */}
+                <div className="bg-slate-900/80 p-3.5 rounded-sm border border-slate-800 col-span-2 space-y-2 font-mono text-xs">
+                  <div className="text-slate-500 text-[9px] uppercase tracking-widest font-bold border-b border-slate-800 pb-1 flex justify-between items-center">
+                    <span>SITUACIÓN DEMOGRÁFICA</span>
+                    {livePais.dias_reclutamiento_agresivo && livePais.dias_reclutamiento_agresivo > 0 ? (
+                      <span className="text-rose-500 animate-pulse text-[8px]">PENALIZACIÓN ACTIVA ({livePais.dias_reclutamiento_agresivo}d)</span>
+                    ) : null}
+                  </div>
+                  <div className="flex justify-between items-center text-slate-400">
+                    <span>Tasa de Natalidad:</span>
+                    <span className="text-cyan-400 font-bold">
+                      {(demo.tasaNatalidad * 100).toFixed(4)}% {demo.tieneReclutamientoAgresivo && <span className="text-rose-500 text-[8px] animate-pulse">(-20%)</span>}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-400">
+                    <span>Tasa de Mortalidad:</span>
+                    <span className="text-rose-400 font-bold">
+                      {(demo.tasaMortalidad * 100).toFixed(4)}% {demo.isUnderAttack && <span className="text-rose-600 text-[8px] animate-pulse">(4x)</span>} {demo.tieneBancarrota && <span className="text-rose-600 text-[8px]">(+50%)</span>} {demo.tieneMedicos && <span className="text-emerald-500 text-[8px]">(-15%)</span>}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-300 border-t border-slate-900/60 pt-1.5 mt-1">
+                    <span className="text-[9px] text-slate-500 uppercase">Tendencia Táctica:</span>
+                    <span className={`${demo.tendenciaColor} font-bold text-[10px]`}>{demo.tendencia.toUpperCase()}</span>
+                  </div>
                 </div>
                 
                 {!livePais.conquistado && (
