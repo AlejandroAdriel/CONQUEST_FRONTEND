@@ -4,7 +4,7 @@ import { CriticalEventModal } from "./components/CriticalEventModal";
 import { useState, useEffect, useRef } from "react";
 import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
-import { 
+import {
   Play, Pause, FastForward, Terminal,
   ShieldAlert, ShieldCheck, Info,
   Flag, Swords, Hexagon, Zap, Skull, Map as MapIcon,
@@ -109,7 +109,7 @@ const getRealEjercitoDetalle = (isAliado: boolean, population: number, seed: num
   if (isAliado) return { infanteria: 0, caballeria: 0, artilleria: 0 };
   const preset = getPresetForCountry(nameEN);
   const baseSize = Math.max(100, Math.floor(Math.sqrt(population) * (5 + (seed % 5)) * preset.ejercitoMultiplicador));
-  
+
   return {
     infanteria: Math.floor(baseSize * preset.composicion.infanteria),
     caballeria: Math.floor(baseSize * preset.composicion.caballeria),
@@ -198,7 +198,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<OperarioUser | null>(null);
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<'start' | 'login' | 'select_hq' | 'game'>('start');
-  const [playerHQ, setPlayerHQ] = useState<{id: string, nombre: string} | null>(null);
+  const [playerHQ, setPlayerHQ] = useState<{ id: string, nombre: string } | null>(null);
   const [showSaves, setShowSaves] = useState(false);
   const [isSystemMenuOpen, setIsSystemMenuOpen] = useState(false);
   const [fechaVirtual, setFechaVirtual] = useState(new Date(2099, 10, 12));
@@ -217,20 +217,21 @@ export default function App() {
   const [criticalCountdown, setCriticalCountdown] = useState<number | null>(null);
   const [pendingCriticalEvent, setPendingCriticalEvent] = useState<any | null>(null);
 
-  // Registrar el bridge en cada renderizado para pasar valores actualizados al context
-  gameState.registerBridge({
-    presupuesto,
-    setPresupuesto,
-    tropas,
-    setTropas,
-    paises,
-    setPaises,
-    pendingCriticalEvent,
-    setPendingCriticalEvent,
-    criticalCountdown,
-    setCriticalCountdown
-  });
-
+  useEffect(() => {
+    gameState.registerBridge({
+      presupuesto,
+      setPresupuesto,
+      tropas,
+      setTropas,
+      paises,
+      setPaises,
+      pendingCriticalEvent,
+      setPendingCriticalEvent,
+      criticalCountdown,
+      setCriticalCountdown
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Referencias para evitar cierres obsoletos en la simulación
   const presupuestoRef = useRef(presupuesto);
   const tropasRef = useRef(tropas);
@@ -285,7 +286,7 @@ export default function App() {
     const nameEN = geo.properties.name || "Unknown";
     const nombre = translateCountry(nameEN);
     const seed = id.charCodeAt(0) + (id.length > 1 ? id.charCodeAt(1) : 0);
-    
+
     const isAliado = playerHQ !== null && (id === playerHQ.id || nameEN === playerHQ.nombre || nombre === playerHQ.nombre);
 
     const poblacion = getRealPopulation(nameEN, seed, countryStatsRef.current);
@@ -364,6 +365,7 @@ export default function App() {
 
   // Cargar geometrías e inicializar todos los países al iniciar el juego
   useEffect(() => {
+    if (Object.keys(paises).length > 0) return;
     if (currentScreen === 'game' && playerHQ && Object.keys(countryStatsRef.current).length > 0 && !paisesInicializados) {
       const initPaises = async () => {
         try {
@@ -371,19 +373,18 @@ export default function App() {
           const worldData = await res.json();
           const geometries = worldData.objects.countries.geometries;
           const initialCountries: Record<string, Pais> = {};
-          
+
           geometries.forEach((geo: any) => {
             const id = geo.id || "000";
             const nameEN = geo.properties ? geo.properties.name : "Unknown";
             const nombre = translateCountry(nameEN);
             const seed = id.charCodeAt(0) + (id.length > 1 ? id.charCodeAt(1) : 0);
             const isAliado = id === playerHQ.id || nameEN === playerHQ.nombre || nombre === playerHQ.nombre;
-            
+
             const poblacion = getRealPopulation(nameEN, seed, countryStatsRef.current);
             const economia = getRealEconomy(nameEN, poblacion, seed);
             const ejercito_ia_detalle = getRealEjercitoDetalle(isAliado, poblacion, seed, nameEN);
             const ejercito_ia = isAliado ? 0 : (ejercito_ia_detalle.infanteria + ejercito_ia_detalle.caballeria + ejercito_ia_detalle.artilleria);
-            
             const preset = getPresetForCountry(nameEN);
             const tasa_natalidad = preset.tasa_natalidad ?? 0.0033;
             const tasa_mortalidad = preset.tasa_mortalidad ?? 0.0022;
@@ -402,7 +403,7 @@ export default function App() {
               dias_reclutamiento_agresivo: 0
             };
           });
-          
+
           setPaises(initialCountries);
           setPaisesInicializados(true);
         } catch (err) {
@@ -432,10 +433,10 @@ export default function App() {
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [criticalCountdown, pendingCriticalEvent, triggerCriticalEvent]);
+  }, [criticalCountdown, pendingCriticalEvent]);
 
   const lanzarEventoEspecial = () => {
-const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes que antes
+    const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes que antes
 
     // Obtener listas de países dinámicamente
     const currentPaises = { ...paisesRef.current };
@@ -822,7 +823,7 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
               id: "choice8_3",
               label: "Rechazar asilo (Declarar neutralidad)",
               consequence: "Sin alteraciones operativas",
-              action: () => {}
+              action: () => { }
             }
           ]
         });
@@ -832,7 +833,7 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
       if (criticalTemplates.length > 0) {
         const picked = criticalTemplates[Math.floor(Math.random() * criticalTemplates.length)];
         setPendingCriticalEvent(picked);
-        setCriticalCountdown(3); 
+        setCriticalCountdown(3);
       }
     } else {
       // Lanzar un DecayingNotification (Eventos temporales con balances de recursos profundos y expiraciones)
@@ -961,7 +962,7 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
             label: "Rechazar el experimento",
             consequence: "Preservas población, sin ganancia de tropas",
             style: 'negative',
-            action: () => {}
+            action: () => { }
           }
         ]
       });
@@ -1001,7 +1002,7 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
               label: "Mantener servicios civiles intactos",
               consequence: "Sin tropas adicionales, riesgo de disturbios",
               style: 'negative',
-              action: () => {}
+              action: () => { }
             }
           ],
           onExpire: (gState: any) => {
@@ -1053,7 +1054,7 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
               label: "Mantener satélites en patrulla defensiva",
               consequence: "Sin coste inmediato, riesgo de perder ventaja táctica",
               style: 'negative',
-              action: () => {}
+              action: () => { }
             }
           ],
           onExpire: (gState: any) => {
@@ -1110,7 +1111,6 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
     // 2. Simulación para cada país
     Object.keys(currentPaises).forEach(id => {
       const pais = { ...currentPaises[id] };
-      
       // A. Población dinámica (Cálculo demográfico realista y asimétrico con modificadores dinámicos)
       let tasaNatalidadEfectiva = pais.tasa_natalidad ?? 0.0033;
       let tasaMortalidadEfectiva = pais.tasa_mortalidad ?? 0.0022;
@@ -1188,7 +1188,7 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
 
     // 3. Mantenimiento del Jugador y Crisis de Suministros escalonada (Economía sustentable)
     const totalTropasJugador = currentTropas.infanteria + currentTropas.caballeria + currentTropas.artilleria;
-    
+
     // Costos y tasas escalonadas según tamaño del ejército para evitar "snowballing" excesivo, pero viable
     let mntInf = 0.005, mntCab = 0.015, mntArt = 0.04;
     let desRate = 0.001; // 0.1% en etapa inicial
@@ -1256,10 +1256,10 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
       const evts = eventosAleatoriosRef.current;
       if (evts.length > 0) {
         const eventoAzar = evts[Math.floor(Math.random() * evts.length)];
-        
+
         // Aplicamos el efecto del evento sobre el presupuesto y tropas del momento
         const resultadoEvento = eventoAzar.efecto(currentPresupuesto, nuevasTropas);
-        
+
         currentPresupuesto = resultadoEvento.oro;
         nuevasTropas = resultadoEvento.tropas;
 
@@ -1283,7 +1283,7 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
     // 6. Procesar ataques en cola (impactos de combate)
     const ataquesPendientes: AtaqueEnCola[] = [];
     const copiaAtaques = [...ataquesEnCola];
-    
+
     copiaAtaques.forEach(ataque => {
       if (fechaVirtual >= ataque.fecha_impacto) {
         const paisDestino = currentPaises[ataque.pais_destino_id];
@@ -1306,7 +1306,7 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
         // Tasa de bajas (basada en el ratio de poder con margen aleatorio)
         const ratioIA = poderIA / (poderJugador || 1);
         const ratioJugador = poderJugador / (poderIA || 1);
-        
+
         const rateJugador = Math.min(0.95, (0.1 + Math.random() * 0.3) * ratioIA);
         const rateIA = Math.min(0.95, (0.2 + Math.random() * 0.4) * ratioJugador);
 
@@ -1335,12 +1335,12 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
         let msg = "";
         if (victoria) {
           msg = `¡Victoria en ${paisDestino.nombre}! Las defensas de la IA enemiga colapsaron. ` +
-                `Bajas del jugador: 👤${bajasInfJugador} Infantería, ⚡${bajasCabJugador} Caballería, 💀${bajasArtJugador} Artillería (Total: ${totalBajasJugador}). ` +
-                `Sobreviven y retornan a la reserva: 👤${survInfJugador} Inf, ⚡${survCabJugador} Cab, 💀${survArtJugador} Art.`;
+            `Bajas del jugador: 👤${bajasInfJugador} Infantería, ⚡${bajasCabJugador} Caballería, 💀${bajasArtJugador} Artillería (Total: ${totalBajasJugador}). ` +
+            `Sobreviven y retornan a la reserva: 👤${survInfJugador} Inf, ⚡${survCabJugador} Cab, 💀${survArtJugador} Art.`;
         } else {
           msg = `Falla táctica en ${paisDestino.nombre}. Nuestras fuerzas desplegadas fueron neutralizadas. ` +
-                `Pérdidas totales: 👤${infEnviada} Infantería, ⚡${cabEnviada} Caballería, 💀${artEnviada} Artillería. ` +
-                `Bajas enemigas causadas: 👤${bajasInfIA} Inf, ⚡${bajasCabIA} Cab, 💀${bajasArtIA} Art.`;
+            `Pérdidas totales: 👤${infEnviada} Infantería, ⚡${cabEnviada} Caballería, 💀${artEnviada} Artillería. ` +
+            `Bajas enemigas causadas: 👤${bajasInfIA} Inf, ⚡${bajasCabIA} Cab, 💀${bajasArtIA} Art.`;
         }
 
         nuevosMensajes.push({
@@ -1352,9 +1352,9 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
         });
 
         if (victoria) {
-          currentPaises[paisDestino.id] = { 
-            ...paisDestino, 
-            conquistado: true, 
+          currentPaises[paisDestino.id] = {
+            ...paisDestino,
+            conquistado: true,
             ejercito_ia: 0,
             ejercito_ia_detalle: { infanteria: 0, caballeria: 0, artilleria: 0 }
           };
@@ -1367,8 +1367,8 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
             caballeria: survCabIA,
             artilleria: survArtIA
           };
-          currentPaises[paisDestino.id] = { 
-            ...paisDestino, 
+          currentPaises[paisDestino.id] = {
+            ...paisDestino,
             ejercito_ia_detalle: nuevoDetalle,
             ejercito_ia: nuevoDetalle.infanteria + nuevoDetalle.caballeria + nuevoDetalle.artilleria
           };
@@ -1426,10 +1426,10 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
 
   const handleDeclararGuerra = () => {
     if (!paisSeleccionado || paisSeleccionado.conquistado) return;
-    
+
     if (infanteriaAEnviar < 0 || infanteriaAEnviar > tropas.infanteria ||
-        caballeriaAEnviar < 0 || caballeriaAEnviar > tropas.caballeria ||
-        artilleriaAEnviar < 0 || artilleriaAEnviar > tropas.artilleria) {
+      caballeriaAEnviar < 0 || caballeriaAEnviar > tropas.caballeria ||
+      artilleriaAEnviar < 0 || artilleriaAEnviar > tropas.artilleria) {
       alert("Cantidad de tropas a desplegar excede las reservas disponibles o es inválida.");
       return;
     }
@@ -1596,16 +1596,16 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
   if (currentScreen === 'start') {
     return (
       <>
-        <StartMenu 
-          onStartGame={() => setCurrentScreen('select_hq')} 
-          onOpenLogin={() => setCurrentScreen('login')} 
+        <StartMenu
+          onStartGame={() => setCurrentScreen('select_hq')}
+          onOpenLogin={() => setCurrentScreen('login')}
           onOpenSaves={() => setShowSaves(true)}
           onOpenProfile={() => setShowUserProfile(true)}
           currentUser={currentUser}
         />
         {showSaves && (
-          <SaveFilesMenu 
-            onClose={() => setShowSaves(false)} 
+          <SaveFilesMenu
+            onClose={() => setShowSaves(false)}
             onLoadSave={() => {
               setCurrentScreen('game');
               setShowSaves(false);
@@ -1632,12 +1632,12 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
 
   if (currentScreen === 'login') {
     return (
-      <Login 
+      <Login
         onLoginSuccess={(user) => {
           setCurrentUser(user);
           setCurrentScreen('start');
-        }} 
-        onCancel={() => setCurrentScreen('start')} 
+        }}
+        onCancel={() => setCurrentScreen('start')}
       />
     );
   }
@@ -1647,7 +1647,7 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
       <SelectHQ
         onDeploy={(pais) => {
           setPlayerHQ(pais);
-          
+
           const norm = pais.nombre.toLowerCase();
           if (norm.includes("estados unidos") || norm.includes("usa") || norm.includes("united states") || norm.includes("rusia") || norm.includes("russia") || norm.includes("china")) {
             setTropas({ infanteria: 12000, caballeria: 4000, artilleria: 2000 });
@@ -1718,10 +1718,10 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
             SEDE: [&nbsp;<span className="text-emerald-400 font-bold max-w-[70px] sm:max-w-[100px] md:max-w-[120px] lg:max-w-[150px] xl:max-w-[220px] truncate" title={playerHQ ? playerHQ.nombre.toUpperCase() : "DESCONOCIDA"}>{playerHQ ? playerHQ.nombre.toUpperCase() : "DESCONOCIDA"}</span>&nbsp;]
           </div>
         </div>
-        
+
         <div className="flex items-center justify-end gap-2.5 md:gap-4 shrink-0">
           <div className="text-xs font-bold tracking-widest text-slate-400 flex items-center gap-1.5 shrink-0">
-            STATUS: 
+            STATUS:
             <span className={isPlaying ? (speedLevel === 1 ? "text-emerald-500" : speedLevel === 2 ? "text-amber-500" : "text-cyan-400") : "text-rose-500"}>
               {isPlaying ? (speedLevel === 1 ? "SIMULATING [>]" : speedLevel === 2 ? "SIMULATING [>>]" : "SIMULATING [>>>]") : "PAUSED [||]"}
             </span>
@@ -1748,7 +1748,7 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
             </button>
           </div>
 
-          <button 
+          <button
             onClick={() => {
               setIsPlaying(false);
               setIsSystemMenuOpen(true);
@@ -1777,28 +1777,25 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
               const isAlert = ev.tipo === 'alert';
               const isSuccess = ev.tipo === 'success';
               return (
-                <div 
-                  key={ev.id} 
-                  className={`group relative p-3.5 rounded border overflow-hidden transition-all duration-300 hover:translate-x-0.5 ${
-                    isAlert 
-                      ? 'bg-gradient-to-r from-red-950/50 via-slate-950/80 to-slate-950/60 border-rose-800/40 hover:border-rose-600/60 shadow-[inset_0_0_30px_rgba(225,29,72,0.04)]' 
-                      : isSuccess 
-                        ? 'bg-gradient-to-r from-emerald-950/50 via-slate-950/80 to-slate-950/60 border-emerald-800/40 hover:border-emerald-600/60 shadow-[inset_0_0_30px_rgba(16,185,129,0.04)]' 
-                        : 'bg-gradient-to-r from-cyan-950/30 via-slate-950/80 to-slate-950/60 border-cyan-800/30 hover:border-cyan-600/50 shadow-[inset_0_0_30px_rgba(6,182,212,0.03)]'
-                  }`}
+                <div
+                  key={ev.id}
+                  className={`group relative p-3.5 rounded border overflow-hidden transition-all duration-300 hover:translate-x-0.5 ${isAlert
+                    ? 'bg-gradient-to-r from-red-950/50 via-slate-950/80 to-slate-950/60 border-rose-800/40 hover:border-rose-600/60 shadow-[inset_0_0_30px_rgba(225,29,72,0.04)]'
+                    : isSuccess
+                      ? 'bg-gradient-to-r from-emerald-950/50 via-slate-950/80 to-slate-950/60 border-emerald-800/40 hover:border-emerald-600/60 shadow-[inset_0_0_30px_rgba(16,185,129,0.04)]'
+                      : 'bg-gradient-to-r from-cyan-950/30 via-slate-950/80 to-slate-950/60 border-cyan-800/30 hover:border-cyan-600/50 shadow-[inset_0_0_30px_rgba(6,182,212,0.03)]'
+                    }`}
                 >
                   {/* Scanline overlay */}
                   <div className="absolute inset-0 opacity-[0.015] pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)', backgroundSize: '100% 4px' }} />
-                  
+
                   {/* Accent glow stripe */}
-                  <div className={`absolute left-0 top-0 bottom-0 w-[3px] ${
-                    isAlert ? 'bg-gradient-to-b from-rose-500 via-rose-600 to-rose-500/30' 
-                    : isSuccess ? 'bg-gradient-to-b from-emerald-400 via-emerald-500 to-emerald-400/30' 
-                    : 'bg-gradient-to-b from-cyan-400 via-cyan-500 to-cyan-400/30'
-                  }`} />
-                  <div className={`absolute left-0 top-0 bottom-0 w-8 ${
-                    isAlert ? 'bg-rose-500/5' : isSuccess ? 'bg-emerald-500/5' : 'bg-cyan-500/5'
-                  } blur-xl pointer-events-none`} />
+                  <div className={`absolute left-0 top-0 bottom-0 w-[3px] ${isAlert ? 'bg-gradient-to-b from-rose-500 via-rose-600 to-rose-500/30'
+                    : isSuccess ? 'bg-gradient-to-b from-emerald-400 via-emerald-500 to-emerald-400/30'
+                      : 'bg-gradient-to-b from-cyan-400 via-cyan-500 to-cyan-400/30'
+                    }`} />
+                  <div className={`absolute left-0 top-0 bottom-0 w-8 ${isAlert ? 'bg-rose-500/5' : isSuccess ? 'bg-emerald-500/5' : 'bg-cyan-500/5'
+                    } blur-xl pointer-events-none`} />
 
                   {isAlert && (
                     <div className="absolute right-0 top-0 w-24 h-24 bg-red-600/8 rounded-full blur-3xl pointer-events-none" />
@@ -1807,14 +1804,12 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                   <div className="relative z-10 font-mono pl-2">
                     {/* Header row */}
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.15em] leading-tight ${
-                        isAlert ? 'text-rose-400' : isSuccess ? 'text-emerald-400' : 'text-cyan-400'
-                      }`}>
-                        <span className={`flex items-center justify-center w-5 h-5 rounded-sm ${
-                          isAlert ? 'bg-rose-500/15 ring-1 ring-rose-500/30' 
-                          : isSuccess ? 'bg-emerald-500/15 ring-1 ring-emerald-500/30' 
-                          : 'bg-cyan-500/15 ring-1 ring-cyan-500/30'
+                      <div className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.15em] leading-tight ${isAlert ? 'text-rose-400' : isSuccess ? 'text-emerald-400' : 'text-cyan-400'
                         }`}>
+                        <span className={`flex items-center justify-center w-5 h-5 rounded-sm ${isAlert ? 'bg-rose-500/15 ring-1 ring-rose-500/30'
+                          : isSuccess ? 'bg-emerald-500/15 ring-1 ring-emerald-500/30'
+                            : 'bg-cyan-500/15 ring-1 ring-cyan-500/30'
+                          }`}>
                           {isAlert ? <ShieldAlert className="w-3 h-3" /> : isSuccess ? <ShieldCheck className="w-3 h-3" /> : <Info className="w-3 h-3" />}
                         </span>
                         <span className="truncate">{ev.titulo}</span>
@@ -1824,11 +1819,10 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                     {/* Body */}
                     <p className="text-[11px] leading-[1.6] text-slate-400 group-hover:text-slate-300 transition-colors">{ev.mensaje}</p>
                     {/* Separator line */}
-                    <div className={`mt-2.5 h-px w-full ${
-                      isAlert ? 'bg-gradient-to-r from-rose-800/30 via-rose-800/10 to-transparent' 
-                      : isSuccess ? 'bg-gradient-to-r from-emerald-800/30 via-emerald-800/10 to-transparent' 
-                      : 'bg-gradient-to-r from-cyan-800/20 via-cyan-800/10 to-transparent'
-                    }`} />
+                    <div className={`mt-2.5 h-px w-full ${isAlert ? 'bg-gradient-to-r from-rose-800/30 via-rose-800/10 to-transparent'
+                      : isSuccess ? 'bg-gradient-to-r from-emerald-800/30 via-emerald-800/10 to-transparent'
+                        : 'bg-gradient-to-r from-cyan-800/20 via-cyan-800/10 to-transparent'
+                      }`} />
                   </div>
                 </div>
               );
@@ -1867,12 +1861,12 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                           const isHovered = hoveredPais?.id === pais.id;
                           const isSelected = paisSeleccionado?.id === pais.id;
                           const isAttacked = ataquesEnCola.some(a => a.pais_destino_id === pais.id);
-                          
+
                           let fill = "#3f1a28";
                           if (pais.conquistado) fill = "#1e3a8a";
                           if (isHovered && !pais.conquistado) fill = "#701a2e";
                           if (isHovered && pais.conquistado) fill = "#1d4ed8";
-                          if (isSelected) fill = pais.conquistado ? "#2563eb" : "#9f1239"; 
+                          if (isSelected) fill = pais.conquistado ? "#2563eb" : "#9f1239";
 
                           return (
                             <Geography
@@ -1918,8 +1912,8 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
             const topStyle = isNearBottom ? tooltipPos.y - 280 : tooltipPos.y + 20;
             const leftStyle = isNearRight ? tooltipPos.x - 220 : tooltipPos.x + 20;
             return (
-              <div 
-                className="fixed z-50 pointer-events-auto bg-slate-900/95 border border-slate-700/80 p-3 rounded-sm shadow-2xl backdrop-blur-md min-w-[200px]" 
+              <div
+                className="fixed z-50 pointer-events-auto bg-slate-900/95 border border-slate-700/80 p-3 rounded-sm shadow-2xl backdrop-blur-md min-w-[200px]"
                 style={{ left: leftStyle, top: topStyle }}
                 onMouseEnter={() => {
                   if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -1964,11 +1958,10 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                     e.stopPropagation();
                     setPaisSeleccionado(livePais);
                   }}
-                  className={`w-full mt-3 text-[10px] font-bold text-center py-1 uppercase tracking-widest ${
-                    livePais.conquistado
-                      ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-700 hover:text-white cursor-pointer'
-                      : 'bg-rose-900/30 text-rose-400 hover:bg-rose-700 hover:text-white cursor-pointer transition-all active:scale-95'
-                  }`}
+                  className={`w-full mt-3 text-[10px] font-bold text-center py-1 uppercase tracking-widest ${livePais.conquistado
+                    ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-700 hover:text-white cursor-pointer'
+                    : 'bg-rose-900/30 text-rose-400 hover:bg-rose-700 hover:text-white cursor-pointer transition-all active:scale-95'
+                    }`}
                 >
                   {livePais.conquistado ? 'ALIADO' : 'HOSTIL'}
                 </button>
@@ -2017,10 +2010,10 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                 {livePais.nombre}
               </h3>
               <button onClick={() => setPaisSeleccionado(null)} className="text-slate-500 hover:text-rose-400 transition">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
-            
+
             <div className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0 custom-scrollbar">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="bg-slate-900/80 p-3 rounded-sm border border-slate-800">
@@ -2031,7 +2024,7 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                   <div className="text-slate-500 text-[10px] uppercase tracking-widest mb-1">Economía</div>
                   <div className="font-mono text-emerald-400">{formatEconomy(livePais.economia)}</div>
                 </div>
-                
+
                 <div className="bg-slate-900/80 p-3 rounded-sm border border-slate-800 col-span-2 flex justify-between items-center">
                   <div>
                     <div className="text-slate-500 text-[10px] uppercase tracking-widest mb-1">Estatus Táctico</div>
@@ -2067,7 +2060,6 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                     <span className={`${demo.tendenciaColor} font-bold text-[10px]`}>{demo.tendencia.toUpperCase()}</span>
                   </div>
                 </div>
-                
                 {!livePais.conquistado && (
                   <div className="bg-rose-950/20 p-3 rounded-sm border border-rose-900/30 col-span-2 space-y-2">
                     <div className="flex justify-between items-center">
@@ -2097,7 +2089,7 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
               {!livePais.conquistado && (
                 <div className="pt-5 border-t border-slate-800 mt-2 space-y-4">
                   <div className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Distribución de la Ofensiva</div>
-                  
+
                   {/* Selector de Infantería */}
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-[9px] text-slate-400 font-mono">
@@ -2105,17 +2097,17 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                       <span className="text-slate-500">Disp: {tropas.infanteria.toLocaleString()}</span>
                     </div>
                     <div className="flex gap-2">
-                      <input 
-                        type="number" 
-                        min="0" 
-                        max={tropas.infanteria} 
-                        value={infanteriaAEnviar || ""} 
-                        onChange={(e) => setInfanteriaAEnviar(Math.max(0, Math.min(tropas.infanteria, Number(e.target.value))))} 
-                        className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 focus:outline-none focus:border-rose-500 font-mono text-xs" 
+                      <input
+                        type="number"
+                        min="0"
+                        max={tropas.infanteria}
+                        value={infanteriaAEnviar || ""}
+                        onChange={(e) => setInfanteriaAEnviar(Math.max(0, Math.min(tropas.infanteria, Number(e.target.value))))}
+                        className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 focus:outline-none focus:border-rose-500 font-mono text-xs"
                         placeholder="0"
                       />
-                      <button 
-                        onClick={() => setInfanteriaAEnviar(tropas.infanteria)} 
+                      <button
+                        onClick={() => setInfanteriaAEnviar(tropas.infanteria)}
                         className="bg-slate-800 hover:bg-slate-700 text-[10px] px-2.5 rounded-sm border border-slate-700 text-slate-300 font-mono active:scale-95 transition-all"
                       >
                         MAX
@@ -2130,17 +2122,17 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                       <span className="text-slate-500">Disp: {tropas.caballeria.toLocaleString()}</span>
                     </div>
                     <div className="flex gap-2">
-                      <input 
-                        type="number" 
-                        min="0" 
-                        max={tropas.caballeria} 
-                        value={caballeriaAEnviar || ""} 
-                        onChange={(e) => setCaballeriaAEnviar(Math.max(0, Math.min(tropas.caballeria, Number(e.target.value))))} 
-                        className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 focus:outline-none focus:border-rose-500 font-mono text-xs" 
+                      <input
+                        type="number"
+                        min="0"
+                        max={tropas.caballeria}
+                        value={caballeriaAEnviar || ""}
+                        onChange={(e) => setCaballeriaAEnviar(Math.max(0, Math.min(tropas.caballeria, Number(e.target.value))))}
+                        className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 focus:outline-none focus:border-rose-500 font-mono text-xs"
                         placeholder="0"
                       />
-                      <button 
-                        onClick={() => setCaballeriaAEnviar(tropas.caballeria)} 
+                      <button
+                        onClick={() => setCaballeriaAEnviar(tropas.caballeria)}
                         className="bg-slate-800 hover:bg-slate-700 text-[10px] px-2.5 rounded-sm border border-slate-700 text-slate-300 font-mono active:scale-95 transition-all"
                       >
                         MAX
@@ -2155,17 +2147,17 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                       <span className="text-slate-500">Disp: {tropas.artilleria.toLocaleString()}</span>
                     </div>
                     <div className="flex gap-2">
-                      <input 
-                        type="number" 
-                        min="0" 
-                        max={tropas.artilleria} 
-                        value={artilleriaAEnviar || ""} 
-                        onChange={(e) => setArtilleriaAEnviar(Math.max(0, Math.min(tropas.artilleria, Number(e.target.value))))} 
-                        className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 focus:outline-none focus:border-rose-500 font-mono text-xs" 
+                      <input
+                        type="number"
+                        min="0"
+                        max={tropas.artilleria}
+                        value={artilleriaAEnviar || ""}
+                        onChange={(e) => setArtilleriaAEnviar(Math.max(0, Math.min(tropas.artilleria, Number(e.target.value))))}
+                        className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 focus:outline-none focus:border-rose-500 font-mono text-xs"
                         placeholder="0"
                       />
-                      <button 
-                        onClick={() => setArtilleriaAEnviar(tropas.artilleria)} 
+                      <button
+                        onClick={() => setArtilleriaAEnviar(tropas.artilleria)}
                         className="bg-slate-800 hover:bg-slate-700 text-[10px] px-2.5 rounded-sm border border-slate-700 text-slate-300 font-mono active:scale-95 transition-all"
                       >
                         MAX
@@ -2181,10 +2173,10 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                         {(infanteriaAEnviar * 1.0 + caballeriaAEnviar * 1.5 + artilleriaAEnviar * 3.0).toFixed(1)}
                       </span>
                     </div>
-                    
-                    <button 
-                      onClick={handleDeclararGuerra} 
-                      disabled={(infanteriaAEnviar + caballeriaAEnviar + artilleriaAEnviar) <= 0} 
+
+                    <button
+                      onClick={handleDeclararGuerra}
+                      disabled={(infanteriaAEnviar + caballeriaAEnviar + artilleriaAEnviar) <= 0}
                       className="w-full bg-rose-700 hover:bg-rose-600 disabled:bg-slate-800 disabled:text-slate-600 disabled:border-slate-700 text-white font-bold py-3 px-4 rounded-sm border border-rose-500 uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer disabled:cursor-not-allowed"
                     >
                       <Swords className="w-4 h-4" />
@@ -2210,7 +2202,7 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                       <div className="text-[9px] text-slate-500 normal-case mb-2 font-mono">
                         Convierta población local en fuerzas de reserva. Costo deducido de su oro global.
                       </div>
-                      
+
                       {/* Movilizar Infantería */}
                       <div className="space-y-1.5">
                         <div className="flex justify-between text-[9px] text-slate-400 font-mono">
@@ -2218,20 +2210,20 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                           <span className="text-slate-500">Costo: €{(infanteriaAMovilizar * costoInfUnit).toLocaleString()}</span>
                         </div>
                         <div className="flex gap-2">
-                          <input 
-                            type="number" 
-                            min="0" 
-                            value={infanteriaAMovilizar || ""} 
-                            onChange={(e) => setInfanteriaAMovilizar(Math.max(0, Number(e.target.value)))} 
-                            className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 focus:outline-none focus:border-cyan-500 font-mono text-xs" 
+                          <input
+                            type="number"
+                            min="0"
+                            value={infanteriaAMovilizar || ""}
+                            onChange={(e) => setInfanteriaAMovilizar(Math.max(0, Number(e.target.value)))}
+                            className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 focus:outline-none focus:border-cyan-500 font-mono text-xs"
                             placeholder="Cantidad"
                           />
-                          <button 
+                          <button
                             onClick={() => {
                               const maxAffordable = Math.floor(presupuesto / costoInfUnit);
                               const maxByPop = Math.max(0, Math.floor(livePais.poblacion * 0.05) - caballeriaAMovilizar - artilleriaAMovilizar);
                               setInfanteriaAMovilizar(Math.min(maxAffordable, maxByPop));
-                            }} 
+                            }}
                             className="bg-slate-800 hover:bg-slate-700 text-[10px] px-2.5 rounded-sm border border-slate-700 text-slate-300 font-mono active:scale-95 transition-all"
                             title="Máxima infantería reclutable según presupuesto y límite de población"
                           >
@@ -2247,20 +2239,20 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                           <span className="text-slate-500">Costo: €{(caballeriaAMovilizar * costoCabUnit).toLocaleString()}</span>
                         </div>
                         <div className="flex gap-2">
-                          <input 
-                            type="number" 
-                            min="0" 
-                            value={caballeriaAMovilizar || ""} 
-                            onChange={(e) => setCaballeriaAMovilizar(Math.max(0, Number(e.target.value)))} 
-                            className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 focus:outline-none focus:border-cyan-500 font-mono text-xs" 
+                          <input
+                            type="number"
+                            min="0"
+                            value={caballeriaAMovilizar || ""}
+                            onChange={(e) => setCaballeriaAMovilizar(Math.max(0, Number(e.target.value)))}
+                            className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 focus:outline-none focus:border-cyan-500 font-mono text-xs"
                             placeholder="Cantidad"
                           />
-                          <button 
+                          <button
                             onClick={() => {
                               const maxAffordable = Math.floor(presupuesto / costoCabUnit);
                               const maxByPop = Math.max(0, Math.floor(livePais.poblacion * 0.05) - infanteriaAMovilizar - artilleriaAMovilizar);
                               setCaballeriaAMovilizar(Math.min(maxAffordable, maxByPop));
-                            }} 
+                            }}
                             className="bg-slate-800 hover:bg-slate-700 text-[10px] px-2.5 rounded-sm border border-slate-700 text-slate-300 font-mono active:scale-95 transition-all"
                             title="Máxima caballería reclutable según presupuesto y límite de población"
                           >
@@ -2276,20 +2268,20 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                           <span className="text-slate-500">Costo: €{(artilleriaAMovilizar * costoArtUnit).toLocaleString()}</span>
                         </div>
                         <div className="flex gap-2">
-                          <input 
-                            type="number" 
-                            min="0" 
-                            value={artilleriaAMovilizar || ""} 
-                            onChange={(e) => setArtilleriaAMovilizar(Math.max(0, Number(e.target.value)))} 
-                            className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 focus:outline-none focus:border-cyan-500 font-mono text-xs" 
+                          <input
+                            type="number"
+                            min="0"
+                            value={artilleriaAMovilizar || ""}
+                            onChange={(e) => setArtilleriaAMovilizar(Math.max(0, Number(e.target.value)))}
+                            className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 focus:outline-none focus:border-cyan-500 font-mono text-xs"
                             placeholder="Cantidad"
                           />
-                          <button 
+                          <button
                             onClick={() => {
                               const maxAffordable = Math.floor(presupuesto / costoArtUnit);
                               const maxByPop = Math.max(0, Math.floor(livePais.poblacion * 0.05) - infanteriaAMovilizar - caballeriaAMovilizar);
                               setArtilleriaAMovilizar(Math.min(maxAffordable, maxByPop));
-                            }} 
+                            }}
                             className="bg-slate-800 hover:bg-slate-700 text-[10px] px-2.5 rounded-sm border border-slate-700 text-slate-300 font-mono active:scale-95 transition-all"
                             title="Máxima artillería reclutable según presupuesto y límite de población"
                           >
@@ -2315,13 +2307,13 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                           </div>
                         </div>
 
-                        <button 
-                          onClick={handleMovilizarFuerzas} 
+                        <button
+                          onClick={handleMovilizarFuerzas}
                           disabled={
                             (infanteriaAMovilizar + caballeriaAMovilizar + artilleriaAMovilizar) <= 0 ||
                             (infanteriaAMovilizar + caballeriaAMovilizar + artilleriaAMovilizar) > Math.floor(livePais.poblacion * 0.05) ||
                             costoTotal > presupuesto
-                          } 
+                          }
                           className="w-full bg-cyan-700 hover:bg-cyan-600 disabled:bg-slate-800 disabled:text-slate-600 disabled:border-slate-700 text-white font-bold py-3 px-4 rounded-sm border border-cyan-500 uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer disabled:cursor-not-allowed"
                         >
                           <Zap className="w-4 h-4" />
@@ -2347,9 +2339,9 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
               <span className="text-xl font-mono text-emerald-400 font-bold tracking-tight">{presupuesto.toLocaleString()}</span>
             </div>
           </div>
-          
+
           <div className="hidden sm:block w-px bg-gradient-to-b from-transparent via-slate-700 to-transparent my-1"></div>
-          
+
           <div className="bg-slate-900 border border-slate-700/80 rounded-sm px-5 flex flex-col justify-center shadow-inner">
             <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1.5">Fuerzas de Reserva</span>
             <div className="flex gap-6 font-mono text-sm">
@@ -2369,7 +2361,7 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
           </div>
 
           <div className="hidden sm:block w-px bg-gradient-to-b from-transparent via-slate-700 to-transparent my-1"></div>
-          
+
           <div className="bg-slate-900 border border-slate-700/80 rounded-sm px-5 flex flex-col justify-center shadow-inner">
             <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Población Aliada</span>
             <div className="flex items-center gap-2">
@@ -2383,7 +2375,7 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
           </div>
 
           <div className="hidden sm:block w-px bg-gradient-to-b from-transparent via-slate-700 to-transparent my-1"></div>
-          
+
           <div className="bg-slate-900 border border-slate-700/80 rounded-sm px-5 flex flex-col justify-center shadow-inner">
             <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Dominio Global</span>
             <div className="flex items-center gap-2">
@@ -2418,7 +2410,7 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                 </p>
               </div>
               <button onClick={() => setMostrarArbol(false)} className="p-3 bg-slate-900 hover:bg-rose-950/40 hover:text-rose-400 border border-slate-800 rounded-sm text-slate-400 transition-colors">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
 
@@ -2457,15 +2449,15 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                             strokeColor = "#0891b2";
                           }
                           return (
-                            <line 
-                              key={`line-${pre.id}-${hab.id}`} 
-                              x1={pre.x + 208} 
-                              y1={pre.y + 45} 
-                              x2={hab.x} 
-                              y2={hab.y + 45} 
-                              stroke={strokeColor} 
-                              strokeWidth={hab.desbloqueada ? "3" : isTargetEnDesarrollo ? "2.5" : "2"} 
-                              strokeDasharray={hab.desbloqueada ? "none" : isTargetEnDesarrollo ? "4,4" : isAvailable ? "none" : "8,8"} 
+                            <line
+                              key={`line-${pre.id}-${hab.id}`}
+                              x1={pre.x + 208}
+                              y1={pre.y + 45}
+                              x2={hab.x}
+                              y2={hab.y + 45}
+                              stroke={strokeColor}
+                              strokeWidth={hab.desbloqueada ? "3" : isTargetEnDesarrollo ? "2.5" : "2"}
+                              strokeDasharray={hab.desbloqueada ? "none" : isTargetEnDesarrollo ? "4,4" : isAvailable ? "none" : "8,8"}
                               style={hab.desbloqueada ? { filter: "drop-shadow(0 0 8px #06b6d4)", transition: "all 0.5s ease" } : isTargetEnDesarrollo ? { filter: "drop-shadow(0 0 6px #a855f7)", transition: "all 0.5s ease" } : { transition: "all 0.5s ease" }}
                             />
                           );
@@ -2475,9 +2467,9 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
 
                     {habilidades.filter(h => h.categoria === tabIyd).map(hab => {
                       const canUnlock = !hab.desbloqueada && !hab.enDesarrollo &&
-                        (hab.prerrequisitos.length === 0 || 
-                         hab.prerrequisitos.every(preId => habilidades.find(h => h.id === preId)?.desbloqueada === true));
-                      
+                        (hab.prerrequisitos.length === 0 ||
+                          hab.prerrequisitos.every(preId => habilidades.find(h => h.id === preId)?.desbloqueada === true));
+
                       const costoFinal = Math.floor(hab.costo * multiplicadorBurocracia);
                       const totalCalculatedTime = Math.max(1, Math.floor((hab.tiempo_investigacion_dias || 30) * multiplicadorBurocracia));
                       const progressPercent = hab.enDesarrollo
@@ -2494,34 +2486,32 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                       } else {
                         cardClass = "bg-slate-950 border-slate-800/50 opacity-40 grayscale pointer-events-none";
                       }
-                      
+
                       return (
-                        <div 
-                          key={hab.id} 
-                          className={`absolute p-3 w-52 rounded-sm border transition-all duration-300 text-xs font-mono z-10 ${cardClass}`} 
-                          style={{ left: hab.x, top: hab.y }} 
+                        <div
+                          key={hab.id}
+                          className={`absolute p-3 w-52 rounded-sm border transition-all duration-300 text-xs font-mono z-10 ${cardClass}`}
+                          style={{ left: hab.x, top: hab.y }}
                           onClick={(e) => {
                             e.stopPropagation();
                             if (canUnlock) handleDesbloquearHabilidad(hab);
                           }}
                         >
-                          <div className={`font-bold mb-1 truncate ${
-                            hab.desbloqueada 
-                              ? 'text-cyan-50' 
-                              : hab.enDesarrollo
-                                ? 'text-purple-300 font-bold'
-                                : canUnlock 
-                                  ? 'text-slate-100' 
-                                  : 'text-slate-600'
-                          }`} title={hab.nombre}>{hab.nombre}</div>
-                          <div className={`text-[10px] mb-3 font-semibold ${
-                            hab.desbloqueada 
-                              ? 'text-cyan-500/80' 
-                              : hab.enDesarrollo
-                                ? 'text-purple-400/80'
-                                : 'text-cyan-500/80'
-                          }`}>{hab.tipo_bono}</div>
-                          
+                          <div className={`font-bold mb-1 truncate ${hab.desbloqueada
+                            ? 'text-cyan-50'
+                            : hab.enDesarrollo
+                              ? 'text-purple-300 font-bold'
+                              : canUnlock
+                                ? 'text-slate-100'
+                                : 'text-slate-600'
+                            }`} title={hab.nombre}>{hab.nombre}</div>
+                          <div className={`text-[10px] mb-3 font-semibold ${hab.desbloqueada
+                            ? 'text-cyan-500/80'
+                            : hab.enDesarrollo
+                              ? 'text-purple-400/80'
+                              : 'text-cyan-500/80'
+                            }`}>{hab.tipo_bono}</div>
+
                           {/* Progress Bar inside card if enDesarrollo */}
                           {hab.enDesarrollo && (
                             <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden mb-2 border border-slate-800/50">
@@ -2530,20 +2520,20 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                           )}
 
                           <div className="flex justify-between items-center text-[10px] border-t border-slate-800/80 pt-2 mt-2">
-                            {hab.desbloqueada 
-                              ? <span className="text-cyan-400 font-bold uppercase tracking-wider">Investigado</span> 
+                            {hab.desbloqueada
+                              ? <span className="text-cyan-400 font-bold uppercase tracking-wider">Investigado</span>
                               : hab.enDesarrollo
                                 ? <>
-                                    <span className="text-purple-400 font-bold uppercase tracking-wider font-mono">T-{hab.tiempoRestante} días</span>
-                                    <span className="text-purple-500/80 font-mono">{Math.round(progressPercent)}%</span>
-                                  </>
+                                  <span className="text-purple-400 font-bold uppercase tracking-wider font-mono">T-{hab.tiempoRestante} días</span>
+                                  <span className="text-purple-500/80 font-mono">{Math.round(progressPercent)}%</span>
+                                </>
                                 : <>
-                                    <span className="text-amber-500/80 font-mono">${costoFinal.toLocaleString()}</span>
-                                    {canUnlock 
-                                      ? <span className="text-cyan-400 font-bold uppercase tracking-wider">Investigar</span> 
-                                      : <span className="text-slate-700 uppercase tracking-wider">Bloqueado</span>
-                                    }
-                                  </>
+                                  <span className="text-amber-500/80 font-mono">${costoFinal.toLocaleString()}</span>
+                                  {canUnlock
+                                    ? <span className="text-cyan-400 font-bold uppercase tracking-wider">Investigar</span>
+                                    : <span className="text-slate-700 uppercase tracking-wider">Bloqueado</span>
+                                  }
+                                </>
                             }
                           </div>
                         </div>
@@ -2558,8 +2548,8 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
       })()}
 
       {showSaves && (
-        <SaveFilesMenu 
-          onClose={() => setShowSaves(false)} 
+        <SaveFilesMenu
+          onClose={() => setShowSaves(false)}
           onLoadSave={() => {
             setCurrentScreen('game');
             setShowSaves(false);
@@ -2583,15 +2573,15 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
               <h2 className="text-sm font-black text-rose-500 mb-6 tracking-[0.2em] animate-pulse">
                 OVERRIDE DE SISTEMA // PAUSADO
               </h2>
-              
+
               <div className="flex flex-col gap-4 text-xs">
-                <button 
+                <button
                   onClick={() => setIsSystemMenuOpen(false)}
                   className="w-full border border-slate-800 hover:border-cyan-500 bg-slate-950/50 hover:bg-cyan-950/20 text-slate-400 hover:text-cyan-400 py-3 px-4 transition-all duration-300 rounded-sm font-bold"
                 >
                   [ REANUDAR SIMULACIÓN ]
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     console.log("Guardado táctico completado en la terminal conquest.");
                     alert("SISTEMA: ESTADO DE LA SIMULACIÓN COPIADO AL SILO SEGURO.");
@@ -2600,7 +2590,7 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                 >
                   [ GUARDAR ESTADO ACTUAL ]
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     setIsSystemMenuOpen(false);
                     setShowSaves(true);
@@ -2609,7 +2599,7 @@ const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes q
                 >
                   [ GESTOR DE ARCHIVOS ]
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     setIsSystemMenuOpen(false);
                     setCurrentUser(null);
