@@ -36,27 +36,38 @@ export const TacticalNotifications: React.FC = () => {
             <p className="text-slate-300 mt-1 leading-snug">{item.description}</p>
             
             {/* Detalles Tácticos del Coste de Oportunidad */}
-            <div className="mt-2 pt-1.5 border-t border-slate-800/40 flex justify-between items-center text-[10px]">
-              <div className="text-slate-400">
-                <span className="text-slate-500">INVERSIÓN:</span> {item.costDescription}
+            {(item.costDescription || item.benefitDescription) && (
+              <div className="mt-2 pt-1.5 border-t border-slate-800/40 text-[10px] space-y-1 text-slate-400">
+                {item.costDescription && (
+                  <div><span className="text-slate-500">INVERSIÓN:</span> {item.costDescription}</div>
+                )}
+                {item.benefitDescription && (
+                  <div><span className="text-slate-500">RETORNO:</span> {item.benefitDescription}</div>
+                )}
               </div>
-              <div className="text-slate-400 text-right">
-                <span className="text-slate-500">RETORNO:</span> {item.benefitDescription}
-              </div>
+            )}
+
+            {/* Opciones tácticas del evento */}
+            <div className="mt-3 space-y-2">
+              {item.options.map(option => (
+                <button
+                  key={option.id}
+                  onClick={() => {
+                    option.action(gameState);
+                    gameState.removeNotification(item.id);
+                  }}
+                  className="w-full text-left bg-slate-900/70 border border-slate-800 hover:border-slate-500 p-3.5 transition-all group flex flex-col cursor-pointer relative hover:bg-slate-900"
+                >
+                  <span className="text-slate-300 font-bold text-xs group-hover:text-slate-100 transition-colors">
+                    {option.label}
+                  </span>
+                  <span className="text-slate-500 text-[10px] mt-1 tracking-tight group-hover:text-slate-400">
+                    <span className="text-slate-600 font-bold">CONSECUENCIA:</span> {option.consequence}
+                  </span>
+                </button>
+              ))}
             </div>
 
-            {/* Acción de Intercambio Táctico */}
-            <button
-              onClick={() => {
-                item.onAccept(gameState);
-                // Filtrar el elemento del estado local de inmediato tras interactuar
-                gameState.setOro(o => o); // Gatillo de refresco seguro
-              }}
-              className="mt-2 w-full bg-slate-950/80 hover:bg-slate-900 border border-slate-800 text-center py-1 text-slate-300 font-bold tracking-wide transition-colors cursor-pointer text-[10px] uppercase hover:border-slate-600"
-            >
-              Ejecutar Transferencia Operativa
-            </button>
-            
             {/* Barra de desvanecimiento visual de señal */}
             <div className="absolute bottom-0 left-0 h-[2px] bg-slate-950 w-full">
               <div 

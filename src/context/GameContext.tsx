@@ -1,74 +1,124 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { DecayingNotification, CriticalEvent, TacticalCountry } from '../types/tacticalEvents';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import type { DecayingNotification, CriticalEvent } from '../types/tacticalEvents';
 
 interface GameContextType {
   oro: number;
-  tropas: number;
-  paises: TacticalCountry[];
+  tropas: any;
+  paises: any;
   notifications: DecayingNotification[];
   activeCriticalEvent: CriticalEvent | null;
   isPaused: boolean;
-  setOro: React.Dispatch<React.SetStateAction<number>>;
-  setTropas: React.Dispatch<React.SetStateAction<number>>;
-  setPaises: React.Dispatch<React.SetStateAction<TacticalCountry[]>>;
+  setOro: (val: number | ((prev: number) => number)) => void;
+  setTropas: (val: any | ((prev: any) => any)) => void;
+  setPaises: (val: any | ((prev: any) => any)) => void;
   setIsPaused: React.Dispatch<React.SetStateAction<boolean>>;
   addNotification: (notification: DecayingNotification) => void;
+  removeNotification: (id: string) => void;
   triggerCriticalEvent: (event: CriticalEvent) => void;
   resolveCriticalEvent: () => void;
+  registerBridge: (bridge: any) => void;
+  pendingCriticalEvent: CriticalEvent | null;
+  criticalCountdown: number | null;
+  triggerCriticalEventModal: (event: CriticalEvent) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [oro, setOro] = useState<number>(10000);
-  const [tropas, setTropas] = useState<number>(1200);
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [notifications, setNotifications] = useState<DecayingNotification[]>([]);
   const [activeCriticalEvent, setActiveCriticalEvent] = useState<CriticalEvent | null>(null);
   
-  // Lista de países simulados (Respetando el esquema relacional)
-  const [paises, setPaises] = useState<TacticalCountry[]>([
-    { id: 'CAN', name: 'Canadá', estaConquistado: true, color: '#3b82f6' }, // Azul de ocupación
-    { id: 'BRA', name: 'Brasil', estaConquistado: true, color: '#3b82f6' },
-    { id: 'ZAF', name: 'Sudáfrica', estaConquistado: false, color: '#1e293b' } // Gris de HUD neutral
-  ]);
+  const bridgeRef = useRef<{
+    presupuesto: number;
+    setPresupuesto: any;
+    tropas: any;
+    setTropas: any;
+    paises: any;
+    setPaises: any;
+    pendingCriticalEvent: any;
+    setPendingCriticalEvent: any;
+    criticalCountdown: any;
+    setCriticalCountdown: any;
+  } | null>(null);
 
-  // Bucle global acoplado al TimeControl
+  const registerBridge = (bridge: any) => {
+    bridgeRef.current = bridge;
+  };
+
+  // Bucle global para decay de notificaciones temporales (1 segundo real)
   useEffect(() => {
-    if (isPaused) return; // Congela la simulación por completo si hay un evento crítico en pantalla
+    if (isPaused) return; 
 
     const interval = setInterval(() => {
-      // 1. Simulación económica pasiva base del juego
-      setOro(prev => prev + 25);
+      setNotifications(prev => {
+        prev.forEach(n => {
+          if (n.timeLeft - 1000 <= 0 && n.onExpire) {
+            const dynamicState = {
+              setOro: (val: any) => bridgeRef.current?.setPresupuesto(val),
+              setTropas: (val: any) => bridgeRef.current?.setTropas(val),
+              setPaises: (val: any) => bridgeRef.current?.setPaises(val),
+              oro: bridgeRef.current?.presupuesto ?? 0,
+              tropas: bridgeRef.current?.tropas ?? { infanteria: 0, caballeria: 0, artilleria: 0 },
+              paises: bridgeRef.current?.paises ?? {}
+            };
+            try {
+              n.onExpire(dynamicState);
+            } catch (err) {
+              console.error("Error al ejecutar onExpire de notificación:", err);
+            }
+          }
+        });
 
-      // 2. Lógica añadida: Decremento de señales periféricas en tiempo real (Auto-decay)
-      setNotifications(prev => 
-        prev
+        return prev
           .map(n => ({ ...n, timeLeft: n.timeLeft - 1000 }))
-          .filter(n => n.timeLeft > 0) // Desvanece el evento limpiamente al llegar a 0 sin penalizar
-      );
+          .filter(n => n.timeLeft > 0);
+      });
     }, 1000);
 
     return () => clearInterval(interval);
   }, [isPaused]);
 
   const addNotification = (n: DecayingNotification) => setNotifications(prev => [...prev, n]);
+  const removeNotification = (id: string) => setNotifications(prev => prev.filter(n => n.id !== id));
 
   const triggerCriticalEvent = (event: CriticalEvent) => {
-    setIsPaused(true); // Fuerza la pausa inmediata de la simulación
+    setIsPaused(true); 
     setActiveCriticalEvent(event);
   };
 
   const resolveCriticalEvent = () => {
     setActiveCriticalEvent(null);
-    setIsPaused(false); // Reanuda la marcha cronológica del juego
+    setIsPaused(false); 
   };
 
-  // Objeto de estado expuesto
   const contextValue = {
-    oro, tropas, paises, notifications, activeCriticalEvent, isPaused,
-    setOro, setTropas, setPaises, setIsPaused,
-    addNotification, triggerCriticalEvent, resolveCriticalEvent
+    get oro() { return bridgeRef.current?.presupuesto ?? 0; },
+    get tropas() { return bridgeRef.current?.tropas ?? { infanteria: 0, caballeria: 0, artilleria: 0 }; },
+    get paises() { return bridgeRef.current?.paises ?? {}; },
+    get pendingCriticalEvent() { return bridgeRef.current?.pendingCriticalEvent ?? null; },
+    get criticalCountdown() { return bridgeRef.current?.criticalCountdown ?? null; },
+    notifications,
+    activeCriticalEvent,
+    isPaused,
+    setOro: (val: any) => bridgeRef.current?.setPresupuesto(val),
+    setTropas: (val: any) => bridgeRef.current?.setTropas(val),
+    setPaises: (val: any) => bridgeRef.current?.setPaises(val),
+    setIsPaused,
+    addNotification,
+    removeNotification,
+    triggerCriticalEvent,
+    resolveCriticalEvent,
+    registerBridge,
+    triggerCriticalEventModal: (event: CriticalEvent) => {
+      triggerCriticalEvent(event);
+      if (bridgeRef.current?.setCriticalCountdown) {
+        bridgeRef.current.setCriticalCountdown(null);
+      }
+      if (bridgeRef.current?.setPendingCriticalEvent) {
+        bridgeRef.current.setPendingCriticalEvent(null);
+      }
+    }
   };
 
   return <GameContext.Provider value={contextValue}>{children}</GameContext.Provider>;

@@ -5,15 +5,33 @@ export interface BaseEvent {
   description: string;
 }
 
-// Evento periférico con barra de degradación de señal (Auto-decay con mutación activa)
-export interface DecayingNotification extends BaseEvent {
-  duration: number;        // Tiempo de vida inicial en ms (ej: 30000 para 30s)
-  timeLeft: number;        // Tiempo restante en ms
-  type: 'info' | 'warning' | 'alert' | 'benefit';
+// Opción interactiva para eventos de decay
+export interface DecayingOption {
+  id: string;
+  label: string;
   costDescription: string;
   benefitDescription: string;
-  // Acción inmediata si el jugador decide tomar la opción con un clic antes de que expire
-  onAccept: (gameState: any) => void;
+  action: (gameState: any) => void;
+}
+
+// Evento periférico con barra de degradación de señal (Auto-decay con mutación activa)
+export interface NotificationOption {
+  id: string;
+  label: string;
+  consequence: string;
+  action: (gameState: any) => void;
+  style?: 'positive' | 'tradeoff' | 'negative';
+}
+
+export interface DecayingNotification extends BaseEvent {
+  duration: number;
+  timeLeft: number;
+  type: 'info' | 'warning' | 'alert' | 'benefit';
+  costDescription?: string;
+  benefitDescription?: string;
+  options: NotificationOption[];
+  onAccept?: (gameState: any) => void;
+  onExpire?: (gameState: any) => void;
 }
 
 // Opciones interactivas de los Eventos Críticos (Pausa global)
