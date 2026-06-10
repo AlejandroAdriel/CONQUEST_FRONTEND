@@ -3,7 +3,7 @@ import {
   Globe, Shield, Users, DollarSign, Swords, Crosshair,
   ChevronRight, X, Hexagon, MapPin, Zap, Search
 } from "lucide-react";
-import { fetchCountryStats, translateCountry, getPresetForCountry } from "../database/mockAPI";
+import { fetchCountryStats, translateCountry, getRealEconomy, getRealEjercitoDetalle } from "../database/mockAPI";
 
 interface CountryData {
   id: string;
@@ -54,23 +54,13 @@ export default function SelectHQ({ onDeploy, onCancel }: SelectHQProps) {
         const populations = await fetchCountryStats();
         const countries: CountryData[] = Object.entries(populations).map(([name, pop]) => {
           const seed = name.charCodeAt(0) + (name.length > 1 ? name.charCodeAt(1) : 0);
-          const preset = getPresetForCountry(name);
 
-          // Economía (con variación por semilla e igual escala que en App.tsx)
-          let gdpVar = 0;
-          if (preset.gdpPerCapita >= 60000) {
-            gdpVar = (seed % 20) * 1000;
-          } else if (preset.gdpPerCapita >= 10000) {
-            gdpVar = (seed % 15) * 800;
-          } else {
-            gdpVar = (seed % 10) * 500;
-          }
-          const finalGdpPerCapita = preset.gdpPerCapita + gdpVar;
-          const economia = Math.max(1, Math.floor((pop * finalGdpPerCapita) / 1000000));
+          // Economía unificada de base de datos
+          const economia = getRealEconomy(name, pop, seed);
 
-          // Ejército inicial (aplicando multiplicador de preset al valor base)
-          const baseSize = Math.floor(Math.sqrt(pop) * (5 + (seed % 5)));
-          const ejercito = Math.max(100, Math.floor(baseSize * preset.ejercitoMultiplicador));
+          // Ejército unificado de base de datos
+          const detalleEjercito = getRealEjercitoDetalle(false, pop, seed, name);
+          const ejercito = detalleEjercito.infanteria + detalleEjercito.caballeria + detalleEjercito.artilleria;
 
           return {
             id: name,

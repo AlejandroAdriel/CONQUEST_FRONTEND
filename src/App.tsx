@@ -10,8 +10,20 @@ import {
   Flag, Swords, Hexagon, Zap, Skull, Map as MapIcon,
   ChevronsRight, Globe, Cpu
 } from "lucide-react";
-import { fetchInitialGameState, fetchRandomEvents, fetchTechTree, fetchCountryStats, translateCountry, getPresetForCountry } from "./database/mockAPI";
-import type { Habilidad, OperarioUser } from "./database/mockAPI";
+import {
+  fetchInitialGameState, fetchRandomEvents, fetchTechTree, fetchCountryStats,
+  fetchHQStartingPresets, fetchTroopBaseCosts, fetchCombatMultipliers,
+  fetchMaintenanceTiers, fetchSimulationConstants,
+  fetchCriticalEventTemplates, fetchDecayEventTemplates,
+  translateCountry, getPresetForCountry,
+  normalizeName, getRealPopulation, getRealEconomy, getRealEjercitoDetalle
+} from "./database/mockAPI";
+import type {
+  Habilidad, OperarioUser, Tropas,
+  HQStartingPreset, TroopBaseCosts, CombatPowerMultipliers,
+  MaintenanceTier, SimulationConstants, Pais,
+  DBCriticalEvent, DBDecayingNotification
+} from "./database/mockAPI";
 import Login from "./components/Login";
 import StartMenu from "./components/StartMenu";
 import SaveFilesMenu from "./components/SaveFilesMenu";
@@ -21,26 +33,6 @@ import { ActionLog } from "./components/ActionLog";
 import { geoMiller } from "d3-geo-projection";
 // Geometría del mapa del mundo (TopoJSON)
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
-
-type Tropas = {
-  infanteria: number;
-  caballeria: number;
-  artilleria: number;
-};
-
-type Pais = {
-  id: string;
-  nombre: string;
-  economia: number;
-  poblacion: number;
-  ejercito_ia: number;
-  conquistado: boolean;
-  oro_ia: number;
-  ejercito_ia_detalle: Tropas;
-  tasa_natalidad: number;
-  tasa_mortalidad: number;
-  dias_reclutamiento_agresivo?: number;
-};
 
 type AtaqueEnCola = {
   id: string;
@@ -57,16 +49,6 @@ type Evento = {
   tipo: "success" | "alert" | "info";
 };
 
-const normalizeName = (name: string): string => {
-  const norm = name.toLowerCase();
-  if (norm.includes("united states") || norm === "usa") return "united states of america";
-  if (norm.includes("congo") && (norm.includes("dem") || norm.includes("d.r."))) return "dr congo";
-  if (norm.includes("central african")) return "central african rep.";
-  if (norm.includes("dominican")) return "dominican rep.";
-  if (norm.includes("falkland")) return "argentina";
-  return norm;
-};
-
 const getDomId = (name: string): string => {
   return "pais-" + normalizeName(name)
     .replace(/[^a-z0-9]/g, "-")
@@ -78,44 +60,6 @@ const formatEconomy = (n: number): string => {
   if (n >= 1000000) return `$${(n / 1000000).toFixed(1)}T`;
   if (n >= 1000) return `$${(n / 1000).toFixed(0)}B`;
   return `$${Math.floor(n).toLocaleString("es-ES")}M`;
-};
-
-const getRealPopulation = (name: string, seed: number, populations: Record<string, number>): number => {
-  const norm = normalizeName(name);
-  for (const [key, value] of Object.entries(populations)) {
-    const keyLower = key.toLowerCase();
-    if (norm === keyLower || norm.includes(keyLower) || keyLower.includes(norm)) {
-      const growthFactor = 1.05 + ((seed % 15) / 100);
-      return Math.floor(value * growthFactor);
-    }
-  }
-  return Math.floor((2000000 + (seed * 150000) % 43000000) * 1.1);
-};
-
-const getRealEconomy = (name: string, population: number, seed: number): number => {
-  const preset = getPresetForCountry(name);
-  let gdpVar = 0;
-  if (preset.gdpPerCapita >= 60000) {
-    gdpVar = (seed % 20) * 1000;
-  } else if (preset.gdpPerCapita >= 10000) {
-    gdpVar = (seed % 15) * 800;
-  } else {
-    gdpVar = (seed % 10) * 500;
-  }
-  const finalGdpPerCapita = preset.gdpPerCapita + gdpVar;
-  return Math.max(1, Math.floor((population * finalGdpPerCapita) / 1000000));
-};
-
-const getRealEjercitoDetalle = (isAliado: boolean, population: number, seed: number, nameEN: string): Tropas => {
-  if (isAliado) return { infanteria: 0, caballeria: 0, artilleria: 0 };
-  const preset = getPresetForCountry(nameEN);
-  const baseSize = Math.max(100, Math.floor(Math.sqrt(population) * (5 + (seed % 5)) * preset.ejercitoMultiplicador));
-
-  return {
-    infanteria: Math.floor(baseSize * preset.composicion.infanteria),
-    caballeria: Math.floor(baseSize * preset.composicion.caballeria),
-    artilleria: Math.floor(baseSize * preset.composicion.artilleria),
-  };
 };
 
 const getDemographicsInfo = (
@@ -250,7 +194,22 @@ export default function App() {
 
   const [isDbLoading, setIsDbLoading] = useState(true);
   const eventosAleatoriosRef = useRef<any[]>([]);
+  const criticalTemplatesRef = useRef<DBCriticalEvent[]>([]);
+  const decayTemplatesRef = useRef<DBDecayingNotification[]>([]);
   const countryStatsRef = useRef<Record<string, number>>({});
+  const hqPresetsRef = useRef<HQStartingPreset[]>([]);
+  const troopCostsRef = useRef<TroopBaseCosts>({ infanteria: 10, caballeria: 25, artilleria: 60 });
+  const combatMultipliersRef = useRef<CombatPowerMultipliers>({ infanteria: 1, caballeria: 1.5, artilleria: 3 });
+  const maintenanceTiersRef = useRef<MaintenanceTier[]>([]);
+  const simConstantsRef = useRef<SimulationConstants>({
+    dailyEconomicGrowthRate: 0.00005, incomeFormulaEcoFactor: 0.1,
+    incomeFormulaPopFactor: 0.001, incomeDivisor: 2000, conquestBonusPerCountry: 0.05,
+    iaRecruitmentCost: 100, iaRecruitMinReclutas: 5, iaRecruitMaxReclutas: 15,
+    eventIntervalMin: 10, eventIntervalRandom: 6,
+    specialEventIntervalMin: 30, specialEventIntervalRandom: 20,
+    mobilizationPopLimit: 0.05, massiveMobilizationThreshold: 0.01,
+    aggressiveRecruitmentPenaltyDays: 90, attackTransitDays: 5
+  });
 
   const [paisSeleccionado, setPaisSeleccionado] = useState<Pais | null>(null);
   const [hoveredPais, setHoveredPais] = useState<Pais | null>(null);
@@ -333,17 +292,34 @@ export default function App() {
   useEffect(() => {
     const bootstrap = async () => {
       try {
-        const [gameState, events, techTree, countryData] = await Promise.all([
+        const [gameState, events, techTree, countryData, hqPresets, troopCosts, combatMults, mntTiers, simConsts, critTemplates, decayTemplates] = await Promise.all([
           fetchInitialGameState(),
           fetchRandomEvents(),
           fetchTechTree(),
-          fetchCountryStats()
+          fetchCountryStats(),
+          fetchHQStartingPresets(),
+          fetchTroopBaseCosts(),
+          fetchCombatMultipliers(),
+          fetchMaintenanceTiers(),
+          fetchSimulationConstants(),
+          fetchCriticalEventTemplates(),
+          fetchDecayEventTemplates()
         ]);
         setPresupuesto(gameState.presupuesto);
         setTropas(gameState.tropas);
         eventosAleatoriosRef.current = events;
+        criticalTemplatesRef.current = critTemplates;
+        decayTemplatesRef.current = decayTemplates;
         countryStatsRef.current = countryData;
         setHabilidades(techTree);
+        hqPresetsRef.current = hqPresets;
+        troopCostsRef.current = troopCosts;
+        combatMultipliersRef.current = combatMults;
+        maintenanceTiersRef.current = mntTiers;
+        simConstantsRef.current = simConsts;
+        // Actualizar intervalos de eventos con constantes cargadas
+        diasParaEventoRef.current = simConsts.eventIntervalMin + Math.floor(Math.random() * simConsts.eventIntervalRandom);
+        diasParaEventoEspecialRef.current = simConsts.specialEventIntervalMin + Math.floor(Math.random() * simConsts.specialEventIntervalRandom);
       } finally {
         setIsDbLoading(false);
       }
@@ -453,655 +429,261 @@ export default function App() {
     const hqId = playerHQ?.id;
 
     if (isCritical) {
-      // Lista de eventos críticos posibles
-      const criticalTemplates = [];
+      if (criticalTemplatesRef.current.length === 0) return;
+      // Elegir una plantilla aleatoria
+      const template = criticalTemplatesRef.current[Math.floor(Math.random() * criticalTemplatesRef.current.length)];
+      
+      // Validar requisitos de plantilla
+      if ((template.code === "BORDER_MOBILIZATION" || template.code === "BORDER_SMUGGLING_RAID" || template.code === "DISSIDENT_TREATY") && (allied.length === 0 || hostile.length === 0)) return;
+      if (template.code === "TACTICAL_ALLIANCE_OFFER" || template.code === "SPY_NETWORK_LEAK") {
+        if (hostile.length === 0) return;
+      }
 
-      // 1. CORP_MERGER_OFFER
-      criticalTemplates.push({
-        id: Math.random().toString(),
-        code: "CORP_MERGER_OFFER",
-        title: "PROPUESTA DE FUSIÓN DE CORP. BIOMÉDICA",
-        description: `La corporación Arasaka ofrece una inyección inmediata de capital a cambio de adquirir la exclusividad de tus laboratorios del cuartel general en ${playerHQ?.nombre || 'tu sede'}.`,
-        choices: [
-          {
-            id: "choice1_1",
-            label: "Firmar acuerdo corporativo",
-            consequence: "+5,000€, +200 Infantería, Economía HQ -15%",
-            action: (gState: any) => {
-              gState.setOro((o: number) => o + 5000);
-              gState.setTropas((t: any) => ({ ...t, infanteria: t.infanteria + 200 }));
-              if (hqId && currentPaises[hqId]) {
-                gState.setPaises((prev: any) => {
-                  const copy = { ...prev };
-                  if (copy[hqId]) {
-                    copy[hqId] = { ...copy[hqId], economia: Math.floor(copy[hqId].economia * 0.85) };
-                  }
-                  return copy;
-                });
-              }
-            }
-          },
-          {
-            id: "choice1_2",
-            label: "Rechazar interferencia externa",
-            consequence: "-800€ por aranceles punitivos corporativos",
-            action: (gState: any) => {
-              gState.setOro((o: number) => Math.max(0, o - 800));
-            }
+      // Elegir objetivos aleatorios
+      const targetCountry = hostile.length > 0 ? hostile[Math.floor(Math.random() * hostile.length)] : null;
+      const targetAllied = allied.length > 0 ? allied[Math.floor(Math.random() * allied.length)] : null;
+
+      // Parsear placeholders
+      const formatString = (str: string): string => {
+        if (!str) return "";
+        return str
+          .replace(/{hq}/g, playerHQ?.nombre || "tu sede")
+          .replace(/{target}/g, targetCountry?.nombre || "objetivo")
+          .replace(/{colony}/g, targetAllied?.nombre || "territorio aliado");
+      };
+
+      const title = formatString(template.title);
+      const description = formatString(template.description);
+
+      const choices = template.choices.map(choice => {
+        const choiceLabel = formatString(choice.label);
+        const action = (gState: any) => {
+          if (choice.efecto_oro) {
+            gState.setOro((o: number) => Math.max(0, o + choice.efecto_oro!));
           }
-        ]
-      });
-
-      // 2. NANOBOT_OUTBREAK
-      criticalTemplates.push({
-        id: Math.random().toString(),
-        code: "NANOBOT_OUTBREAK",
-        title: "BROTE DE NANOBOTS DESCONTROLADOS",
-        description: `Se detecta una replicación descontrolada de nanobots médicos obsoletos en la red de abastecimiento del Cuartel General. Se requiere desinfección inmediata.`,
-        choices: [
-          {
-            id: "choice2_1",
-            label: "Desplegar contención armada",
-            consequence: "-150 Infantería (cuarentena estricta), Población a salvo",
-            action: (gState: any) => {
-              gState.setTropas((t: any) => ({ ...t, infanteria: Math.max(0, t.infanteria - 150) }));
-            }
-          },
-          {
-            id: "choice2_2",
-            label: "Emitir pulso EMP de alta potencia",
-            consequence: "-1,200€ en coste operativo del pulso",
-            action: (gState: any) => {
-              gState.setOro((o: number) => Math.max(0, o - 1200));
-            }
-          },
-          {
-            id: "choice2_3",
-            label: "Ignorar brote temporalmente",
-            consequence: "Población HQ -20%, Economía HQ -10%",
-            action: (gState: any) => {
-              if (hqId && currentPaises[hqId]) {
-                gState.setPaises((prev: any) => {
-                  const copy = { ...prev };
-                  if (copy[hqId]) {
-                    copy[hqId] = {
-                      ...copy[hqId],
-                      poblacion: Math.floor(copy[hqId].poblacion * 0.8),
-                      economia: Math.floor(copy[hqId].economia * 0.9)
-                    };
-                  }
-                  return copy;
-                });
-              }
-            }
+          if (choice.efecto_infanteria || choice.efecto_caballeria || choice.efecto_artilleria) {
+            gState.setTropas((t: any) => ({
+              infanteria: Math.max(0, t.infanteria + (choice.efecto_infanteria || 0)),
+              caballeria: Math.max(0, t.caballeria + (choice.efecto_caballeria || 0)),
+              artilleria: Math.max(0, t.artilleria + (choice.efecto_artilleria || 0))
+            }));
           }
-        ]
-      });
-
-      // 3. UNION_SABOTAGE
-      criticalTemplates.push({
-        id: Math.random().toString(),
-        code: "UNION_SABOTAGE",
-        title: "SABOTAJE SINDICAL EN MATRIZ ENERGÉTICA",
-        description: `Un sindicato de operarios cibernéticos ha bloqueado la red de enfriamiento de reactores demandando subsidios salariales.`,
-        choices: [
-          {
-            id: "choice3_1",
-            label: "Subsanar demandas del sindicato",
-            consequence: "-1,000€ de presupuesto, Economía HQ +5% por optimización",
-            action: (gState: any) => {
-              gState.setOro((o: number) => Math.max(0, o - 1000));
-              if (hqId && currentPaises[hqId]) {
-                gState.setPaises((prev: any) => {
-                  const copy = { ...prev };
-                  if (copy[hqId]) {
-                    copy[hqId] = { ...copy[hqId], economia: Math.floor(copy[hqId].economia * 1.05) };
-                  }
-                  return copy;
-                });
-              }
-            }
-          },
-          {
-            id: "choice3_2",
-            label: "Autorizar disolución táctica armada",
-            consequence: "-80 Infantería por bajas civiles, Economía HQ -5%",
-            action: (gState: any) => {
-              gState.setTropas((t: any) => ({ ...t, infanteria: Math.max(0, t.infanteria - 80) }));
-              if (hqId && currentPaises[hqId]) {
-                gState.setPaises((prev: any) => {
-                  const copy = { ...prev };
-                  if (copy[hqId]) {
-                    copy[hqId] = { ...copy[hqId], economia: Math.floor(copy[hqId].economia * 0.95) };
-                  }
-                  return copy;
-                });
-              }
-            }
-          }
-        ]
-      });
-
-      // 4. TACTICAL_ALLIANCE_OFFER
-      if (hostile.length > 0) {
-        const targetCountry = hostile[Math.floor(Math.random() * hostile.length)];
-        criticalTemplates.push({
-          id: Math.random().toString(),
-          code: "TACTICAL_ALLIANCE_OFFER",
-          title: `OFERTA TÁCTICA DE ACCESO SEGURO: ${targetCountry.nombre.toUpperCase()}`,
-          description: `Diplomáticos de ${targetCountry.nombre} ofrecen compartir tecnología de defensa a cambio de un acuerdo de no agresión. No se propone conquista inmediata.`,
-          choices: [
-            {
-              id: "choice4_1",
-              label: `Negociar acuerdo tecnológico con ${targetCountry.nombre}`,
-              consequence: `-2,500€, Ejército enemigo -20%, economía propia +5%`,
-              action: (gState: any) => {
-                gState.setOro((o: number) => Math.max(0, o - 2500));
-                gState.setPaises((prev: any) => {
-                  const copy = { ...prev };
-                  if (copy[targetCountry.id]) {
-                    copy[targetCountry.id] = { ...copy[targetCountry.id], ejercito_ia: Math.floor(copy[targetCountry.id].ejercito_ia * 0.8) };
-                  }
-                  return copy;
-                });
-                if (hqId && currentPaises[hqId]) {
-                  gState.setPaises((prev: any) => {
-                    const copy = { ...prev };
-                    if (copy[hqId]) {
-                      copy[hqId] = { ...copy[hqId], economia: Math.floor(copy[hqId].economia * 1.05) };
-                    }
-                    return copy;
-                  });
-                }
-              }
-            },
-            {
-              id: "choice4_2",
-              label: "Rechazar la oferta y conservar distancia tácticamente",
-              consequence: `No hay concesiones, pero la tensión aumenta +15%`,
-              action: (gState: any) => {
-                gState.setPaises((prev: any) => {
-                  const copy = { ...prev };
-                  if (copy[targetCountry.id]) {
-                    copy[targetCountry.id] = { ...copy[targetCountry.id], ejercito_ia: Math.floor(copy[targetCountry.id].ejercito_ia * 1.15) };
-                  }
-                  return copy;
-                });
-              }
-            }
-          ]
-        });
-      }
-
-      // 5. SPY_NETWORK_LEAK
-      if (hostile.length > 0) {
-        const targetCountry = hostile[Math.floor(Math.random() * hostile.length)];
-        criticalTemplates.push({
-          id: Math.random().toString(),
-          code: "SPY_NETWORK_LEAK",
-          title: `INFILTRACIÓN RED DE DATOS: ${targetCountry.nombre.toUpperCase()}`,
-          description: `Agentes encubiertos detectan una brecha crítica en el mainframe defensivo de ${targetCountry.nombre}. Podemos ejecutar un hackeo masivo o monetizar la información.`,
-          choices: [
-            {
-              id: "choice5_1",
-              label: "Infiltrar virus desestabilizador",
-              consequence: "-1,200€, Fuerza defensiva enemiga se reduce un 60%",
-              action: (gState: any) => {
-                gState.setOro((o: number) => Math.max(0, o - 1200));
-                gState.setPaises((prev: any) => {
-                  const copy = { ...prev };
-                  if (copy[targetCountry.id]) {
-                    copy[targetCountry.id] = { ...copy[targetCountry.id], ejercito_ia: Math.floor(copy[targetCountry.id].ejercito_ia * 0.4) };
-                  }
-                  return copy;
-                });
-              }
-            },
-            {
-              id: "choice5_2",
-              label: "Vender coordenadas en el mercado negro",
-              consequence: "+2,000€, Defensa enemiga aumenta +20% por parches",
-              action: (gState: any) => {
-                gState.setOro((o: number) => o + 2000);
-                gState.setPaises((prev: any) => {
-                  const copy = { ...prev };
-                  if (copy[targetCountry.id]) {
-                    copy[targetCountry.id] = { ...copy[targetCountry.id], ejercito_ia: Math.floor(copy[targetCountry.id].ejercito_ia * 1.2) };
-                  }
-                  return copy;
-                });
-              }
-            }
-          ]
-        });
-      }
-
-      // 6. BORDER_MOBILIZATION
-      if (allied.length > 0 && hostile.length > 0) {
-        const targetHostile = hostile[Math.floor(Math.random() * hostile.length)];
-        const targetAllied = allied[Math.floor(Math.random() * allied.length)];
-        criticalTemplates.push({
-          id: Math.random().toString(),
-          code: "BORDER_MOBILIZATION",
-          title: "MOVILIZACIÓN HOSTIL DETECTADA",
-          description: `Sensores satelitales revelan que ${targetHostile.nombre} está acumulando blindados en la frontera con tu territorio de ${targetAllied.nombre}.`,
-          choices: [
-            {
-              id: "choice6_1",
-              label: "Lanzar ataque preventivo rápido",
-              consequence: "-250 Infantería de reserva, Ejército de IA hostil -50%",
-              action: (gState: any) => {
-                gState.setTropas((t: any) => ({ ...t, infanteria: Math.max(0, t.infanteria - 250) }));
-                gState.setPaises((prev: any) => {
-                  const copy = { ...prev };
-                  if (copy[targetHostile.id]) {
-                    copy[targetHostile.id] = { ...copy[targetHostile.id], ejercito_ia: Math.floor(copy[targetHostile.id].ejercito_ia * 0.5) };
-                  }
-                  return copy;
-                });
-              }
-            },
-            {
-              id: "choice6_2",
-              label: "Comprar pacto de no agresión",
-              consequence: "-1,500€ de soborno diplomático directo",
-              action: (gState: any) => {
-                gState.setOro((o: number) => Math.max(0, o - 1500));
-              }
-            },
-            {
-              id: "choice6_3",
-              label: `Fortificar fronteras de ${targetAllied.nombre}`,
-              consequence: `-800€, Economía de ${targetAllied.nombre} -5%`,
-              action: (gState: any) => {
-                gState.setOro((o: number) => Math.max(0, o - 800));
-                gState.setPaises((prev: any) => {
-                  const copy = { ...prev };
-                  if (copy[targetAllied.id]) {
-                    copy[targetAllied.id] = { ...copy[targetAllied.id], economia: Math.floor(copy[targetAllied.id].economia * 0.95) };
-                  }
-                  return copy;
-                });
-              }
-            }
-          ]
-        });
-      }
-
-      // 7. BORDER_SMUGGLING_RAID
-      if (allied.length > 0 && hostile.length > 0) {
-        const targetAllied = allied[Math.floor(Math.random() * allied.length)];
-        const targetHostile = hostile[Math.floor(Math.random() * hostile.length)];
-        criticalTemplates.push({
-          id: Math.random().toString(),
-          code: "BORDER_SMUGGLING_RAID",
-          title: `REDADA DE CONTRABANDO EN ${targetAllied.nombre.toUpperCase()}`,
-          description: `Tus patrullas de frontera en ${targetAllied.nombre} han interceptado un contrabando masivo de implantes militares con destino al gobierno hostil de ${targetHostile.nombre}.`,
-          choices: [
-            {
-              id: "choice7_1",
-              label: "Confiscar y rearmar reservas",
-              consequence: "+150 Infanterías, +5 Caballerías, Economía de colony -5% por represalias",
-              action: (gState: any) => {
-                gState.setTropas((t: any) => ({ ...t, infanteria: t.infanteria + 150, caballeria: t.caballeria + 5 }));
-                gState.setPaises((prev: any) => {
-                  const copy = { ...prev };
-                  if (copy[targetAllied.id]) {
-                    copy[targetAllied.id] = { ...copy[targetAllied.id], economia: Math.floor(copy[targetAllied.id].economia * 0.95) };
-                  }
-                  return copy;
-                });
-              }
-            },
-            {
-              id: "choice7_2",
-              label: "Dejar pasar por soborno diplomático",
-              consequence: "+2,000€ de soborno, Ejército de IA de enemigo +25%",
-              action: (gState: any) => {
-                gState.setOro((o: number) => o + 2000);
-                gState.setPaises((prev: any) => {
-                  const copy = { ...prev };
-                  if (copy[targetHostile.id]) {
-                    copy[targetHostile.id] = { ...copy[targetHostile.id], ejercito_ia: Math.floor(copy[targetHostile.id].ejercito_ia * 1.25) };
-                  }
-                  return copy;
-                });
-              }
-            },
-            {
-              id: "choice7_3",
-              label: "Destruir el cargamento públicamente",
-              consequence: "Economía de colony +5% por prestigio civil",
-              action: (gState: any) => {
-                gState.setPaises((prev: any) => {
-                  const copy = { ...prev };
-                  if (copy[targetAllied.id]) {
-                    copy[targetAllied.id] = { ...copy[targetAllied.id], economia: Math.floor(copy[targetAllied.id].economia * 1.05) };
-                  }
-                  return copy;
-                });
-              }
-            }
-          ]
-        });
-      }
-
-      // 8. DISSIDENT_TREATY
-      if (allied.length > 0 && hostile.length > 0) {
-        const targetAllied = allied[Math.floor(Math.random() * allied.length)];
-        const targetHostile = hostile[Math.floor(Math.random() * hostile.length)];
-        criticalTemplates.push({
-          id: Math.random().toString(),
-          code: "DISSIDENT_TREATY",
-          title: "PACTO CON LA DISIDENCIA GEOPOLÍTICA",
-          description: `Líderes insurgentes perseguidos por el régimen de ${targetHostile.nombre} solicitan asilo político y financiamiento secreto en tu territorio aliado de ${targetAllied.nombre}.`,
-          choices: [
-            {
-              id: "choice8_1",
-              label: "Patrocinar la insurgencia armada",
-              consequence: "-1,500€, Ejército enemigo -50% (Guerra Civil), Pierdes 50 Infanterías por escaramuzas",
-              action: (gState: any) => {
-                gState.setOro((o: number) => Math.max(0, o - 1500));
-                gState.setTropas((t: any) => ({ ...t, infanteria: Math.max(0, t.infanteria - 50) }));
-                gState.setPaises((prev: any) => {
-                  const copy = { ...prev };
-                  if (copy[targetHostile.id]) {
-                    copy[targetHostile.id] = { ...copy[targetHostile.id], ejercito_ia: Math.floor(copy[targetHostile.id].ejercito_ia * 0.5) };
-                  }
-                  return copy;
-                });
-              }
-            },
-            {
-              id: "choice8_2",
-              label: "Extraditar disidentes por ventajas comerciales",
-              consequence: "+2,500€ de fondos comerciales, Ejército enemigo +10%",
-              action: (gState: any) => {
-                gState.setOro((o: number) => o + 2500);
-                gState.setPaises((prev: any) => {
-                  const copy = { ...prev };
-                  if (copy[targetHostile.id]) {
-                    copy[targetHostile.id] = { ...copy[targetHostile.id], ejercito_ia: Math.floor(copy[targetHostile.id].ejercito_ia * 1.1) };
-                  }
-                  return copy;
-                });
-              }
-            },
-            {
-              id: "choice8_3",
-              label: "Rechazar asilo (Declarar neutralidad)",
-              consequence: "Sin alteraciones operativas",
-              action: () => { }
-            }
-          ]
-        });
-      }
-
-      // Elegir uno aleatorio y comenzar cuenta regresiva de preaviso
-      if (criticalTemplates.length > 0) {
-        const picked = criticalTemplates[Math.floor(Math.random() * criticalTemplates.length)];
-        setPendingCriticalEvent(picked);
-        setCriticalCountdown(3);
-      }
-    } else {
-      // Lanzar un DecayingNotification (Eventos temporales con balances de recursos profundos y expiraciones)
-      const decayTemplates: any[] = [];
-
-      // 1. NET_MINING_OVERLOAD
-      decayTemplates.push({
-        id: Math.random().toString(),
-        code: "NET_MINING_OVERLOAD",
-        title: "SOBRECARGA DE NODOS CRIPTO",
-        description: "Los servidores de criptominería están sobrecalentados. Debes enfriarlos instalando disipadores criogénicos, o arriesgar daños estructurales permanentes.",
-        duration: 35000,
-        timeLeft: 35000,
-        type: 'warning' as const,
-        costDescription: `${Math.floor(getProportionalValue(0.05))}€ de refrigerante líquido`,
-        benefitDescription: `+${Math.floor(getProportionalValue(0.15))}€ netos`,
-        options: [
-          {
-            id: "net_choice1",
-            label: "Instalar disipadores criogénicos",
-            consequence: `${Math.floor(getProportionalValue(0.05))}€ invertidos, ganancia neta de ${Math.floor(getProportionalValue(0.1))}€`,
-            style: 'positive',
-            action: (gState: any) => {
-              const cost = getProportionalValue(0.05);
-              const gain = getProportionalValue(0.15);
-              gState.setOro((o: number) => o + gain - cost);
-              logAction('Evento Importante', `Instalación de disipadores criogénicos: -${cost}€, +${gain}€`);
-            }
-          },
-          {
-            id: "net_choice2",
-            label: "Reducir cargas y enfriar progresivamente",
-            consequence: "-10% de economía HQ, evita daños inmediatos",
-            style: 'tradeoff',
-            action: (gState: any) => {
-              if (hqId) {
-                gState.setPaises((prev: any) => {
-                  const copy = { ...prev };
-                  if (copy[hqId]) {
-                    copy[hqId] = { ...copy[hqId], economia: Math.floor(copy[hqId].economia * 0.9) };
-                  }
-                  return copy;
-                });
-              }
-              logAction('Evento Importante', 'Reducción de cargas de criptominería');
-            }
-          }
-        ],
-        onExpire: (gState: any) => {
-          // Penalización menos severa
-          if (hqId) {
+          if (choice.hq_economia_multiplier && hqId) {
             gState.setPaises((prev: any) => {
               const copy = { ...prev };
               if (copy[hqId]) {
-                copy[hqId] = { ...copy[hqId], economia: Math.floor(copy[hqId].economia * 0.95) };
+                copy[hqId] = { ...copy[hqId], economia: Math.floor(copy[hqId].economia * choice.hq_economia_multiplier!) };
               }
               return copy;
             });
           }
-        }
-      });
-
-      // 2. BLACK_MARKET_PLASMA (Puro beneficio si se atiende)
-      decayTemplates.push({
-        id: Math.random().toString(),
-        code: "BLACK_MARKET_PLASMA",
-        title: "CONTRABANDO DE PLASMA DISPONIBLE",
-        description: "Contrabandistas independientes ofrecen un cargamento rápido de artillería de plasma a bajo costo para tus fuerzas tácticas.",
-        duration: 40000,
-        timeLeft: 40000,
-        type: 'info' as const,
-        costDescription: `${Math.floor(getProportionalValue(0.06))}€ en créditos`,
-        benefitDescription: "+15 divisiones de Artillería pesada",
-        options: [
-          {
-            id: "black_choice1",
-            label: "Abastecer artillería completa",
-            consequence: `${Math.floor(getProportionalValue(0.06))}€ invertidos, +15 artillería`,
-            style: 'positive',
-            action: (gState: any) => {
-              const cost = getProportionalValue(0.06);
-              gState.setOro((o: number) => Math.max(0, o - cost));
-              gState.setTropas((t: any) => ({ ...t, artilleria: t.artilleria + 15 }));
-              logAction('Evento Importante', `Compra de artillería de plasma: -${cost}€`);
-            }
-          },
-          {
-            id: "black_choice2",
-            label: "Negociar un cargamento más pequeño",
-            consequence: `${Math.floor(getProportionalValue(0.03))}€ invertidos, +8 artillería`,
-            style: 'tradeoff',
-            action: (gState: any) => {
-              const cost = getProportionalValue(0.03);
-              gState.setOro((o: number) => Math.max(0, o - cost));
-              gState.setTropas((t: any) => ({ ...t, artilleria: t.artilleria + 8 }));
-              logAction('Evento Importante', `Compra pequeña de plasma: -${cost}€`);
-            }
+          if (choice.hq_poblacion_multiplier && hqId) {
+            gState.setPaises((prev: any) => {
+              const copy = { ...prev };
+              if (copy[hqId]) {
+                copy[hqId] = { ...copy[hqId], poblacion: Math.floor(copy[hqId].poblacion * choice.hq_poblacion_multiplier!) };
+              }
+              return copy;
+            });
           }
-        ]
-      });
-
-      // 3. MIL_NANO_INJECTION
-      decayTemplates.push({
-        id: Math.random().toString(),
-        code: "MIL_NANO_INJECTION",
-        title: "PRUEBAS CLÍNICAS DE COMBATE NANO",
-        description: "TraumaCorp solicita permiso para probar nanobots de reflejos en tus reclutas locales. Generará bajas poblacionales, pero creará combatientes implacables.",
-        duration: 45000,
-        timeLeft: 45000,
-        type: 'benefit' as const,
-        costDescription: "15% de Población de tu Cuartel General",
-        benefitDescription: "+350 Infanterías y +5 Caballerías blindadas",
-        options: [
-          {
-            id: "nano_choice1",
-            label: "Permitir las pruebas de combate",
-            consequence: "+350 infantería, +5 caballería, -15% población",
-            style: 'tradeoff',
-            action: (gState: any) => {
-              gState.setTropas((t: any) => ({ ...t, infanteria: t.infanteria + 350, caballeria: t.caballeria + 5 }));
-              if (hqId) {
-                gState.setPaises((prev: any) => {
-                  const copy = { ...prev };
-                  if (copy[hqId]) {
-                    copy[hqId] = { ...copy[hqId], poblacion: Math.floor(copy[hqId].poblacion * 0.85) };
-                  }
-                  return copy;
-                });
+          if (choice.target_ejercito_ia_multiplier && targetCountry) {
+            gState.setPaises((prev: any) => {
+              const copy = { ...prev };
+              if (copy[targetCountry.id]) {
+                copy[targetCountry.id] = { ...copy[targetCountry.id], ejercito_ia: Math.floor(copy[targetCountry.id].ejercito_ia * choice.target_ejercito_ia_multiplier!) };
               }
-              logAction('Evento Importante', 'Experimento nano autorizado: +350 infantería, -15% población');
-            }
-          },
-          {
-            id: "nano_choice2",
-            label: "Rechazar el experimento",
-            consequence: "Preservas población, sin ganancia de tropas",
-            style: 'negative',
-            action: () => {
-              logAction('Evento Importante', 'Rechazado experimento nano');
-            }
+              return copy;
+            });
           }
-        ]
-      });
-
-      // 4. TERRITORIAL_RATIONING (Territorio)
-      if (allied.length > 0) {
-        const targetAllied = allied[Math.floor(Math.random() * allied.length)];
-        decayTemplates.push({
-          id: Math.random().toString(),
-          code: "TERRITORIAL_RATIONING",
-          title: `RACIONAMIENTO DE ENERGÍA: ${targetAllied.nombre.toUpperCase()}`,
-          description: `Problemas de suministro en ${targetAllied.nombre}. Puedes desviar su producción civil al complejo militar o dejar que lo resuelvan, arriesgando disturbios civiles.`,
-          duration: 35000,
-          timeLeft: 35000,
-          type: 'alert' as const,
-          costDescription: "Economía de colony -8%",
-          benefitDescription: "+600 Infantería reclutada de emergencia",
-          options: [
-            {
-              id: "ration_choice1",
-              label: "Desviar energía al frente militar",
-              consequence: "-8% economía, +600 infantería",
-              style: 'tradeoff',
-              action: (gState: any) => {
-                gState.setTropas((t: any) => ({ ...t, infanteria: t.infanteria + 600 }));
-                gState.setPaises((prev: any) => {
-                  const copy = { ...prev };
-                  if (copy[targetAllied.id]) {
-                    copy[targetAllied.id] = { ...copy[targetAllied.id], economia: Math.floor(copy[targetAllied.id].economia * 0.92) };
-                  }
-                  return copy;
-                });
-                logAction('Evento Importante', `Racionamiento energético - Desviación militar: +600 infantería en ${targetAllied.nombre}`);
-              }
-            },
-            {
-              id: "ration_choice2",
-              label: "Mantener servicios civiles intactos",
-              consequence: "Sin tropas adicionales, riesgo de disturbios",
-              style: 'negative',
-              action: () => {
-                logAction('Evento Importante', `Racionamiento energético rechazado en ${targetAllied.nombre}`);
-              }
-            }
-          ],
-          onExpire: (gState: any) => {
-            // Penalización más leve: disturbios reducen población menos
+          if (choice.colony_economia_multiplier && targetAllied) {
             gState.setPaises((prev: any) => {
               const copy = { ...prev };
               if (copy[targetAllied.id]) {
-                copy[targetAllied.id] = { ...copy[targetAllied.id], poblacion: Math.floor(copy[targetAllied.id].poblacion * 0.97) };
+                copy[targetAllied.id] = { ...copy[targetAllied.id], economia: Math.floor(copy[targetAllied.id].economia * choice.colony_economia_multiplier!) };
               }
               return copy;
             });
           }
-        });
-      }
+        };
 
-      // 5. SATELLITE_REDIRECT (Territorio y Geopolítica)
-      if (allied.length > 0 && hostile.length > 0) {
-        const targetAllied = allied[Math.floor(Math.random() * allied.length)];
-        const targetHostile = hostile[Math.floor(Math.random() * hostile.length)];
-        decayTemplates.push({
-          id: Math.random().toString(),
-          code: "SATELLITE_REDIRECT",
-          title: `MONITORIZACIÓN TÁCTICA DE ${targetHostile.nombre.toUpperCase()}`,
-          description: `Se detecta tráfico inusual en ${targetHostile.nombre}. Puedes redireccionar satélites desde tu territorio aliado en ${targetAllied.nombre} para espiarlos, o arriesgar fallas defensivas.`,
-          duration: 40000,
-          timeLeft: 40000,
-          type: 'info' as const,
-          costDescription: `${Math.floor(getProportionalValue(0.02))}€ en coste de redirección`,
-          benefitDescription: "Ejército defensivo de enemigo -20% (Mainframe vulnerable)",
-          options: [
-            {
-              id: "sat_choice1",
-              label: "Redirigir satélites sobre el objetivo",
-              consequence: `${Math.floor(getProportionalValue(0.02))}€, ejército enemigo -20%`,
-              style: 'positive',
-              action: (gState: any) => {
-                const cost = getProportionalValue(0.02);
-                gState.setOro((o: number) => Math.max(0, o - cost));
-                gState.setPaises((prev: any) => {
-                  const copy = { ...prev };
-                  if (copy[targetHostile.id]) {
-                    copy[targetHostile.id] = { ...copy[targetHostile.id], ejercito_ia: Math.floor(copy[targetHostile.id].ejercito_ia * 0.8) };
-                  }
-                  return copy;
-                });
-                logAction('Evento Importante', `Redirección satelital: -${cost}€, -20% ejército de ${targetHostile.nombre}`);
-              }
-            },
-            {
-              id: "sat_choice2",
-              label: "Mantener satélites en patrulla defensiva",
-              consequence: "Sin coste inmediato, riesgo de perder ventaja táctica",
-              style: 'negative',
-              action: () => {
-                logAction('Evento Importante', 'Patrulla defensiva de satélites mantenida');
-              }
-            }
-          ],
-          onExpire: (gState: any) => {
-            // Penalización más leve: hackeo reduce economía del HQ
-            if (hqId) {
-              gState.setPaises((prev: any) => {
-                const copy = { ...prev };
-                if (copy[hqId]) {
-                  copy[hqId] = { ...copy[hqId], economia: Math.floor(copy[hqId].economia * 0.95) };
-                }
-                return copy;
-              });
-            }
+        return {
+          id: choice.id,
+          label: choiceLabel,
+          consequence: choice.consequence,
+          action
+        };
+      });
+
+      const picked = {
+        id: Math.random().toString(),
+        code: template.code,
+        title,
+        description,
+        choices
+      };
+
+      setPendingCriticalEvent(picked);
+      setCriticalCountdown(3);
+    } else {
+      // Lanzar un DecayingNotification (Eventos temporales con balances de recursos profundos y expiraciones)
+      if (decayTemplatesRef.current.length === 0) return;
+      const template = decayTemplatesRef.current[Math.floor(Math.random() * decayTemplatesRef.current.length)];
+
+      if (template.code === "TERRITORIAL_RATIONING" && allied.length === 0) return;
+      if (template.code === "SATELLITE_REDIRECT" && (allied.length === 0 || hostile.length === 0)) return;
+
+      const targetCountry = hostile.length > 0 ? hostile[Math.floor(Math.random() * hostile.length)] : null;
+      const targetAllied = allied.length > 0 ? allied[Math.floor(Math.random() * allied.length)] : null;
+
+      // Calcular valores proporcionales
+      const costVal = template.costProportionalPercent ? getProportionalValue(template.costProportionalPercent) : 0;
+      const benefitVal = template.benefitProportionalPercent ? getProportionalValue(template.benefitProportionalPercent) : 0;
+
+      const formatString = (str: string, choiceCost?: number, choiceBenefit?: number): string => {
+        if (!str) return "";
+        let res = str
+          .replace(/{target}/g, targetCountry?.nombre || "objetivo")
+          .replace(/{colony}/g, targetAllied?.nombre || "territorio aliado");
+
+        const activeCost = choiceCost !== undefined ? choiceCost : costVal;
+        const activeBenefit = choiceBenefit !== undefined ? choiceBenefit : benefitVal;
+
+        res = res.replace(/{cost}/g, Math.floor(activeCost).toString());
+        res = res.replace(/{benefit}/g, Math.floor(activeBenefit).toString());
+        res = res.replace(/{gain}/g, Math.floor(activeBenefit - activeCost).toString());
+
+        return res;
+      };
+
+      const title = formatString(template.title);
+      const description = formatString(template.description);
+      const costDescription = template.costDescriptionTemplate ? formatString(template.costDescriptionTemplate) : undefined;
+      const benefitDescription = template.benefitDescriptionTemplate ? formatString(template.benefitDescriptionTemplate) : undefined;
+
+      const options = template.options.map(option => {
+        const optCostVal = option.costProportionalPercent ? getProportionalValue(option.costProportionalPercent) : 0;
+        const optBenefitVal = option.benefitProportionalPercent ? getProportionalValue(option.benefitProportionalPercent) : 0;
+
+        const label = formatString(option.label, optCostVal, optBenefitVal);
+        const consequence = formatString(option.consequence, optCostVal, optBenefitVal);
+
+        const action = (gState: any) => {
+          let computedOroChange = 0;
+          if (option.efecto_oro) computedOroChange += option.efecto_oro;
+          if (optBenefitVal) computedOroChange += optBenefitVal;
+          if (optCostVal) computedOroChange -= optCostVal;
+
+          if (computedOroChange !== 0) {
+            gState.setOro((o: number) => Math.max(0, o + computedOroChange));
           }
-        });
-      }
 
-      if (decayTemplates.length > 0) {
-        const picked = decayTemplates[Math.floor(Math.random() * decayTemplates.length)];
-        addNotification(picked);
-      }
+          if (option.efecto_infanteria || option.efecto_caballeria || option.efecto_artilleria) {
+            gState.setTropas((t: any) => ({
+              infanteria: Math.max(0, t.infanteria + (option.efecto_infanteria || 0)),
+              caballeria: Math.max(0, t.caballeria + (option.efecto_caballeria || 0)),
+              artilleria: Math.max(0, t.artilleria + (option.efecto_artilleria || 0))
+            }));
+          }
+
+          if (option.hq_economia_multiplier && hqId) {
+            gState.setPaises((prev: any) => {
+              const copy = { ...prev };
+              if (copy[hqId]) {
+                copy[hqId] = { ...copy[hqId], economia: Math.floor(copy[hqId].economia * option.hq_economia_multiplier!) };
+              }
+              return copy;
+            });
+          }
+
+          if (option.hq_poblacion_multiplier && hqId) {
+            gState.setPaises((prev: any) => {
+              const copy = { ...prev };
+              if (copy[hqId]) {
+                copy[hqId] = { ...copy[hqId], poblacion: Math.floor(copy[hqId].poblacion * option.hq_poblacion_multiplier!) };
+              }
+              return copy;
+            });
+          }
+
+          if (option.target_ejercito_ia_multiplier && targetCountry) {
+            gState.setPaises((prev: any) => {
+              const copy = { ...prev };
+              if (copy[targetCountry.id]) {
+                copy[targetCountry.id] = { ...copy[targetCountry.id], ejercito_ia: Math.floor(copy[targetCountry.id].ejercito_ia * option.target_ejercito_ia_multiplier!) };
+              }
+              return copy;
+            });
+          }
+
+          if (option.colony_economia_multiplier && targetAllied) {
+            gState.setPaises((prev: any) => {
+              const copy = { ...prev };
+              if (copy[targetAllied.id]) {
+                copy[targetAllied.id] = { ...copy[targetAllied.id], economia: Math.floor(copy[targetAllied.id].economia * option.colony_economia_multiplier!) };
+              }
+              return copy;
+            });
+          }
+
+          if (option.colony_poblacion_multiplier && targetAllied) {
+            gState.setPaises((prev: any) => {
+              const copy = { ...prev };
+              if (copy[targetAllied.id]) {
+                copy[targetAllied.id] = { ...copy[targetAllied.id], poblacion: Math.floor(copy[targetAllied.id].poblacion * option.colony_poblacion_multiplier!) };
+              }
+              return copy;
+            });
+          }
+
+          const logMsg = formatString(option.logActionMsg, optCostVal, optBenefitVal);
+          logAction('Evento Importante', logMsg);
+        };
+
+        return {
+          id: option.id,
+          label,
+          consequence,
+          style: option.style,
+          action
+        };
+      });
+
+      const onExpire = (gState: any) => {
+        if (template.onExpire_hq_economia_multiplier && hqId) {
+          gState.setPaises((prev: any) => {
+            const copy = { ...prev };
+            if (copy[hqId]) {
+              copy[hqId] = { ...copy[hqId], economia: Math.floor(copy[hqId].economia * template.onExpire_hq_economia_multiplier!) };
+            }
+            return copy;
+          });
+        }
+        if (template.onExpire_colony_poblacion_multiplier && targetAllied) {
+          gState.setPaises((prev: any) => {
+            const copy = { ...prev };
+            if (copy[targetAllied.id]) {
+              copy[targetAllied.id] = { ...copy[targetAllied.id], poblacion: Math.floor(copy[targetAllied.id].poblacion * template.onExpire_colony_poblacion_multiplier!) };
+            }
+            return copy;
+          });
+        }
+      };
+
+      const picked = {
+        id: Math.random().toString(),
+        code: template.code,
+        title,
+        description,
+        duration: template.duration,
+        timeLeft: template.duration,
+        type: template.type,
+        costDescription,
+        benefitDescription,
+        options,
+        onExpire
+      };
+
+      addNotification(picked);
     }
   };
 
@@ -1133,6 +715,7 @@ export default function App() {
     let totalIngresoJugador = 0;
     const tieneAlgoritmos = currentHabilidades.some(h => h.nombre === "Algoritmos Financieros" && h.desbloqueada);
     const multiplicadorTech = tieneAlgoritmos ? 1.15 : 1.0;
+    const sc = simConstantsRef.current;
 
     // 2. Simulación para cada país
     Object.keys(currentPaises).forEach(id => {
@@ -1169,11 +752,11 @@ export default function App() {
       const defuncionesDia = pais.poblacion * (tasaMortalidadEfectiva / 100);
       pais.poblacion = Math.round(pais.poblacion + nacimientosDia - defuncionesDia);
 
-      // B. Economía dinámica (Crecimiento orgánico: +0.005% diario)
-      pais.economia = pais.economia * (1 + 0.00005);
+      // B. Economía dinámica (Crecimiento orgánico diario)
+      pais.economia = pais.economia * (1 + sc.dailyEconomicGrowthRate);
 
-      // C. Generación de Oro balanceada (Fórmula base dividida entre un factor de balance de 2000)
-      const ingreso = ((pais.economia * 0.1) + (pais.poblacion * 0.001)) / 2000;
+      // C. Generación de Oro balanceada (Fórmula base con factores configurables)
+      const ingreso = ((pais.economia * sc.incomeFormulaEcoFactor) + (pais.poblacion * sc.incomeFormulaPopFactor)) / sc.incomeDivisor;
 
       if (pais.conquistado) {
         // Si pertenece al jugador, sumamos a sus ingresos con multiplicador tech
@@ -1186,9 +769,9 @@ export default function App() {
         // Si su ejército está bajo, gasta 100 de oro para reclutar
         const seed = id.charCodeAt(0) + (id.length > 1 ? id.charCodeAt(1) : 0);
         const targetEjercito = Math.max(100, Math.floor(Math.sqrt(pais.poblacion) * (5 + (seed % 5))));
-        if (pais.ejercito_ia < targetEjercito && pais.oro_ia >= 100) {
-          pais.oro_ia -= 100;
-          const reclutas = Math.floor(Math.random() * 11) + 5; // random(5, 15)
+        if (pais.ejercito_ia < targetEjercito && pais.oro_ia >= sc.iaRecruitmentCost) {
+          pais.oro_ia -= sc.iaRecruitmentCost;
+          const reclutas = Math.floor(Math.random() * (sc.iaRecruitMaxReclutas - sc.iaRecruitMinReclutas + 1)) + sc.iaRecruitMinReclutas;
           pais.ejercito_ia += reclutas;
 
           if (!pais.ejercito_ia_detalle) {
@@ -1208,27 +791,20 @@ export default function App() {
       currentPaises[id] = pais;
     });
 
-    // Redondear el ingreso del jugador aplicando el multiplicador por expansión de +5% por país conquistado
+    // Redondear el ingreso del jugador aplicando el multiplicador por expansión por país conquistado
     const numConquistados = Object.values(currentPaises).filter(p => p.conquistado).length;
-    totalIngresoJugador = Math.floor(totalIngresoJugador * (1 + numConquistados * 0.05));
+    totalIngresoJugador = Math.floor(totalIngresoJugador * (1 + numConquistados * sc.conquestBonusPerCountry));
 
     // 3. Mantenimiento del Jugador y Crisis de Suministros escalonada (Economía sustentable)
     const totalTropasJugador = currentTropas.infanteria + currentTropas.caballeria + currentTropas.artilleria;
 
-    // Costos y tasas escalonadas según tamaño del ejército para evitar "snowballing" excesivo, pero viable
-    let mntInf = 0.005, mntCab = 0.015, mntArt = 0.04;
-    let desRate = 0.001; // 0.1% en etapa inicial
-
-    if (totalTropasJugador > 100000) {
-      mntInf = 0.02; mntCab = 0.05; mntArt = 0.15;
-      desRate = 0.015; // 1.5%
-    } else if (totalTropasJugador > 50000) {
-      mntInf = 0.015; mntCab = 0.04; mntArt = 0.10;
-      desRate = 0.01; // 1%
-    } else if (totalTropasJugador > 15000) {
-      mntInf = 0.01; mntCab = 0.025; mntArt = 0.07;
-      desRate = 0.005; // 0.5%
-    }
+    // Buscar el tier de mantenimiento aplicable según el tamaño del ejército
+    const mntTier = maintenanceTiersRef.current.find(t => totalTropasJugador >= t.minTroops)
+      || { costInf: 0.005, costCab: 0.015, costArt: 0.04, desertionRate: 0.001, minTroops: 0 };
+    const mntInf = mntTier.costInf;
+    const mntCab = mntTier.costCab;
+    const mntArt = mntTier.costArt;
+    const desRate = mntTier.desertionRate;
 
     const costoMantenimiento = Math.floor(
       (currentTropas.infanteria * mntInf) +
@@ -1278,16 +854,34 @@ export default function App() {
     // 5. Procesamiento de Eventos Aleatorios
     diasParaEventoRef.current -= 1;
     if (diasParaEventoRef.current <= 0) {
-      diasParaEventoRef.current = 10 + Math.floor(Math.random() * 6);
+      diasParaEventoRef.current = sc.eventIntervalMin + Math.floor(Math.random() * sc.eventIntervalRandom);
       const evts = eventosAleatoriosRef.current;
       if (evts.length > 0) {
         const eventoAzar = evts[Math.floor(Math.random() * evts.length)];
 
         // Aplicamos el efecto del evento sobre el presupuesto y tropas del momento
-        const resultadoEvento = eventoAzar.efecto(currentPresupuesto, nuevasTropas);
-
-        currentPresupuesto = resultadoEvento.oro;
-        nuevasTropas = resultadoEvento.tropas;
+        let nuevoOro = currentPresupuesto;
+        if (eventoAzar.efecto_oro !== undefined) {
+          nuevoOro = Math.max(0, nuevoOro + eventoAzar.efecto_oro);
+        }
+        let nuevaInf = nuevasTropas.infanteria;
+        if (eventoAzar.efecto_infanteria !== undefined) {
+          nuevaInf = Math.max(0, nuevaInf + eventoAzar.efecto_infanteria);
+        }
+        let nuevaCab = nuevasTropas.caballeria;
+        if (eventoAzar.efecto_caballeria !== undefined) {
+          nuevaCab = Math.max(0, nuevaCab + eventoAzar.efecto_caballeria);
+        }
+        let nuevaArt = nuevasTropas.artilleria;
+        if (eventoAzar.efecto_artilleria !== undefined) {
+          nuevaArt = Math.max(0, nuevaArt + eventoAzar.efecto_artilleria);
+        }
+        currentPresupuesto = nuevoOro;
+        nuevasTropas = {
+          infanteria: nuevaInf,
+          caballeria: nuevaCab,
+          artilleria: nuevaArt
+        };
 
         nuevosMensajes.push({
           id: Math.random().toString(),
@@ -1302,7 +896,7 @@ export default function App() {
     // 5b. Procesamiento de Eventos Especiales (Interactivos o Críticos)
     diasParaEventoEspecialRef.current -= 1;
     if (diasParaEventoEspecialRef.current <= 0) {
-      diasParaEventoEspecialRef.current = 30 + Math.floor(Math.random() * 20);
+      diasParaEventoEspecialRef.current = sc.specialEventIntervalMin + Math.floor(Math.random() * sc.specialEventIntervalRandom);
       lanzarEventoEspecial();
     }
 
@@ -1322,12 +916,13 @@ export default function App() {
 
         if (totalTropasEnviadas <= 0) return;
 
-        // Poder del Jugador: Inf = 1x, Cab = 1.5x, Art = 3x
-        const poderJugador = infEnviada * 1.0 + cabEnviada * 1.5 + artEnviada * 3.0;
+        // Poder del Jugador (multiplicadores desde config)
+        const cm = combatMultipliersRef.current;
+        const poderJugador = infEnviada * cm.infanteria + cabEnviada * cm.caballeria + artEnviada * cm.artilleria;
 
         // Poder de la IA defensora
         const detailIA = paisDestino.ejercito_ia_detalle || { infanteria: paisDestino.ejercito_ia, caballeria: 0, artilleria: 0 };
-        const poderIA = detailIA.infanteria * 1.0 + detailIA.caballeria * 1.5 + detailIA.artilleria * 3.0;
+        const poderIA = detailIA.infanteria * cm.infanteria + detailIA.caballeria * cm.caballeria + detailIA.artilleria * cm.artilleria;
 
         // Tasa de bajas (basada en el ratio de poder con margen aleatorio)
         const ratioIA = poderIA / (poderJugador || 1);
@@ -1467,7 +1062,7 @@ export default function App() {
     }
 
     const fechaImpacto = new Date(fechaVirtual);
-    fechaImpacto.setDate(fechaImpacto.getDate() + 5);
+    fechaImpacto.setDate(fechaImpacto.getDate() + simConstantsRef.current.attackTransitDays);
 
     setAtaquesEnCola(prev => [...prev, {
       id: Math.random().toString(),
@@ -1490,7 +1085,7 @@ export default function App() {
       id: Math.random().toString(),
       fecha: fechaVirtual,
       titulo: "DESPLIEGUE DE INVASIÓN MÚLTIPLE",
-      mensaje: `Un convoy táctico con destino a ${paisSeleccionado.nombre} ha salido de los silos de transporte. Desplegadas: 👤${infanteriaAEnviar} Infantería, ⚡${caballeriaAEnviar} Caballería, 💀${artilleriaAEnviar} Artillería (Total: ${totalAEnviar} fuerzas). Impacto satelital estimado en T-5 días (${fechaImpacto.toLocaleDateString()}).`,
+      mensaje: `Un convoy táctico con destino a ${paisSeleccionado.nombre} ha salido de los silos de transporte. Desplegadas: 👤${infanteriaAEnviar} Infantería, ⚡${caballeriaAEnviar} Caballería, 💀${artilleriaAEnviar} Artillería (Total: ${totalAEnviar} fuerzas). Impacto satelital estimado en T-${simConstantsRef.current.attackTransitDays} días (${fechaImpacto.toLocaleDateString()}).`,
       tipo: "info"
     }, ...prev]);
 
@@ -1524,9 +1119,10 @@ export default function App() {
     const multGral = preset.multiplicadorReclutamiento ?? 1.0;
     const multPesadas = preset.multiplicadorPesadas ?? 1.0;
 
-    const costoInfUnit = Math.floor(10 * multGral);
-    const costoCabUnit = Math.floor(25 * multGral * multPesadas);
-    const costoArtUnit = Math.floor(60 * multGral * multPesadas);
+    const tc = troopCostsRef.current;
+    const costoInfUnit = Math.floor(tc.infanteria * multGral);
+    const costoCabUnit = Math.floor(tc.caballeria * multGral * multPesadas);
+    const costoArtUnit = Math.floor(tc.artilleria * multGral * multPesadas);
 
     const costoTotal = infanteriaAMovilizar * costoInfUnit + caballeriaAMovilizar * costoCabUnit + artilleriaAMovilizar * costoArtUnit;
     if (presupuesto < costoTotal) {
@@ -1534,21 +1130,22 @@ export default function App() {
       return;
     }
 
-    const maxMovilizable = Math.floor(livePais.poblacion * 0.05);
+    const scm = simConstantsRef.current;
+    const maxMovilizable = Math.floor(livePais.poblacion * scm.mobilizationPopLimit);
     if (totalMovilizado > maxMovilizable) {
-      alert(`La movilización excede el límite crítico del 5% de la población actual (Máximo: ${maxMovilizable} habitantes).`);
+      alert(`La movilización excede el límite crítico del ${(scm.mobilizationPopLimit * 100).toFixed(0)}% de la población actual (Máximo: ${maxMovilizable} habitantes).`);
       return;
     }
 
     // Aplicar los cambios
-    const esMasiva = totalMovilizado >= livePais.poblacion * 0.01;
+    const esMasiva = totalMovilizado >= livePais.poblacion * scm.massiveMobilizationThreshold;
     setPaises(prev => {
       const updated = { ...prev };
       if (updated[livePais.id]) {
         updated[livePais.id] = {
           ...updated[livePais.id],
           poblacion: updated[livePais.id].poblacion - totalMovilizado,
-          dias_reclutamiento_agresivo: esMasiva ? 90 : (updated[livePais.id].dias_reclutamiento_agresivo || 0)
+          dias_reclutamiento_agresivo: esMasiva ? scm.aggressiveRecruitmentPenaltyDays : (updated[livePais.id].dias_reclutamiento_agresivo || 0)
         };
       }
       return updated;
@@ -1674,14 +1271,18 @@ export default function App() {
         onDeploy={(pais) => {
           setPlayerHQ(pais);
 
+          // Buscar tier del HQ desde la tabla de presets cargada
           const norm = pais.nombre.toLowerCase();
-          if (norm.includes("estados unidos") || norm.includes("usa") || norm.includes("united states") || norm.includes("rusia") || norm.includes("russia") || norm.includes("china")) {
-            setTropas({ infanteria: 12000, caballeria: 4000, artilleria: 2000 });
-            setPresupuesto(50000);
-          } else if (norm.includes("alemania") || norm.includes("germany") || norm.includes("india") || norm.includes("francia") || norm.includes("reino unido") || norm.includes("brasil") || norm.includes("méxico") || norm.includes("japon") || norm.includes("japan")) {
-            setTropas({ infanteria: 6000, caballeria: 2000, artilleria: 800 });
-            setPresupuesto(20000);
+          const presets = hqPresetsRef.current;
+          const matched = presets.find(p => p.countries.some(c => norm.includes(c)));
+          const fallback = presets.find(p => p.countries.length === 0) || presets[presets.length - 1];
+          const preset = matched || fallback;
+
+          if (preset) {
+            setTropas({ ...preset.tropas });
+            setPresupuesto(preset.presupuesto);
           } else {
+            // Safety fallback (should never happen if DB is loaded)
             setTropas({ infanteria: 3000, caballeria: 500, artilleria: 100 });
             setPresupuesto(5000);
           }
@@ -2031,9 +1632,10 @@ export default function App() {
         const multGral = preset.multiplicadorReclutamiento ?? 1.0;
         const multPesadas = preset.multiplicadorPesadas ?? 1.0;
 
-        const costoInfUnit = Math.floor(10 * multGral);
-        const costoCabUnit = Math.floor(25 * multGral * multPesadas);
-        const costoArtUnit = Math.floor(60 * multGral * multPesadas);
+        const tc = troopCostsRef.current;
+        const costoInfUnit = Math.floor(tc.infanteria * multGral);
+        const costoCabUnit = Math.floor(tc.caballeria * multGral * multPesadas);
+        const costoArtUnit = Math.floor(tc.artilleria * multGral * multPesadas);
 
         const costoTotal = infanteriaAMovilizar * costoInfUnit + caballeriaAMovilizar * costoCabUnit + artilleriaAMovilizar * costoArtUnit;
         return (
