@@ -7,7 +7,7 @@ import {
   Flag, Swords, Hexagon, Zap, Skull, Map as MapIcon,
   ChevronsRight, Globe, Cpu
 } from "lucide-react";
-import { fetchInitialGameState, fetchRandomEvents, fetchTechTree, fetchCountryStats, translateCountry } from "./database/mockAPI";
+import { fetchInitialGameState, fetchRandomEvents, fetchTechTree, fetchCountryStats, translateCountry, getPresetForCountry } from "./database/mockAPI";
 import type { Habilidad, OperarioUser } from "./database/mockAPI";
 import Login from "./components/Login";
 import StartMenu from "./components/StartMenu";
@@ -18,6 +18,12 @@ import { geoMiller } from "d3-geo-projection";
 // Geometría del mapa del mundo (TopoJSON)
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
+type Tropas = {
+  infanteria: number;
+  caballeria: number;
+  artilleria: number;
+};
+
 type Pais = {
   id: string;
   nombre: string;
@@ -26,19 +32,14 @@ type Pais = {
   ejercito_ia: number;
   conquistado: boolean;
   oro_ia: number;
-};
-
-type Tropas = {
-  infanteria: number;
-  caballeria: number;
-  artilleria: number;
+  ejercito_ia_detalle: Tropas;
 };
 
 type AtaqueEnCola = {
   id: string;
   pais_destino_id: string;
   fecha_impacto: Date;
-  tropas_enviadas: number;
+  tropas_enviadas: Tropas;
 };
 
 type Evento = {
@@ -85,23 +86,31 @@ const getRealPopulation = (name: string, seed: number, populations: Record<strin
 };
 
 const getRealEconomy = (name: string, population: number, seed: number): number => {
-  const norm = normalizeName(name);
-  let baseGdpPerCapita = 5000;
-  if (["united states of america", "germany", "united kingdom", "france", "japan", "singapore", "switzerland", "canada", "australia"].some(c => norm.includes(c))) {
-    baseGdpPerCapita = 60000 + (seed % 20) * 1000;
-  } else if (["china", "russia", "brazil", "mexico", "turkey", "saudi arabia", "south korea", "spain", "italy", "poland"].some(c => norm.includes(c))) {
-    baseGdpPerCapita = 25000 + (seed % 15) * 800;
+  const preset = getPresetForCountry(name);
+  let gdpVar = 0;
+  if (preset.gdpPerCapita >= 60000) {
+    gdpVar = (seed % 20) * 1000;
+  } else if (preset.gdpPerCapita >= 10000) {
+    gdpVar = (seed % 15) * 800;
   } else {
-    baseGdpPerCapita = 3000 + (seed % 10) * 500;
+    gdpVar = (seed % 10) * 500;
   }
-  return Math.floor((population * baseGdpPerCapita) / 1000000);
+  const finalGdpPerCapita = preset.gdpPerCapita + gdpVar;
+  return Math.max(1, Math.floor((population * finalGdpPerCapita) / 1000000));
 };
 
-const getRealEjercito = (isAliado: boolean, population: number, seed: number): number => {
-  if (isAliado) return 0;
-  const baseSize = Math.floor(Math.sqrt(population) * (5 + (seed % 5)));
-  return Math.max(100, baseSize);
+const getRealEjercitoDetalle = (isAliado: boolean, population: number, seed: number, nameEN: string): Tropas => {
+  if (isAliado) return { infanteria: 0, caballeria: 0, artilleria: 0 };
+  const preset = getPresetForCountry(nameEN);
+  const baseSize = Math.max(100, Math.floor(Math.sqrt(population) * (5 + (seed % 5)) * preset.ejercitoMultiplicador));
+  
+  return {
+    infanteria: Math.floor(baseSize * preset.composicion.infanteria),
+    caballeria: Math.floor(baseSize * preset.composicion.caballeria),
+    artilleria: Math.floor(baseSize * preset.composicion.artilleria),
+  };
 };
+
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<OperarioUser | null>(null);
@@ -143,7 +152,12 @@ export default function App() {
   const [, setMousePos] = useState({ x: 0, y: 0 });
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const timeoutRef = useRef<any>(null);
-  const [tropasAEnviar, setTropasAEnviar] = useState(0);
+  const [infanteriaAEnviar, setInfanteriaAEnviar] = useState(0);
+  const [caballeriaAEnviar, setCaballeriaAEnviar] = useState(0);
+  const [artilleriaAEnviar, setArtilleriaAEnviar] = useState(0);
+  const [infanteriaAMovilizar, setInfanteriaAMovilizar] = useState(0);
+  const [caballeriaAMovilizar, setCaballeriaAMovilizar] = useState(0);
+  const [artilleriaAMovilizar, setArtilleriaAMovilizar] = useState(0);
   const [mostrarArbol, setMostrarArbol] = useState(false);
   const [tabIyd, setTabIyd] = useState<"desarrollo" | "militar">("desarrollo");
   const diasParaEventoRef = useRef(10 + Math.floor(Math.random() * 6));
@@ -173,7 +187,8 @@ export default function App() {
 
     const poblacion = getRealPopulation(nameEN, seed, countryStatsRef.current);
     const economia = getRealEconomy(nameEN, poblacion, seed);
-    const ejercito_ia = getRealEjercito(isAliado, poblacion, seed);
+    const ejercito_ia_detalle = getRealEjercitoDetalle(isAliado, poblacion, seed, nameEN);
+    const ejercito_ia = isAliado ? 0 : (ejercito_ia_detalle.infanteria + ejercito_ia_detalle.caballeria + ejercito_ia_detalle.artilleria);
 
     return {
       id: id,
@@ -182,7 +197,8 @@ export default function App() {
       poblacion: poblacion,
       ejercito_ia: ejercito_ia,
       conquistado: isAliado,
-      oro_ia: 0
+      oro_ia: 0,
+      ejercito_ia_detalle: ejercito_ia_detalle
     };
   };
 
@@ -255,7 +271,8 @@ export default function App() {
             
             const poblacion = getRealPopulation(nameEN, seed, countryStatsRef.current);
             const economia = getRealEconomy(nameEN, poblacion, seed);
-            const ejercito_ia = getRealEjercito(isAliado, poblacion, seed);
+            const ejercito_ia_detalle = getRealEjercitoDetalle(isAliado, poblacion, seed, nameEN);
+            const ejercito_ia = isAliado ? 0 : (ejercito_ia_detalle.infanteria + ejercito_ia_detalle.caballeria + ejercito_ia_detalle.artilleria);
             
             initialCountries[id] = {
               id: id,
@@ -264,7 +281,8 @@ export default function App() {
               poblacion: poblacion,
               ejercito_ia: ejercito_ia,
               conquistado: isAliado,
-              oro_ia: 0
+              oro_ia: 0,
+              ejercito_ia_detalle: ejercito_ia_detalle
             };
           });
           
@@ -335,20 +353,50 @@ export default function App() {
           pais.oro_ia -= 100;
           const reclutas = Math.floor(Math.random() * 11) + 5; // random(5, 15)
           pais.ejercito_ia += reclutas;
+
+          if (!pais.ejercito_ia_detalle) {
+            pais.ejercito_ia_detalle = { infanteria: 0, caballeria: 0, artilleria: 0 };
+          }
+          const preset = getPresetForCountry(pais.nombre);
+          const addInf = Math.floor(reclutas * preset.composicion.infanteria);
+          const addCab = Math.floor(reclutas * preset.composicion.caballeria);
+          const addArt = reclutas - addInf - addCab;
+
+          pais.ejercito_ia_detalle.infanteria += addInf;
+          pais.ejercito_ia_detalle.caballeria += addCab;
+          pais.ejercito_ia_detalle.artilleria += addArt;
         }
       }
 
       currentPaises[id] = pais;
     });
 
-    // Redondear el ingreso del jugador
-    totalIngresoJugador = Math.floor(totalIngresoJugador);
+    // Redondear el ingreso del jugador aplicando el multiplicador por expansión de +5% por país conquistado
+    const numConquistados = Object.values(currentPaises).filter(p => p.conquistado).length;
+    totalIngresoJugador = Math.floor(totalIngresoJugador * (1 + numConquistados * 0.05));
 
-    // 3. Mantenimiento del Jugador y Crisis de Suministros
+    // 3. Mantenimiento del Jugador y Crisis de Suministros escalonada (Economía sustentable)
+    const totalTropasJugador = currentTropas.infanteria + currentTropas.caballeria + currentTropas.artilleria;
+    
+    // Costos y tasas escalonadas según tamaño del ejército para evitar "snowballing" excesivo, pero viable
+    let mntInf = 0.005, mntCab = 0.015, mntArt = 0.04;
+    let desRate = 0.001; // 0.1% en etapa inicial
+
+    if (totalTropasJugador > 100000) {
+      mntInf = 0.02; mntCab = 0.05; mntArt = 0.15;
+      desRate = 0.015; // 1.5%
+    } else if (totalTropasJugador > 50000) {
+      mntInf = 0.015; mntCab = 0.04; mntArt = 0.10;
+      desRate = 0.01; // 1%
+    } else if (totalTropasJugador > 15000) {
+      mntInf = 0.01; mntCab = 0.025; mntArt = 0.07;
+      desRate = 0.005; // 0.5%
+    }
+
     const costoMantenimiento = Math.floor(
-      (currentTropas.infanteria * 0.01) +
-      (currentTropas.caballeria * 0.02) +
-      (currentTropas.artilleria * 0.05)
+      (currentTropas.infanteria * mntInf) +
+      (currentTropas.caballeria * mntCab) +
+      (currentTropas.artilleria * mntArt)
     );
 
     let desertoresMsg = "";
@@ -358,20 +406,20 @@ export default function App() {
     // Restar mantenimiento
     currentPresupuesto -= costoMantenimiento;
 
-    if (currentPresupuesto <= 0) {
+    if (currentPresupuesto <= 0 && totalTropasJugador > 0) {
       currentPresupuesto = 0;
       huboDesercion = true;
 
-      // Reducción del 2% en tropas por deserción
-      const desInfanteria = Math.floor(nuevasTropas.infanteria * 0.02);
-      const desCaballeria = Math.floor(nuevasTropas.caballeria * 0.02);
-      const desArtilleria = Math.floor(nuevasTropas.artilleria * 0.02);
+      // Deserción escalonada con penalización mínima de 1 unidad si existe ese tipo
+      const desInfanteria = Math.max(nuevasTropas.infanteria > 0 ? 1 : 0, Math.floor(nuevasTropas.infanteria * desRate));
+      const desCaballeria = Math.max(nuevasTropas.caballeria > 0 ? 1 : 0, Math.floor(nuevasTropas.caballeria * desRate));
+      const desArtilleria = Math.max(nuevasTropas.artilleria > 0 ? 1 : 0, Math.floor(nuevasTropas.artilleria * desRate));
 
       nuevasTropas.infanteria = Math.max(0, nuevasTropas.infanteria - desInfanteria);
       nuevasTropas.caballeria = Math.max(0, nuevasTropas.caballeria - desCaballeria);
       nuevasTropas.artilleria = Math.max(0, nuevasTropas.artilleria - desArtilleria);
 
-      desertoresMsg = `Desertores: -${desInfanteria} Infantería, -${desCaballeria} Caballería, -${desArtilleria} Artillería.`;
+      desertoresMsg = `Tasa de deserción logística activa (${(desRate * 100).toFixed(1)}%). Bajas: -${desInfanteria} Inf, -${desCaballeria} Cab, -${desArtilleria} Art.`;
     }
 
     // Sumar el ingreso diario
@@ -423,30 +471,89 @@ export default function App() {
         const paisDestino = currentPaises[ataque.pais_destino_id];
         if (!paisDestino) return;
 
-        let fuerzaJugador = ataque.tropas_enviadas;
-        let fuerzaIA = paisDestino.ejercito_ia;
-        const bajasJugador = Math.floor(fuerzaJugador * (0.1 + Math.random() * 0.3));
-        const bajasIA = Math.floor(fuerzaIA * (0.2 + Math.random() * 0.4));
-        fuerzaJugador -= bajasJugador;
-        fuerzaIA -= bajasIA;
+        const infEnviada = ataque.tropas_enviadas.infanteria;
+        const cabEnviada = ataque.tropas_enviadas.caballeria;
+        const artEnviada = ataque.tropas_enviadas.artilleria;
+        const totalTropasEnviadas = infEnviada + cabEnviada + artEnviada;
 
-        const victoria = fuerzaJugador > fuerzaIA;
+        if (totalTropasEnviadas <= 0) return;
+
+        // Poder del Jugador: Inf = 1x, Cab = 1.5x, Art = 3x
+        const poderJugador = infEnviada * 1.0 + cabEnviada * 1.5 + artEnviada * 3.0;
+
+        // Poder de la IA defensora
+        const detailIA = paisDestino.ejercito_ia_detalle || { infanteria: paisDestino.ejercito_ia, caballeria: 0, artilleria: 0 };
+        const poderIA = detailIA.infanteria * 1.0 + detailIA.caballeria * 1.5 + detailIA.artilleria * 3.0;
+
+        // Tasa de bajas (basada en el ratio de poder con margen aleatorio)
+        const ratioIA = poderIA / (poderJugador || 1);
+        const ratioJugador = poderJugador / (poderIA || 1);
+        
+        const rateJugador = Math.min(0.95, (0.1 + Math.random() * 0.3) * ratioIA);
+        const rateIA = Math.min(0.95, (0.2 + Math.random() * 0.4) * ratioJugador);
+
+        // Bajas
+        const bajasInfJugador = Math.min(infEnviada, Math.floor(infEnviada * rateJugador));
+        const bajasCabJugador = Math.min(cabEnviada, Math.floor(cabEnviada * rateJugador));
+        const bajasArtJugador = Math.min(artEnviada, Math.floor(artEnviada * rateJugador));
+        const totalBajasJugador = bajasInfJugador + bajasCabJugador + bajasArtJugador;
+
+        const bajasInfIA = Math.min(detailIA.infanteria, Math.floor(detailIA.infanteria * rateIA));
+        const bajasCabIA = Math.min(detailIA.caballeria, Math.floor(detailIA.caballeria * rateIA));
+        const bajasArtIA = Math.min(detailIA.artilleria, Math.floor(detailIA.artilleria * rateIA));
+
+        // Sobrevivientes del jugador
+        const survInfJugador = infEnviada - bajasInfJugador;
+        const survCabJugador = cabEnviada - bajasCabJugador;
+        const survArtJugador = artEnviada - bajasArtJugador;
+
+        // Sobrevivientes de la IA
+        const survInfIA = detailIA.infanteria - bajasInfIA;
+        const survCabIA = detailIA.caballeria - bajasCabIA;
+        const survArtIA = detailIA.artilleria - bajasArtIA;
+
+        const victoria = poderJugador > poderIA;
+
+        let msg = "";
+        if (victoria) {
+          msg = `¡Victoria en ${paisDestino.nombre}! Las defensas de la IA enemiga colapsaron. ` +
+                `Bajas del jugador: 👤${bajasInfJugador} Infantería, ⚡${bajasCabJugador} Caballería, 💀${bajasArtJugador} Artillería (Total: ${totalBajasJugador}). ` +
+                `Sobreviven y retornan a la reserva: 👤${survInfJugador} Inf, ⚡${survCabJugador} Cab, 💀${survArtJugador} Art.`;
+        } else {
+          msg = `Falla táctica en ${paisDestino.nombre}. Nuestras fuerzas desplegadas fueron neutralizadas. ` +
+                `Pérdidas totales: 👤${infEnviada} Infantería, ⚡${cabEnviada} Caballería, 💀${artEnviada} Artillería. ` +
+                `Bajas enemigas causadas: 👤${bajasInfIA} Inf, ⚡${bajasCabIA} Cab, 💀${bajasArtIA} Art.`;
+        }
 
         nuevosMensajes.push({
           id: Math.random().toString(),
           fecha: fechaVirtual,
           titulo: victoria ? "VICTORIA EN CAMPAÑA" : "DERROTA OPERACIONAL",
-          mensaje: victoria 
-            ? `¡Victoria en ${paisDestino.nombre}! Las defensas de la IA enemiga colapsaron tras una ofensiva implacable de infantería. Bajas: ${bajasJugador}. Sobreviven: ${Math.floor(fuerzaJugador)} tropas que retornan a la reserva militar.`
-            : `Falla táctica en ${paisDestino.nombre}. Nuestras fuerzas desplegadas fueron neutralizadas por contramedidas enemigas de alta frecuencia. Bajas de infantería: ${ataque.tropas_enviadas}.`,
+          mensaje: msg,
           tipo: victoria ? "success" : "alert"
         });
 
         if (victoria) {
-          currentPaises[paisDestino.id] = { ...paisDestino, conquistado: true, ejercito_ia: 0 };
-          nuevasTropas.infanteria += Math.floor(fuerzaJugador);
+          currentPaises[paisDestino.id] = { 
+            ...paisDestino, 
+            conquistado: true, 
+            ejercito_ia: 0,
+            ejercito_ia_detalle: { infanteria: 0, caballeria: 0, artilleria: 0 }
+          };
+          nuevasTropas.infanteria += survInfJugador;
+          nuevasTropas.caballeria += survCabJugador;
+          nuevasTropas.artilleria += survArtJugador;
         } else {
-          currentPaises[paisDestino.id] = { ...paisDestino, ejercito_ia: Math.max(0, Math.floor(fuerzaIA)) };
+          const nuevoDetalle = {
+            infanteria: survInfIA,
+            caballeria: survCabIA,
+            artilleria: survArtIA
+          };
+          currentPaises[paisDestino.id] = { 
+            ...paisDestino, 
+            ejercito_ia_detalle: nuevoDetalle,
+            ejercito_ia: nuevoDetalle.infanteria + nuevoDetalle.caballeria + nuevoDetalle.artilleria
+          };
         }
       } else {
         ataquesPendientes.push(ataque);
@@ -501,8 +608,17 @@ export default function App() {
 
   const handleDeclararGuerra = () => {
     if (!paisSeleccionado || paisSeleccionado.conquistado) return;
-    if (tropasAEnviar <= 0 || tropasAEnviar > tropas.infanteria) {
-      alert("Cantidad de tropas inválida o insuficiente.");
+    
+    if (infanteriaAEnviar < 0 || infanteriaAEnviar > tropas.infanteria ||
+        caballeriaAEnviar < 0 || caballeriaAEnviar > tropas.caballeria ||
+        artilleriaAEnviar < 0 || artilleriaAEnviar > tropas.artilleria) {
+      alert("Cantidad de tropas a desplegar excede las reservas disponibles o es inválida.");
+      return;
+    }
+
+    const totalAEnviar = infanteriaAEnviar + caballeriaAEnviar + artilleriaAEnviar;
+    if (totalAEnviar <= 0) {
+      alert("Debe seleccionar al menos una unidad para la invasión.");
       return;
     }
 
@@ -513,15 +629,24 @@ export default function App() {
       id: Math.random().toString(),
       pais_destino_id: paisSeleccionado.id,
       fecha_impacto: fechaImpacto,
-      tropas_enviadas: tropasAEnviar
+      tropas_enviadas: {
+        infanteria: infanteriaAEnviar,
+        caballeria: caballeriaAEnviar,
+        artilleria: artilleriaAEnviar
+      }
     }]);
 
-    setTropas(prev => ({ ...prev, infanteria: prev.infanteria - tropasAEnviar }));
+    setTropas(prev => ({
+      infanteria: prev.infanteria - infanteriaAEnviar,
+      caballeria: prev.caballeria - caballeriaAEnviar,
+      artilleria: prev.artilleria - artilleriaAEnviar
+    }));
+
     setDiarioGuerra(prev => [{
       id: Math.random().toString(),
       fecha: fechaVirtual,
-      titulo: "DESPLIEGUE DE INVASIÓN",
-      mensaje: `Un convoy táctico con destino a ${paisSeleccionado.nombre} ha salido de los silos de transporte. Desplegadas ${tropasAEnviar} unidades de infantería. Impacto satelital estimado en T-5 días (${fechaImpacto.toLocaleDateString()}).`,
+      titulo: "DESPLIEGUE DE INVASIÓN MÚLTIPLE",
+      mensaje: `Un convoy táctico con destino a ${paisSeleccionado.nombre} ha salido de los silos de transporte. Desplegadas: 👤${infanteriaAEnviar} Infantería, ⚡${caballeriaAEnviar} Caballería, 💀${artilleriaAEnviar} Artillería (Total: ${totalAEnviar} fuerzas). Impacto satelital estimado en T-5 días (${fechaImpacto.toLocaleDateString()}).`,
       tipo: "info"
     }, ...prev]);
 
@@ -531,7 +656,77 @@ export default function App() {
 
     setPaisSeleccionado(null);
     setHoveredPais(null);
-    setTropasAEnviar(0);
+    setInfanteriaAEnviar(0);
+    setCaballeriaAEnviar(0);
+    setArtilleriaAEnviar(0);
+  };
+
+  const handleMovilizarFuerzas = () => {
+    if (!paisSeleccionado || !paisSeleccionado.conquistado) return;
+    const livePais = paises[paisSeleccionado.id] || paisSeleccionado;
+
+    if (infanteriaAMovilizar < 0 || caballeriaAMovilizar < 0 || artilleriaAMovilizar < 0) {
+      alert("Cantidad de tropas inválida.");
+      return;
+    }
+
+    const totalMovilizado = infanteriaAMovilizar + caballeriaAMovilizar + artilleriaAMovilizar;
+    if (totalMovilizado <= 0) {
+      alert("Debe seleccionar al menos una unidad para movilizar.");
+      return;
+    }
+
+    const preset = getPresetForCountry(livePais.nombre);
+    const multGral = preset.multiplicadorReclutamiento ?? 1.0;
+    const multPesadas = preset.multiplicadorPesadas ?? 1.0;
+
+    const costoInfUnit = Math.floor(10 * multGral);
+    const costoCabUnit = Math.floor(25 * multGral * multPesadas);
+    const costoArtUnit = Math.floor(60 * multGral * multPesadas);
+
+    const costoTotal = infanteriaAMovilizar * costoInfUnit + caballeriaAMovilizar * costoCabUnit + artilleriaAMovilizar * costoArtUnit;
+    if (presupuesto < costoTotal) {
+      alert("Presupuesto global insuficiente.");
+      return;
+    }
+
+    const maxMovilizable = Math.floor(livePais.poblacion * 0.05);
+    if (totalMovilizado > maxMovilizable) {
+      alert(`La movilización excede el límite crítico del 5% de la población actual (Máximo: ${maxMovilizable} habitantes).`);
+      return;
+    }
+
+    // Aplicar los cambios
+    setPaises(prev => {
+      const updated = { ...prev };
+      if (updated[livePais.id]) {
+        updated[livePais.id] = {
+          ...updated[livePais.id],
+          poblacion: updated[livePais.id].poblacion - totalMovilizado
+        };
+      }
+      return updated;
+    });
+
+    setPresupuesto(prev => prev - costoTotal);
+    setTropas(prev => ({
+      infanteria: prev.infanteria + infanteriaAMovilizar,
+      caballeria: prev.caballeria + caballeriaAMovilizar,
+      artilleria: prev.artilleria + artilleriaAMovilizar
+    }));
+
+    setDiarioGuerra(prev => [{
+      id: Math.random().toString(),
+      fecha: fechaVirtual,
+      titulo: `MOVILIZACIÓN DE RESERVAS: ${livePais.nombre.toUpperCase()}`,
+      mensaje: `Movilización exitosa en ${livePais.nombre}. Se convirtieron ${totalMovilizado} ciudadanos en tropas de reserva: 👤+${infanteriaAMovilizar} Inf, ⚡+${caballeriaAMovilizar} Cab, 💀+${artilleriaAMovilizar} Art. Costo total deducido: €${costoTotal.toLocaleString()}.`,
+      tipo: "success"
+    }, ...prev]);
+
+    setInfanteriaAMovilizar(0);
+    setCaballeriaAMovilizar(0);
+    setArtilleriaAMovilizar(0);
+    setPaisSeleccionado(null);
   };
 
   const handleDesbloquearHabilidad = (habilidad: Habilidad) => {
@@ -632,6 +827,19 @@ export default function App() {
       <SelectHQ
         onDeploy={(pais) => {
           setPlayerHQ(pais);
+          
+          const norm = pais.nombre.toLowerCase();
+          if (norm.includes("estados unidos") || norm.includes("usa") || norm.includes("united states") || norm.includes("rusia") || norm.includes("russia") || norm.includes("china")) {
+            setTropas({ infanteria: 12000, caballeria: 4000, artilleria: 2000 });
+            setPresupuesto(50000);
+          } else if (norm.includes("alemania") || norm.includes("germany") || norm.includes("india") || norm.includes("francia") || norm.includes("reino unido") || norm.includes("brasil") || norm.includes("méxico") || norm.includes("japon") || norm.includes("japan")) {
+            setTropas({ infanteria: 6000, caballeria: 2000, artilleria: 800 });
+            setPresupuesto(20000);
+          } else {
+            setTropas({ infanteria: 3000, caballeria: 500, artilleria: 100 });
+            setPresupuesto(5000);
+          }
+
           setCurrentScreen('game');
         }}
         onCancel={() => setCurrentScreen('start')}
@@ -934,8 +1142,17 @@ export default function App() {
       {/* DRAWER LATERAL */}
       {paisSeleccionado && (() => {
         const livePais = paises[paisSeleccionado.id] || paisSeleccionado;
+        const preset = getPresetForCountry(livePais.nombre);
+        const multGral = preset.multiplicadorReclutamiento ?? 1.0;
+        const multPesadas = preset.multiplicadorPesadas ?? 1.0;
+
+        const costoInfUnit = Math.floor(10 * multGral);
+        const costoCabUnit = Math.floor(25 * multGral * multPesadas);
+        const costoArtUnit = Math.floor(60 * multGral * multPesadas);
+
+        const costoTotal = infanteriaAMovilizar * costoInfUnit + caballeriaAMovilizar * costoCabUnit + artilleriaAMovilizar * costoArtUnit;
         return (
-          <div className="absolute right-4 md:right-6 top-24 bottom-24 md:bottom-auto w-[calc(100%-2rem)] sm:w-80 bg-slate-950/95 border border-slate-700 shadow-2xl rounded-sm backdrop-blur-xl overflow-hidden z-30 flex flex-col max-h-[70vh] md:max-h-none">
+          <div className="absolute right-4 md:right-6 top-20 w-[calc(100%-2rem)] sm:w-80 bg-slate-950/95 border border-slate-700 shadow-2xl rounded-sm backdrop-blur-xl overflow-hidden z-30 flex flex-col max-h-[70dvh] md:max-h-[calc(100dvh-186px)]">
             <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-gradient-to-r from-slate-900 to-slate-950">
               <h3 className="font-bold text-sm tracking-widest text-slate-100 uppercase flex items-center gap-2">
                 <MapIcon className="w-4 h-4 text-blue-500" />
@@ -968,27 +1185,267 @@ export default function App() {
                 </div>
                 
                 {!livePais.conquistado && (
-                  <div className="bg-rose-950/20 p-3 rounded-sm border border-rose-900/30 col-span-2 flex justify-between items-center">
-                    <div className="text-rose-400 text-[10px] uppercase tracking-widest">Fuerza Militar (IA)</div>
-                    <div className="font-mono text-rose-500 font-bold">{livePais.ejercito_ia.toLocaleString()}</div>
+                  <div className="bg-rose-950/20 p-3 rounded-sm border border-rose-900/30 col-span-2 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <div className="text-rose-400 text-[10px] uppercase tracking-widest font-bold">Fuerza Militar (IA)</div>
+                      <div className="font-mono text-rose-500 font-bold">{livePais.ejercito_ia.toLocaleString()}</div>
+                    </div>
+                    {livePais.ejercito_ia_detalle && (
+                      <div className="grid grid-cols-3 gap-1.5 text-[9px] font-mono text-slate-400 pt-1.5 border-t border-rose-900/20">
+                        <div className="flex flex-col items-center bg-slate-950/40 py-1 rounded border border-rose-950/30">
+                          <span className="text-slate-500 text-[8px]">👤 INF (1x)</span>
+                          <span className="text-rose-400 font-bold">{livePais.ejercito_ia_detalle.infanteria.toLocaleString()}</span>
+                        </div>
+                        <div className="flex flex-col items-center bg-slate-950/40 py-1 rounded border border-rose-950/30">
+                          <span className="text-slate-500 text-[8px]">⚡ CAB (1.5x)</span>
+                          <span className="text-rose-400 font-bold">{livePais.ejercito_ia_detalle.caballeria.toLocaleString()}</span>
+                        </div>
+                        <div className="flex flex-col items-center bg-slate-950/40 py-1 rounded border border-rose-950/30">
+                          <span className="text-slate-500 text-[8px]">💀 ART (3x)</span>
+                          <span className="text-rose-400 font-bold">{livePais.ejercito_ia_detalle.artilleria.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
 
               {!livePais.conquistado && (
-                <div className="pt-5 border-t border-slate-800 mt-2">
-                  <label className="flex justify-between text-[10px] text-slate-400 mb-2 uppercase tracking-widest">
-                    <span>Desplegar Tropas</span>
-                    <span className="text-slate-500">Disp: {tropas.infanteria}</span>
-                  </label>
-                  <div className="flex gap-2 mb-4">
-                    <input type="number" min="0" max={tropas.infanteria} value={tropasAEnviar} onChange={(e) => setTropasAEnviar(Number(e.target.value))} className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-2 text-slate-200 focus:outline-none focus:border-rose-500 font-mono text-sm" placeholder="Ej. 1000"/>
-                    <button onClick={() => setTropasAEnviar(tropas.infanteria)} className="bg-slate-800 hover:bg-slate-700 text-xs px-2 rounded-sm border border-slate-700 text-slate-300">MAX</button>
+                <div className="pt-5 border-t border-slate-800 mt-2 space-y-4">
+                  <div className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Distribución de la Ofensiva</div>
+                  
+                  {/* Selector de Infantería */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-[9px] text-slate-400 font-mono">
+                      <span className="flex items-center gap-1">👤 Infantería (1.0x)</span>
+                      <span className="text-slate-500">Disp: {tropas.infanteria.toLocaleString()}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <input 
+                        type="number" 
+                        min="0" 
+                        max={tropas.infanteria} 
+                        value={infanteriaAEnviar || ""} 
+                        onChange={(e) => setInfanteriaAEnviar(Math.max(0, Math.min(tropas.infanteria, Number(e.target.value))))} 
+                        className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 focus:outline-none focus:border-rose-500 font-mono text-xs" 
+                        placeholder="0"
+                      />
+                      <button 
+                        onClick={() => setInfanteriaAEnviar(tropas.infanteria)} 
+                        className="bg-slate-800 hover:bg-slate-700 text-[10px] px-2.5 rounded-sm border border-slate-700 text-slate-300 font-mono active:scale-95 transition-all"
+                      >
+                        MAX
+                      </button>
+                    </div>
                   </div>
-                  <button onClick={handleDeclararGuerra} disabled={tropasAEnviar <= 0 || tropasAEnviar > tropas.infanteria} className="w-full bg-rose-700 hover:bg-rose-600 disabled:bg-slate-800 disabled:text-slate-600 disabled:border-slate-700 text-white font-bold py-3 px-4 rounded-sm border border-rose-500 uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-2">
-                    <Swords className="w-4 h-4" />
-                    Iniciar Ofensiva
-                  </button>
+
+                  {/* Selector de Caballería */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-[9px] text-slate-400 font-mono">
+                      <span className="flex items-center gap-1">⚡ Caballería (1.5x)</span>
+                      <span className="text-slate-500">Disp: {tropas.caballeria.toLocaleString()}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <input 
+                        type="number" 
+                        min="0" 
+                        max={tropas.caballeria} 
+                        value={caballeriaAEnviar || ""} 
+                        onChange={(e) => setCaballeriaAEnviar(Math.max(0, Math.min(tropas.caballeria, Number(e.target.value))))} 
+                        className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 focus:outline-none focus:border-rose-500 font-mono text-xs" 
+                        placeholder="0"
+                      />
+                      <button 
+                        onClick={() => setCaballeriaAEnviar(tropas.caballeria)} 
+                        className="bg-slate-800 hover:bg-slate-700 text-[10px] px-2.5 rounded-sm border border-slate-700 text-slate-300 font-mono active:scale-95 transition-all"
+                      >
+                        MAX
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Selector de Artillería */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-[9px] text-slate-400 font-mono">
+                      <span className="flex items-center gap-1">💀 Artillería (3.0x)</span>
+                      <span className="text-slate-500">Disp: {tropas.artilleria.toLocaleString()}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <input 
+                        type="number" 
+                        min="0" 
+                        max={tropas.artilleria} 
+                        value={artilleriaAEnviar || ""} 
+                        onChange={(e) => setArtilleriaAEnviar(Math.max(0, Math.min(tropas.artilleria, Number(e.target.value))))} 
+                        className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 focus:outline-none focus:border-rose-500 font-mono text-xs" 
+                        placeholder="0"
+                      />
+                      <button 
+                        onClick={() => setArtilleriaAEnviar(tropas.artilleria)} 
+                        className="bg-slate-800 hover:bg-slate-700 text-[10px] px-2.5 rounded-sm border border-slate-700 text-slate-300 font-mono active:scale-95 transition-all"
+                      >
+                        MAX
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Resumen del Poder y Botón de Ataque */}
+                  <div className="pt-3 border-t border-slate-800 space-y-3">
+                    <div className="flex justify-between items-center text-xs font-mono">
+                      <span className="text-slate-400">Poder de Ataque Total:</span>
+                      <span className="text-rose-400 font-bold font-mono">
+                        {(infanteriaAEnviar * 1.0 + caballeriaAEnviar * 1.5 + artilleriaAEnviar * 3.0).toFixed(1)}
+                      </span>
+                    </div>
+                    
+                    <button 
+                      onClick={handleDeclararGuerra} 
+                      disabled={(infanteriaAEnviar + caballeriaAEnviar + artilleriaAEnviar) <= 0} 
+                      className="w-full bg-rose-700 hover:bg-rose-600 disabled:bg-slate-800 disabled:text-slate-600 disabled:border-slate-700 text-white font-bold py-3 px-4 rounded-sm border border-rose-500 uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer disabled:cursor-not-allowed"
+                    >
+                      <Swords className="w-4 h-4" />
+                      Iniciar Ofensiva
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {livePais.conquistado && (
+                <div className="pt-5 border-t border-slate-800 mt-2 space-y-4">
+                  <div className="text-[10px] text-cyan-400 uppercase tracking-widest font-bold flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5 text-cyan-400" />
+                    Movilización Militar
+                  </div>
+
+                  {presupuesto <= 0 ? (
+                    <div className="bg-red-950/20 border border-red-900/40 p-3 rounded text-[10px] font-mono text-rose-400 text-center uppercase tracking-wider">
+                      PRESUPUESTO AGOTADO: RECLUTAMIENTO SUSPENDIDO
+                    </div>
+                  ) : (
+                    <>
+                      <div className="text-[9px] text-slate-500 normal-case mb-2 font-mono">
+                        Convierta población local en fuerzas de reserva. Costo deducido de su oro global.
+                      </div>
+                      
+                      {/* Movilizar Infantería */}
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between text-[9px] text-slate-400 font-mono">
+                          <span>👤 Reclutar Infantería (€{costoInfUnit})</span>
+                          <span className="text-slate-500">Costo: €{(infanteriaAMovilizar * costoInfUnit).toLocaleString()}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <input 
+                            type="number" 
+                            min="0" 
+                            value={infanteriaAMovilizar || ""} 
+                            onChange={(e) => setInfanteriaAMovilizar(Math.max(0, Number(e.target.value)))} 
+                            className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 focus:outline-none focus:border-cyan-500 font-mono text-xs" 
+                            placeholder="Cantidad"
+                          />
+                          <button 
+                            onClick={() => {
+                              const maxAffordable = Math.floor(presupuesto / costoInfUnit);
+                              const maxByPop = Math.max(0, Math.floor(livePais.poblacion * 0.05) - caballeriaAMovilizar - artilleriaAMovilizar);
+                              setInfanteriaAMovilizar(Math.min(maxAffordable, maxByPop));
+                            }} 
+                            className="bg-slate-800 hover:bg-slate-700 text-[10px] px-2.5 rounded-sm border border-slate-700 text-slate-300 font-mono active:scale-95 transition-all"
+                            title="Máxima infantería reclutable según presupuesto y límite de población"
+                          >
+                            MAX
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Movilizar Caballería */}
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between text-[9px] text-slate-400 font-mono">
+                          <span>⚡ Reclutar Caballería (€{costoCabUnit})</span>
+                          <span className="text-slate-500">Costo: €{(caballeriaAMovilizar * costoCabUnit).toLocaleString()}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <input 
+                            type="number" 
+                            min="0" 
+                            value={caballeriaAMovilizar || ""} 
+                            onChange={(e) => setCaballeriaAMovilizar(Math.max(0, Number(e.target.value)))} 
+                            className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 focus:outline-none focus:border-cyan-500 font-mono text-xs" 
+                            placeholder="Cantidad"
+                          />
+                          <button 
+                            onClick={() => {
+                              const maxAffordable = Math.floor(presupuesto / costoCabUnit);
+                              const maxByPop = Math.max(0, Math.floor(livePais.poblacion * 0.05) - infanteriaAMovilizar - artilleriaAMovilizar);
+                              setCaballeriaAMovilizar(Math.min(maxAffordable, maxByPop));
+                            }} 
+                            className="bg-slate-800 hover:bg-slate-700 text-[10px] px-2.5 rounded-sm border border-slate-700 text-slate-300 font-mono active:scale-95 transition-all"
+                            title="Máxima caballería reclutable según presupuesto y límite de población"
+                          >
+                            MAX
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Movilizar Artillería */}
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between text-[9px] text-slate-400 font-mono">
+                          <span>💀 Reclutar Artillería (€{costoArtUnit})</span>
+                          <span className="text-slate-500">Costo: €{(artilleriaAMovilizar * costoArtUnit).toLocaleString()}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <input 
+                            type="number" 
+                            min="0" 
+                            value={artilleriaAMovilizar || ""} 
+                            onChange={(e) => setArtilleriaAMovilizar(Math.max(0, Number(e.target.value)))} 
+                            className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 focus:outline-none focus:border-cyan-500 font-mono text-xs" 
+                            placeholder="Cantidad"
+                          />
+                          <button 
+                            onClick={() => {
+                              const maxAffordable = Math.floor(presupuesto / costoArtUnit);
+                              const maxByPop = Math.max(0, Math.floor(livePais.poblacion * 0.05) - infanteriaAMovilizar - caballeriaAMovilizar);
+                              setArtilleriaAMovilizar(Math.min(maxAffordable, maxByPop));
+                            }} 
+                            className="bg-slate-800 hover:bg-slate-700 text-[10px] px-2.5 rounded-sm border border-slate-700 text-slate-300 font-mono active:scale-95 transition-all"
+                            title="Máxima artillería reclutable según presupuesto y límite de población"
+                          >
+                            MAX
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Resumen de Movilización y Botón */}
+                      <div className="pt-3 border-t border-slate-800 space-y-3">
+                        <div className="space-y-1 text-[10px] font-mono">
+                          <div className="flex justify-between text-slate-400">
+                            <span>Ciudadanos a movilizar:</span>
+                            <span className={infanteriaAMovilizar + caballeriaAMovilizar + artilleriaAMovilizar > Math.floor(livePais.poblacion * 0.05) ? "text-rose-500 font-bold" : "text-slate-200"}>
+                              {infanteriaAMovilizar + caballeriaAMovilizar + artilleriaAMovilizar} / {Math.floor(livePais.poblacion * 0.05)} (Máx 5%)
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-slate-400">
+                            <span>Costo de operaciones:</span>
+                            <span className={costoTotal > presupuesto ? "text-rose-500 font-bold" : "text-emerald-400 font-bold"}>
+                              €{costoTotal.toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button 
+                          onClick={handleMovilizarFuerzas} 
+                          disabled={
+                            (infanteriaAMovilizar + caballeriaAMovilizar + artilleriaAMovilizar) <= 0 ||
+                            (infanteriaAMovilizar + caballeriaAMovilizar + artilleriaAMovilizar) > Math.floor(livePais.poblacion * 0.05) ||
+                            costoTotal > presupuesto
+                          } 
+                          className="w-full bg-cyan-700 hover:bg-cyan-600 disabled:bg-slate-800 disabled:text-slate-600 disabled:border-slate-700 text-white font-bold py-3 px-4 rounded-sm border border-cyan-500 uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer disabled:cursor-not-allowed"
+                        >
+                          <Zap className="w-4 h-4" />
+                          Movilizar Fuerzas
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>

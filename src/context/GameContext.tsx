@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { DecayingNotification, CriticalEvent, TacticalCountry } from '../types/tacticalEvents';
+import type { DecayingNotification, CriticalEvent, TacticalCountry } from '../types/tacticalEvents';
 
 interface GameContextType {
   oro: number;

@@ -3,7 +3,7 @@ import {
   Globe, Shield, Users, DollarSign, Swords, Crosshair,
   ChevronRight, X, Hexagon, MapPin, Zap, Search
 } from "lucide-react";
-import { fetchCountryStats, translateCountry } from "../database/mockAPI";
+import { fetchCountryStats, translateCountry, getPresetForCountry } from "../database/mockAPI";
 
 interface CountryData {
   id: string;
@@ -54,21 +54,23 @@ export default function SelectHQ({ onDeploy, onCancel }: SelectHQProps) {
         const populations = await fetchCountryStats();
         const countries: CountryData[] = Object.entries(populations).map(([name, pop]) => {
           const seed = name.charCodeAt(0) + (name.length > 1 ? name.charCodeAt(1) : 0);
+          const preset = getPresetForCountry(name);
 
-          // Economía (misma lógica base de App.tsx getRealEconomy)
-          const norm = name.toLowerCase();
-          let gdpPerCapita = 5000;
-          if (["united states of america", "germany", "united kingdom", "france", "japan", "singapore", "switzerland", "canada", "australia"].some(c => norm.includes(c))) {
-            gdpPerCapita = 60000 + (seed % 20) * 1000;
-          } else if (["china", "russia", "brazil", "mexico", "turkey", "saudi arabia", "south korea", "spain", "italy", "poland"].some(c => norm.includes(c))) {
-            gdpPerCapita = 25000 + (seed % 15) * 800;
+          // Economía (con variación por semilla e igual escala que en App.tsx)
+          let gdpVar = 0;
+          if (preset.gdpPerCapita >= 60000) {
+            gdpVar = (seed % 20) * 1000;
+          } else if (preset.gdpPerCapita >= 10000) {
+            gdpVar = (seed % 15) * 800;
           } else {
-            gdpPerCapita = 3000 + (seed % 10) * 500;
+            gdpVar = (seed % 10) * 500;
           }
-          const economia = Math.max(1, Math.floor((pop * gdpPerCapita) / 100000000));
+          const finalGdpPerCapita = preset.gdpPerCapita + gdpVar;
+          const economia = Math.max(1, Math.floor((pop * finalGdpPerCapita) / 1000000));
 
-          // Ejército
-          const ejercito = Math.floor(Math.sqrt(pop) * (5 + (seed % 5)));
+          // Ejército inicial (aplicando multiplicador de preset al valor base)
+          const baseSize = Math.floor(Math.sqrt(pop) * (5 + (seed % 5)));
+          const ejercito = Math.max(100, Math.floor(baseSize * preset.ejercitoMultiplicador));
 
           return {
             id: name,

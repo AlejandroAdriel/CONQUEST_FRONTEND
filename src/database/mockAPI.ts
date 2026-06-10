@@ -459,6 +459,100 @@ const realPopulations: Record<string, number> = {
   "Papua New Guinea": 10000000
 };
 
+export interface PaisPreset {
+  gdpPerCapita: number;
+  ejercitoMultiplicador: number;
+  composicion: {
+    infanteria: number;
+    caballeria: number;
+    artilleria: number;
+  };
+  multiplicadorReclutamiento?: number;
+  multiplicadorPesadas?: number;
+}
+
+export const COUNTRY_PRESETS: Record<string, PaisPreset> = {
+  "united states of america": {
+    gdpPerCapita: 65000,
+    ejercitoMultiplicador: 2.5,
+    composicion: { infanteria: 0.50, caballeria: 0.30, artilleria: 0.20 },
+    multiplicadorPesadas: 0.85
+  },
+  "india": {
+    gdpPerCapita: 15000,
+    ejercitoMultiplicador: 1.8,
+    composicion: { infanteria: 0.85, caballeria: 0.10, artilleria: 0.05 },
+    multiplicadorReclutamiento: 0.8
+  },
+  "russia": {
+    gdpPerCapita: 12000,
+    ejercitoMultiplicador: 2.2,
+    composicion: { infanteria: 0.40, caballeria: 0.20, artilleria: 0.40 },
+    multiplicadorPesadas: 0.85
+  },
+  "china": {
+    gdpPerCapita: 25000,
+    ejercitoMultiplicador: 2.8,
+    composicion: { infanteria: 0.70, caballeria: 0.20, artilleria: 0.10 },
+    multiplicadorReclutamiento: 0.8
+  },
+  "brazil": {
+    gdpPerCapita: 10000,
+    ejercitoMultiplicador: 0.9,
+    composicion: { infanteria: 0.60, caballeria: 0.30, artilleria: 0.10 }
+  },
+  "mexico": {
+    gdpPerCapita: 10000,
+    ejercitoMultiplicador: 0.9,
+    composicion: { infanteria: 0.60, caballeria: 0.30, artilleria: 0.10 }
+  }
+};
+
+export const getPresetForCountry = (name: string): PaisPreset => {
+  const norm = name.toLowerCase();
+  
+  if (norm.includes("estados unidos") || norm.includes("usa") || norm.includes("united states")) {
+    return COUNTRY_PRESETS["united states of america"];
+  }
+  if (norm.includes("india") || norm.includes("ind")) {
+    return COUNTRY_PRESETS["india"];
+  }
+  if (norm.includes("rusia") || norm.includes("russia") || norm.includes("rus")) {
+    return COUNTRY_PRESETS["russia"];
+  }
+  if (norm.includes("china") || norm.includes("chn")) {
+    return COUNTRY_PRESETS["china"];
+  }
+  if (norm.includes("brasil") || norm.includes("brazil") || norm.includes("bra")) {
+    return COUNTRY_PRESETS["brazil"];
+  }
+  if (norm.includes("méxico") || norm.includes("mexico") || norm.includes("mex")) {
+    return COUNTRY_PRESETS["mexico"];
+  }
+
+  for (const [key, preset] of Object.entries(COUNTRY_PRESETS)) {
+    if (norm === key || norm.includes(key) || key.includes(norm)) {
+      return preset;
+    }
+  }
+
+  // Default values
+  let gdpPerCapita = 5000;
+  if (["germany", "united kingdom", "france", "japan", "singapore", "switzerland", "canada", "australia", "alemania", "reino unido", "francia", "japón", "singapur", "suiza", "canadá"].some(c => norm.includes(c))) {
+    gdpPerCapita = 60000;
+  } else if (["china", "turkey", "saudi arabia", "south korea", "spain", "italy", "poland", "turquía", "arabia saudita", "corea del sur", "españa", "italia", "polonia"].some(c => norm.includes(c))) {
+    gdpPerCapita = 25000;
+  } else {
+    gdpPerCapita = 3000;
+  }
+
+  return {
+    gdpPerCapita,
+    ejercitoMultiplicador: 1.0,
+    composicion: { infanteria: 0.70, caballeria: 0.20, artilleria: 0.10 }
+  };
+};
+
 const eventosAleatorios = [
   // ── ALERTAS (Pérdidas) ──────────────────────────────────────
   { 
@@ -590,64 +684,64 @@ const eventosAleatorios = [
 const initialHabilidades: Habilidad[] = [
   // ===================== INFRAESTRUCTURA (DESARROLLO) =====================
   // Origen (X=200, Y=2000): 1 nodo raíz principal
-  { id: "D_ROOT", nombre: "Protocolo de Despertar", costo: 400, desbloqueada: false, prerrequisitos: [], tipo_bono: "Activación del Núcleo Táctico", categoria: "desarrollo", rama: "Origen", nivel: 1, x: 200, y: 2000, tiempo_investigacion_dias: 30 },
+  { id: "D_ROOT", nombre: "Protocolo de Despertar", costo: 1000, desbloqueada: false, prerrequisitos: [], tipo_bono: "Activación del Núcleo Táctico", categoria: "desarrollo", rama: "Origen", nivel: 1, x: 200, y: 2000, tiempo_investigacion_dias: 30 },
 
   // Primera Bifurcación (X=600): 3 nodos
-  { id: "D_B1_1", nombre: "Extracción Profunda", costo: 2000, desbloqueada: false, prerrequisitos: ["D_ROOT"], tipo_bono: "+5% Ingresos Oro", categoria: "desarrollo", rama: "Bifurcacion", nivel: 2, x: 600, y: 1500, tiempo_investigacion_dias: 90 },
-  { id: "D_B1_2", nombre: "Redes Neuronales Básicas", costo: 2000, desbloqueada: false, prerrequisitos: ["D_ROOT"], tipo_bono: "+5% Eficiencia Global", categoria: "desarrollo", rama: "Bifurcacion", nivel: 2, x: 600, y: 2000, tiempo_investigacion_dias: 90 },
-  { id: "D_B1_3", nombre: "Gestión de Flotas Auto", costo: 2000, desbloqueada: false, prerrequisitos: ["D_ROOT"], tipo_bono: "-5% Costo Despliegue", categoria: "desarrollo", rama: "Bifurcacion", nivel: 2, x: 600, y: 2500, tiempo_investigacion_dias: 90 },
+  { id: "D_B1_1", nombre: "Extracción Profunda", costo: 5000, desbloqueada: false, prerrequisitos: ["D_ROOT"], tipo_bono: "+5% Ingresos Oro", categoria: "desarrollo", rama: "Bifurcacion", nivel: 2, x: 600, y: 1500, tiempo_investigacion_dias: 90 },
+  { id: "D_B1_2", nombre: "Redes Neuronales Básicas", costo: 5000, desbloqueada: false, prerrequisitos: ["D_ROOT"], tipo_bono: "+5% Eficiencia Global", categoria: "desarrollo", rama: "Bifurcacion", nivel: 2, x: 600, y: 2000, tiempo_investigacion_dias: 90 },
+  { id: "D_B1_3", nombre: "Gestión de Flotas Auto", costo: 5000, desbloqueada: false, prerrequisitos: ["D_ROOT"], tipo_bono: "-5% Costo Despliegue", categoria: "desarrollo", rama: "Bifurcacion", nivel: 2, x: 600, y: 2500, tiempo_investigacion_dias: 90 },
 
   // Expansión (X=1100): 5 nodos
-  { id: "D_EXP_1", nombre: "Minería Suboceánica", costo: 8000, desbloqueada: false, prerrequisitos: ["D_B1_1"], tipo_bono: "+10% Ingresos Oro", categoria: "desarrollo", rama: "Expansion", nivel: 3, x: 1100, y: 1000, tiempo_investigacion_dias: 180 },
-  { id: "D_EXP_2", nombre: "Procesadores Cuánticos", costo: 8000, desbloqueada: false, prerrequisitos: ["D_B1_1", "D_B1_2"], tipo_bono: "+10% Eficiencia Global", categoria: "desarrollo", rama: "Expansion", nivel: 3, x: 1100, y: 1500, tiempo_investigacion_dias: 180 },
-  { id: "D_EXP_3", nombre: "Algoritmos Financieros", costo: 8000, desbloqueada: false, prerrequisitos: ["D_B1_2"], tipo_bono: "+15% Ingresos Oro", categoria: "desarrollo", rama: "Expansion", nivel: 3, x: 1100, y: 2000, tiempo_investigacion_dias: 180 },
-  { id: "D_EXP_4", nombre: "Nodos Logísticos Subterráneos", costo: 8000, desbloqueada: false, prerrequisitos: ["D_B1_2", "D_B1_3"], tipo_bono: "-10% Costo Despliegue", categoria: "desarrollo", rama: "Expansion", nivel: 3, x: 1100, y: 2500, tiempo_investigacion_dias: 180 },
-  { id: "D_EXP_5", nombre: "Lanzamiento de Microsatélites", costo: 8000, desbloqueada: false, prerrequisitos: ["D_B1_3"], tipo_bono: "+10% Visión Táctica", categoria: "desarrollo", rama: "Expansion", nivel: 3, x: 1100, y: 3000, tiempo_investigacion_dias: 180 },
+  { id: "D_EXP_1", nombre: "Minería Suboceánica", costo: 18000, desbloqueada: false, prerrequisitos: ["D_B1_1"], tipo_bono: "+10% Ingresos Oro", categoria: "desarrollo", rama: "Expansion", nivel: 3, x: 1100, y: 1000, tiempo_investigacion_dias: 180 },
+  { id: "D_EXP_2", nombre: "Procesadores Cuánticos", costo: 18000, desbloqueada: false, prerrequisitos: ["D_B1_1", "D_B1_2"], tipo_bono: "+10% Eficiencia Global", categoria: "desarrollo", rama: "Expansion", nivel: 3, x: 1100, y: 1500, tiempo_investigacion_dias: 180 },
+  { id: "D_EXP_3", nombre: "Algoritmos Financieros", costo: 18000, desbloqueada: false, prerrequisitos: ["D_B1_2"], tipo_bono: "+15% Ingresos Oro", categoria: "desarrollo", rama: "Expansion", nivel: 3, x: 1100, y: 2000, tiempo_investigacion_dias: 180 },
+  { id: "D_EXP_4", nombre: "Nodos Logísticos Subterráneos", costo: 18000, desbloqueada: false, prerrequisitos: ["D_B1_2", "D_B1_3"], tipo_bono: "-10% Costo Despliegue", categoria: "desarrollo", rama: "Expansion", nivel: 3, x: 1100, y: 2500, tiempo_investigacion_dias: 180 },
+  { id: "D_EXP_5", nombre: "Lanzamiento de Microsatélites", costo: 18000, desbloqueada: false, prerrequisitos: ["D_B1_3"], tipo_bono: "+10% Visión Táctica", categoria: "desarrollo", rama: "Expansion", nivel: 3, x: 1100, y: 3000, tiempo_investigacion_dias: 180 },
 
   // Convergencia Parcial (X=1600): 3 nodos mayores
-  { id: "D_CONV_1", nombre: "Perforación Mantélica", costo: 25000, desbloqueada: false, prerrequisitos: ["D_EXP_1", "D_EXP_2"], tipo_bono: "+20% Ingresos Oro", categoria: "desarrollo", rama: "Convergencia", nivel: 4, x: 1600, y: 1500, tiempo_investigacion_dias: 270 },
-  { id: "D_CONV_2", nombre: "IA Directiva de Producción", costo: 25000, desbloqueada: false, prerrequisitos: ["D_EXP_2", "D_EXP_4"], tipo_bono: "+20% Velocidad Construcción", categoria: "desarrollo", rama: "Convergencia", nivel: 4, x: 1600, y: 2000, tiempo_investigacion_dias: 270 },
-  { id: "D_CONV_3", nombre: "Trenes Maglev Transcontinentales", costo: 25000, desbloqueada: false, prerrequisitos: ["D_EXP_4", "D_EXP_5"], tipo_bono: "+15% Reserva Máxima", categoria: "desarrollo", rama: "Convergencia", nivel: 4, x: 1600, y: 2500, tiempo_investigacion_dias: 270 },
+  { id: "D_CONV_1", nombre: "Perforación Mantélica", costo: 50000, desbloqueada: false, prerrequisitos: ["D_EXP_1", "D_EXP_2"], tipo_bono: "+20% Ingresos Oro", categoria: "desarrollo", rama: "Convergencia", nivel: 4, x: 1600, y: 1500, tiempo_investigacion_dias: 270 },
+  { id: "D_CONV_2", nombre: "IA Directiva de Producción", costo: 50000, desbloqueada: false, prerrequisitos: ["D_EXP_2", "D_EXP_4"], tipo_bono: "+20% Velocidad Construcción", categoria: "desarrollo", rama: "Convergencia", nivel: 4, x: 1600, y: 2000, tiempo_investigacion_dias: 270 },
+  { id: "D_CONV_3", nombre: "Trenes Maglev Transcontinentales", costo: 50000, desbloqueada: false, prerrequisitos: ["D_EXP_4", "D_EXP_5"], tipo_bono: "+15% Reserva Máxima", categoria: "desarrollo", rama: "Convergencia", nivel: 4, x: 1600, y: 2500, tiempo_investigacion_dias: 270 },
 
-  { id: "D_SUPER_1", nombre: "Mente Enjambre de Servidores", costo: 60000, desbloqueada: false, prerrequisitos: ["D_CONV_1", "D_CONV_2"], tipo_bono: "-30% Costo Total", categoria: "desarrollo", rama: "SuperNodos", nivel: 5, x: 2200, y: 1750, tiempo_investigacion_dias: 365 },
-  { id: "D_SUPER_2", nombre: "Singularidad Tecnológica", costo: 60000, desbloqueada: false, prerrequisitos: ["D_CONV_2", "D_CONV_3"], tipo_bono: "Desbloquea Todo Nivel Máximo", categoria: "desarrollo", rama: "SuperNodos", nivel: 5, x: 2200, y: 2250, tiempo_investigacion_dias: 365 },
-  { id: "D_ULTIMATE", nombre: "Asimilación Planetaria Total", costo: 150000, desbloqueada: false, prerrequisitos: ["D_SUPER_1", "D_SUPER_2"], tipo_bono: "Conquista Instantánea Sutil", categoria: "desarrollo", rama: "Definitiva", nivel: 6, x: 2800, y: 2000, tiempo_investigacion_dias: 540 },
+  { id: "D_SUPER_1", nombre: "Mente Enjambre de Servidores", costo: 120000, desbloqueada: false, prerrequisitos: ["D_CONV_1", "D_CONV_2"], tipo_bono: "-30% Costo Total", categoria: "desarrollo", rama: "SuperNodos", nivel: 5, x: 2200, y: 1750, tiempo_investigacion_dias: 365 },
+  { id: "D_SUPER_2", nombre: "Singularidad Tecnológica", costo: 120000, desbloqueada: false, prerrequisitos: ["D_CONV_2", "D_CONV_3"], tipo_bono: "Desbloquea Todo Nivel Máximo", categoria: "desarrollo", rama: "SuperNodos", nivel: 5, x: 2200, y: 2250, tiempo_investigacion_dias: 365 },
+  { id: "D_ULTIMATE", nombre: "Asimilación Planetaria Total", costo: 300000, desbloqueada: false, prerrequisitos: ["D_SUPER_1", "D_SUPER_2"], tipo_bono: "Conquista Instantánea Sutil", categoria: "desarrollo", rama: "Definitiva", nivel: 6, x: 2800, y: 2000, tiempo_investigacion_dias: 540 },
 
   // ===================== DOCTRINA MILITAR =====================
-  { id: "M_ROOT", nombre: "Doctrina de Guerra Total", costo: 400, desbloqueada: false, prerrequisitos: [], tipo_bono: "Activación del Comando Supremo", categoria: "militar", rama: "Origen", nivel: 1, x: 200, y: 2000, tiempo_investigacion_dias: 30 },
+  { id: "M_ROOT", nombre: "Doctrina de Guerra Total", costo: 1000, desbloqueada: false, prerrequisitos: [], tipo_bono: "Activación del Comando Supremo", categoria: "militar", rama: "Origen", nivel: 1, x: 200, y: 2000, tiempo_investigacion_dias: 30 },
 
   // Primera Bifurcación (X=600): 4 Nodos
-  { id: "M_B1_1", nombre: "Infantería Mecanizada", costo: 2000, desbloqueada: false, prerrequisitos: ["M_ROOT"], tipo_bono: "+10% Movilidad Terrestre", categoria: "militar", rama: "Bifurcacion", nivel: 2, x: 600, y: 1250, tiempo_investigacion_dias: 90 },
-  { id: "M_B1_2", nombre: "Blindaje Reactivo", costo: 2000, desbloqueada: false, prerrequisitos: ["M_ROOT"], tipo_bono: "+15% HP Vehículos", categoria: "militar", rama: "Bifurcacion", nivel: 2, x: 600, y: 1750, tiempo_investigacion_dias: 90 },
-  { id: "M_B1_3", nombre: "Balística Avanzada", costo: 2000, desbloqueada: false, prerrequisitos: ["M_ROOT"], tipo_bono: "+15% Daño Artillería", categoria: "militar", rama: "Bifurcacion", nivel: 2, x: 600, y: 2250, tiempo_investigacion_dias: 90 },
-  { id: "M_B1_4", nombre: "Guerra Electrónica", costo: 2000, desbloqueada: false, prerrequisitos: ["M_ROOT"], tipo_bono: "+10% Evasión Global", categoria: "militar", rama: "Bifurcacion", nivel: 2, x: 600, y: 2750, tiempo_investigacion_dias: 90 },
+  { id: "M_B1_1", nombre: "Infantería Mecanizada", costo: 5000, desbloqueada: false, prerrequisitos: ["M_ROOT"], tipo_bono: "+10% Movilidad Terrestre", categoria: "militar", rama: "Bifurcacion", nivel: 2, x: 600, y: 1250, tiempo_investigacion_dias: 90 },
+  { id: "M_B1_2", nombre: "Blindaje Reactivo", costo: 5000, desbloqueada: false, prerrequisitos: ["M_ROOT"], tipo_bono: "+15% HP Vehículos", categoria: "militar", rama: "Bifurcacion", nivel: 2, x: 600, y: 1750, tiempo_investigacion_dias: 90 },
+  { id: "M_B1_3", nombre: "Balística Avanzada", costo: 5000, desbloqueada: false, prerrequisitos: ["M_ROOT"], tipo_bono: "+15% Daño Artillería", categoria: "militar", rama: "Bifurcacion", nivel: 2, x: 600, y: 2250, tiempo_investigacion_dias: 90 },
+  { id: "M_B1_4", nombre: "Guerra Electrónica", costo: 5000, desbloqueada: false, prerrequisitos: ["M_ROOT"], tipo_bono: "+10% Evasión Global", categoria: "militar", rama: "Bifurcacion", nivel: 2, x: 600, y: 2750, tiempo_investigacion_dias: 90 },
 
   // Expansión y Especialización (X=1100): 6 Nodos
-  { id: "M_EXP_1", nombre: "Implantes de Reflejos Neurales", costo: 8000, desbloqueada: false, prerrequisitos: ["M_B1_1"], tipo_bono: "+20% Daño Infantería", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 1000, tiempo_investigacion_dias: 180 },
-  { id: "M_EXP_2", nombre: "Chasis de Combate Exo", costo: 8000, desbloqueada: false, prerrequisitos: ["M_B1_1", "M_B1_2"], tipo_bono: "+15% HP Infantería", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 1400, tiempo_investigacion_dias: 180 },
-  { id: "M_EXP_3", nombre: "Nanocapas Autoreparables", costo: 8000, desbloqueada: false, prerrequisitos: ["M_B1_2"], tipo_bono: "+20% Armadura Blindados", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 1800, tiempo_investigacion_dias: 180 },
-  { id: "M_EXP_4", nombre: "Cargas de Plasma Térmico", costo: 8000, desbloqueada: false, prerrequisitos: ["M_B1_3"], tipo_bono: "+20% Perforación Artillería", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 2200, tiempo_investigacion_dias: 180 },
-  { id: "M_EXP_5", nombre: "Inhibidores de Espectro", costo: 8000, desbloqueada: false, prerrequisitos: ["M_B1_3", "M_B1_4"], tipo_bono: "-15% Precisión Enemiga", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 2600, tiempo_investigacion_dias: 180 },
-  { id: "M_EXP_6", nombre: "Algoritmos de Ciberataque", costo: 8000, desbloqueada: false, prerrequisitos: ["M_B1_4"], tipo_bono: "Sabotaje de Sistemas IA", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 3000, tiempo_investigacion_dias: 180 },
+  { id: "M_EXP_1", nombre: "Implantes de Reflejos Neurales", costo: 18000, desbloqueada: false, prerrequisitos: ["M_B1_1"], tipo_bono: "+20% Daño Infantería", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 1000, tiempo_investigacion_dias: 180 },
+  { id: "M_EXP_2", nombre: "Chasis de Combate Exo", costo: 18000, desbloqueada: false, prerrequisitos: ["M_B1_1", "M_B1_2"], tipo_bono: "+15% HP Infantería", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 1400, tiempo_investigacion_dias: 180 },
+  { id: "M_EXP_3", nombre: "Nanocapas Autoreparables", costo: 18000, desbloqueada: false, prerrequisitos: ["M_B1_2"], tipo_bono: "+20% Armadura Blindados", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 1800, tiempo_investigacion_dias: 180 },
+  { id: "M_EXP_4", nombre: "Cargas de Plasma Térmico", costo: 18000, desbloqueada: false, prerrequisitos: ["M_B1_3"], tipo_bono: "+20% Perforación Artillería", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 2200, tiempo_investigacion_dias: 180 },
+  { id: "M_EXP_5", nombre: "Inhibidores de Espectro", costo: 18000, desbloqueada: false, prerrequisitos: ["M_B1_3", "M_B1_4"], tipo_bono: "-15% Precisión Enemiga", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 2600, tiempo_investigacion_dias: 180 },
+  { id: "M_EXP_6", nombre: "Algoritmos de Ciberataque", costo: 18000, desbloqueada: false, prerrequisitos: ["M_B1_4"], tipo_bono: "Sabotaje de Sistemas IA", categoria: "militar", rama: "Expansion", nivel: 3, x: 1100, y: 3000, tiempo_investigacion_dias: 180 },
 
   // Convergencia Táctica (X=1600): 4 Nodos Mayores
-  { id: "M_CONV_1", nombre: "Exoesqueletos de Asalto", costo: 25000, desbloqueada: false, prerrequisitos: ["M_EXP_1", "M_EXP_2", "M_EXP_3"], tipo_bono: "+25% Ataque Terrestre", categoria: "militar", rama: "Convergencia", nivel: 4, x: 1600, y: 1250, tiempo_investigacion_dias: 270 },
-  { id: "M_CONV_2", nombre: "Blindados de Fusión Pesada", costo: 25000, desbloqueada: false, prerrequisitos: ["M_EXP_2", "M_EXP_3", "M_EXP_4"], tipo_bono: "+30% Armadura Vehículos", categoria: "militar", rama: "Convergencia", nivel: 4, x: 1600, y: 1750, tiempo_investigacion_dias: 270 },
-  { id: "M_CONV_3", nombre: "Artillería Termobárica", costo: 25000, desbloqueada: false, prerrequisitos: ["M_EXP_4", "M_EXP_5"], tipo_bono: "+35% Daño de Área", categoria: "militar", rama: "Convergencia", nivel: 4, x: 1600, y: 2250, tiempo_investigacion_dias: 270 },
-  { id: "M_CONV_4", nombre: "Ciberguerra de Enjambres", costo: 25000, desbloqueada: false, prerrequisitos: ["M_EXP_5", "M_EXP_6"], tipo_bono: "Desactiva Defensas Fronterizas", categoria: "militar", rama: "Convergencia", nivel: 4, x: 1600, y: 2750, tiempo_investigacion_dias: 270 },
+  { id: "M_CONV_1", nombre: "Exoesqueletos de Asalto", costo: 50000, desbloqueada: false, prerrequisitos: ["M_EXP_1", "M_EXP_2", "M_EXP_3"], tipo_bono: "+25% Ataque Terrestre", categoria: "militar", rama: "Convergencia", nivel: 4, x: 1600, y: 1250, tiempo_investigacion_dias: 270 },
+  { id: "M_CONV_2", nombre: "Blindados de Fusión Pesada", costo: 50000, desbloqueada: false, prerrequisitos: ["M_EXP_2", "M_EXP_3", "M_EXP_4"], tipo_bono: "+30% Armadura Vehículos", categoria: "militar", rama: "Convergencia", nivel: 4, x: 1600, y: 1750, tiempo_investigacion_dias: 270 },
+  { id: "M_CONV_3", nombre: "Artillería Termobárica", costo: 50000, desbloqueada: false, prerrequisitos: ["M_EXP_4", "M_EXP_5"], tipo_bono: "+35% Daño de Área", categoria: "militar", rama: "Convergencia", nivel: 4, x: 1600, y: 2250, tiempo_investigacion_dias: 270 },
+  { id: "M_CONV_4", nombre: "Ciberguerra de Enjambres", costo: 50000, desbloqueada: false, prerrequisitos: ["M_EXP_5", "M_EXP_6"], tipo_bono: "Desactiva Defensas Fronterizas", categoria: "militar", rama: "Convergencia", nivel: 4, x: 1600, y: 2750, tiempo_investigacion_dias: 270 },
 
   // Tecnología Orbital y Super-Armas (X=2100): 4 Nodos
-  { id: "M_ORB_1", nombre: "Silos de Lanzamiento Suborbital", costo: 60000, desbloqueada: false, prerrequisitos: ["M_CONV_1"], tipo_bono: "Lanzamiento Rápido de Tropas", categoria: "militar", rama: "Orbital", nivel: 5, x: 2100, y: 1250, tiempo_investigacion_dias: 365 },
-  { id: "M_ORB_2", nombre: "Escudo Deflector de Energía", costo: 60000, desbloqueada: false, prerrequisitos: ["M_CONV_1", "M_CONV_2"], tipo_bono: "Inmunidad Temporal a Ofensivas", categoria: "militar", rama: "Orbital", nivel: 5, x: 2100, y: 1750, tiempo_investigacion_dias: 365 },
-  { id: "M_ORB_3", nombre: "Láseres de Precisión Orbital", costo: 60000, desbloqueada: false, prerrequisitos: ["M_CONV_2", "M_CONV_3"], tipo_bono: "+40% Daño de Precisión", categoria: "militar", rama: "Orbital", nivel: 5, x: 2100, y: 2250, tiempo_investigacion_dias: 365 },
-  { id: "M_ORB_4", nombre: "Drones de Reconocimiento Estratosférico", costo: 60000, desbloqueada: false, prerrequisitos: ["M_CONV_3", "M_CONV_4"], tipo_bono: "Revelado Total de Niebla", categoria: "militar", rama: "Orbital", nivel: 5, x: 2100, y: 2750, tiempo_investigacion_dias: 365 },
+  { id: "M_ORB_1", nombre: "Silos de Lanzamiento Suborbital", costo: 120000, desbloqueada: false, prerrequisitos: ["M_CONV_1"], tipo_bono: "Lanzamiento Rápido de Tropas", categoria: "militar", rama: "Orbital", nivel: 5, x: 2100, y: 1250, tiempo_investigacion_dias: 365 },
+  { id: "M_ORB_2", nombre: "Escudo Deflector de Energía", costo: 120000, desbloqueada: false, prerrequisitos: ["M_CONV_1", "M_CONV_2"], tipo_bono: "Inmunidad Temporal a Ofensivas", categoria: "militar", rama: "Orbital", nivel: 5, x: 2100, y: 1750, tiempo_investigacion_dias: 365 },
+  { id: "M_ORB_3", nombre: "Láseres de Precisión Orbital", costo: 120000, desbloqueada: false, prerrequisitos: ["M_CONV_2", "M_CONV_3"], tipo_bono: "+40% Daño de Precisión", categoria: "militar", rama: "Orbital", nivel: 5, x: 2100, y: 2250, tiempo_investigacion_dias: 365 },
+  { id: "M_ORB_4", nombre: "Drones de Reconocimiento Estratosférico", costo: 120000, desbloqueada: false, prerrequisitos: ["M_CONV_3", "M_CONV_4"], tipo_bono: "Revelado Total de Niebla", categoria: "militar", rama: "Orbital", nivel: 5, x: 2100, y: 2750, tiempo_investigacion_dias: 365 },
 
   // Prototipos Finales (X=2700): 2 Super-nodos
-  { id: "M_PROTO_1", nombre: "Enjambres de Drones Autónomos", costo: 150000, desbloqueada: false, prerrequisitos: ["M_ORB_1", "M_ORB_2", "M_ORB_3"], tipo_bono: "Ataque Múltiple Saturado", categoria: "militar", rama: "Prototipos", nivel: 6, x: 2700, y: 1750, tiempo_investigacion_dias: 540 },
-  { id: "M_PROTO_2", nombre: "Artillería Orbital de Iones", costo: 150000, desbloqueada: false, prerrequisitos: ["M_ORB_2", "M_ORB_3", "M_ORB_4"], tipo_bono: "Desintegración de Nodos Defensivos", categoria: "militar", rama: "Prototipos", nivel: 6, x: 2700, y: 2250, tiempo_investigacion_dias: 540 },
+  { id: "M_PROTO_1", nombre: "Enjambres de Drones Autónomos", costo: 300000, desbloqueada: false, prerrequisitos: ["M_ORB_1", "M_ORB_2", "M_ORB_3"], tipo_bono: "Ataque Múltiple Saturado", categoria: "militar", rama: "Prototipos", nivel: 6, x: 2700, y: 1750, tiempo_investigacion_dias: 540 },
+  { id: "M_PROTO_2", nombre: "Artillería Orbital de Iones", costo: 300000, desbloqueada: false, prerrequisitos: ["M_ORB_2", "M_ORB_3", "M_ORB_4"], tipo_bono: "Desintegración de Nodos Defensivos", categoria: "militar", rama: "Prototipos", nivel: 6, x: 2700, y: 2250, tiempo_investigacion_dias: 540 },
 
   // El Arma Definitiva (X=3300, Y=2000): 1 Nodo ultra-caro
-  { id: "M_ULTIMATE", nombre: "Iniciativa de Destrucción Mutua / Proyecto Némesis", costo: 300000, desbloqueada: false, prerrequisitos: ["M_PROTO_1", "M_PROTO_2"], tipo_bono: "Aniquilación Táctica Instantánea", categoria: "militar", rama: "Definitiva", nivel: 7, x: 3300, y: 2000, tiempo_investigacion_dias: 730 },
+  { id: "M_ULTIMATE", nombre: "Iniciativa de Destrucción Mutua / Proyecto Némesis", costo: 600000, desbloqueada: false, prerrequisitos: ["M_PROTO_1", "M_PROTO_2"], tipo_bono: "Aniquilación Táctica Instantánea", categoria: "militar", rama: "Definitiva", nivel: 7, x: 3300, y: 2000, tiempo_investigacion_dias: 730 },
 ];
 
 const initialSaves: SaveFile[] = [
