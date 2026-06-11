@@ -12,11 +12,38 @@ export const fetchRandomEvents = async () => {
   return response.json();
 };
 
-export const fetchTechTree = async () => {
-  const response = await fetch(`${API_BASE_URL}/habilidades`);
+export const fetchTechTree = async (partidaId?: number) => {
+  const url = partidaId
+    ? `${API_BASE_URL}/habilidades?partidaId=${partidaId}`
+    : `${API_BASE_URL}/habilidades`;
+  const response = await fetch(url);
   if (!response.ok) throw new Error("Error al obtener árbol tecnológico");
   return response.json();
 };
+
+export const unlockHabilidad = async (
+  partidaId: number,
+  habilidadId: string
+): Promise<{ success: true } | { success: false; error: string }> => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/partidas/${partidaId}/habilidades/desbloquear`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ habilidadId }),
+      }
+    );
+    const data = await response.json();
+    if (!response.ok) {
+      return { success: false, error: data.error ?? "Error desconocido del servidor." };
+    }
+    return { success: true };
+  } catch {
+    return { success: false, error: "ERROR_SERVIDOR" };
+  }
+};
+
 
 export const fetchCountryStats = async () => {
   const response = await fetch(`${API_BASE_URL}/paises/stats`);

@@ -16,7 +16,8 @@ import {
   fetchMaintenanceTiers, fetchSimulationConstants,
   fetchCriticalEventTemplates, fetchDecayEventTemplates,
   translateCountry, getPresetForCountry,
-  normalizeName, getRealPopulation, getRealEconomy, getRealEjercitoDetalle
+  normalizeName, getRealPopulation, getRealEconomy, getRealEjercitoDetalle,
+  unlockHabilidad,
 } from "./database/mockAPI";
 import type {
   Habilidad, OperarioUser, Tropas,
@@ -1172,31 +1173,53 @@ export default function App() {
     setPaisSeleccionado(null);
   };
 
-  const handleDesbloquearHabilidad = (habilidad: Habilidad) => {
+  const handleDesbloquearHabilidad = async (habilidad: Habilidad) => {
     if (habilidad.desbloqueada || habilidad.enDesarrollo) return;
 
+    // Multiplicador de burocracia: +5% por cada país conquistado
     const conqueredCount = Object.values(paises).filter(p => p.conquistado).length;
     const multiplicadorBurocracia = 1 + 0.05 * conqueredCount;
     const costoFinal = Math.floor(habilidad.costo * multiplicadorBurocracia);
     const tiempoFinal = Math.max(1, Math.floor((habilidad.tiempo_investigacion_dias || 30) * multiplicadorBurocracia));
 
+    // Validación de presupuesto (client-side fast-fail)
     if (presupuesto < costoFinal) {
       alert("No hay suficiente presupuesto.");
       return;
     }
+
+    // Regla especial de UI: M_SEC requiere al menos 2 de los 3 finales militares
     if (habilidad.id === "M_SEC") {
-      const finalesMilitares = habilidades.filter(h => ["M_13", "M_23", "M_33"].includes(h.id) && h.desbloqueada);
+      const finalesMilitares = habilidades.filter(
+        h => ["M_13", "M_23", "M_33"].includes(h.id) && h.desbloqueada
+      );
       if (finalesMilitares.length < 2) {
         alert("Cibernética de Vanguardia requiere al menos DOS tecnologías militares finales (Nivel 3).");
         return;
       }
-    } else if (habilidad.prerrequisitos.length > 0 && !habilidad.prerrequisitos.every(preId => habilidades.find(h => h.id === preId)?.desbloqueada)) {
-      alert("Prerrequisito no desbloqueado.");
+    }
+
+    // --- Delegar al backend: él valida prerrequisitos, duplicados y existencia ---
+    // Usamos partida_id = 1 como identificador de sesión actual.
+    // TODO: reemplazar 1 por el ID de partida real cuando se implemente la gestión de partidas.
+    const PARTIDA_ACTUAL_ID = 1;
+
+    const resultado = await unlockHabilidad(PARTIDA_ACTUAL_ID, habilidad.id);
+
+    if (!resultado.success) {
+      alert(`No se puede investigar: ${resultado.error}`);
       return;
     }
 
+    // Descontar presupuesto y activar el temporizador de investigación (estado de UI local)
     setPresupuesto(prev => prev - costoFinal);
-    setHabilidades(prev => prev.map(h => h.id === habilidad.id ? { ...h, enDesarrollo: true, tiempoRestante: tiempoFinal } : h));
+    setHabilidades(prev =>
+      prev.map(h =>
+        h.id === habilidad.id
+          ? { ...h, enDesarrollo: true, tiempoRestante: tiempoFinal }
+          : h
+      )
+    );
     setDiarioGuerra(prev => [{
       id: Math.random().toString(),
       fecha: fechaVirtual,
