@@ -168,6 +168,24 @@ export interface SimulationConstants {
   attackTransitDays: number;
 }
 
+// ─── TIPO PARA PAÍS BASE (cargado desde BD) ─────────────────
+export interface PaisBase {
+  pais_id: string;                   // Nombre EN (clave del GeoJSON)
+  nombre_es: string;                 // Traducción al español
+  continente_id: number;
+  poblacion_real_tierra: number;
+  gdp_per_capita_base: number;
+  ejercito_multiplicador: number;
+  pct_composicion_infanteria: number;
+  pct_composicion_caballeria: number;
+  pct_composicion_artilleria: number;
+  tasa_natalidad_diaria: number;
+  tasa_mortalidad_diaria: number;
+  multiplicador_reclutamiento: number;
+  multiplicador_pesadas: number;
+  nombre_continente?: string;
+}
+
 // ─── DATOS PRIVADOS (NO EXPORTADOS) ─────────────────────────
 
 const INITIAL_GAME_STATE = {
@@ -231,213 +249,26 @@ const getAllOperarios = (): OperarioUser[] => {
   return [...SEED_OPERARIOS, ...localFiltered];
 };
 
-// ─── DICCIONARIO DE TRADUCCIÓN DE PAÍSES (ES) ───────────────
-// Clave: nombre nativo en inglés (tal cual viene del GeoJSON/TopoJSON)
-// Valor: nombre oficial en español
-export const COUNTRY_NAMES_ES: Record<string, string> = {
-  // América del Norte
-  "United States of America": "Estados Unidos",
-  "Canada": "Canadá",
-  "Mexico": "México",
-  // América Central
-  "Guatemala": "Guatemala",
-  "Belize": "Belice",
-  "Honduras": "Honduras",
-  "El Salvador": "El Salvador",
-  "Nicaragua": "Nicaragua",
-  "Costa Rica": "Costa Rica",
-  "Panama": "Panamá",
-  // Caribe
-  "Cuba": "Cuba",
-  "Haiti": "Haití",
-  "Dominican Rep.": "Rep. Dominicana",
-  "Jamaica": "Jamaica",
-  "Puerto Rico": "Puerto Rico",
-  "Trinidad and Tobago": "Trinidad y Tobago",
-  "Bahamas": "Bahamas",
-  "Barbados": "Barbados",
-  // América del Sur
-  "Colombia": "Colombia",
-  "Venezuela": "Venezuela",
-  "Guyana": "Guyana",
-  "Suriname": "Surinam",
-  "Brazil": "Brasil",
-  "Ecuador": "Ecuador",
-  "Peru": "Perú",
-  "Bolivia": "Bolivia",
-  "Paraguay": "Paraguay",
-  "Chile": "Chile",
-  "Argentina": "Argentina",
-  "Uruguay": "Uruguay",
-  // Europa Occidental
-  "United Kingdom": "Reino Unido",
-  "Ireland": "Irlanda",
-  "Iceland": "Islandia",
-  "Norway": "Noruega",
-  "Sweden": "Suecia",
-  "Finland": "Finlandia",
-  "Denmark": "Dinamarca",
-  "Netherlands": "Países Bajos",
-  "Belgium": "Bélgica",
-  "Luxembourg": "Luxemburgo",
-  "France": "Francia",
-  "Germany": "Alemania",
-  "Switzerland": "Suiza",
-  "Austria": "Austria",
-  "Portugal": "Portugal",
-  "Spain": "España",
-  "Italy": "Italia",
-  "Malta": "Malta",
-  "Greece": "Grecia",
-  // Europa del Este y Central
-  "Poland": "Polonia",
-  "Czechia": "República Checa",
-  "Slovakia": "Eslovaquia",
-  "Hungary": "Hungría",
-  "Romania": "Rumania",
-  "Bulgaria": "Bulgaria",
-  "Serbia": "Serbia",
-  "Croatia": "Croacia",
-  "Slovenia": "Eslovenia",
-  "Bosnia and Herz.": "Bosnia y Herzegovina",
-  "Montenegro": "Montenegro",
-  "North Macedonia": "Macedonia del Norte",
-  "Albania": "Albania",
-  "Kosovo": "Kosovo",
-  "Moldova": "Moldavia",
-  "Ukraine": "Ucrania",
-  "Belarus": "Bielorrusia",
-  "Lithuania": "Lituania",
-  "Latvia": "Letonia",
-  "Estonia": "Estonia",
-  // Ex-URSS / Asia Central
-  "Russia": "Rusia",
-  "Georgia": "Georgia",
-  "Armenia": "Armenia",
-  "Azerbaijan": "Azerbaiyán",
-  "Kazakhstan": "Kazajistán",
-  "Uzbekistan": "Uzbekistán",
-  "Turkmenistan": "Turkmenistán",
-  "Tajikistan": "Tayikistán",
-  "Kyrgyzstan": "Kirguistán",
-  // Oriente Medio
-  "Turkey": "Turquía",
-  "Syria": "Siria",
-  "Lebanon": "Líbano",
-  "Israel": "Israel",
-  "Palestine": "Palestina",
-  "Jordan": "Jordania",
-  "Saudi Arabia": "Arabia Saudita",
-  "Yemen": "Yemen",
-  "Oman": "Omán",
-  "United Arab Emirates": "Emiratos Árabes Unidos",
-  "Qatar": "Catar",
-  "Bahrain": "Baréin",
-  "Kuwait": "Kuwait",
-  "Iraq": "Irak",
-  "Iran": "Irán",
-  // Asia del Sur
-  "Afghanistan": "Afganistán",
-  "Pakistan": "Pakistán",
-  "India": "India",
-  "Nepal": "Nepal",
-  "Bhutan": "Bután",
-  "Bangladesh": "Bangladés",
-  "Sri Lanka": "Sri Lanka",
-  "Maldives": "Maldivas",
-  // Asia Oriental
-  "China": "China",
-  "Mongolia": "Mongolia",
-  "North Korea": "Corea del Norte",
-  "South Korea": "Corea del Sur",
-  "Japan": "Japón",
-  "Taiwan": "Taiwán",
-  // Sudeste Asiático
-  "Myanmar": "Myanmar",
-  "Thailand": "Tailandia",
-  "Laos": "Laos",
-  "Vietnam": "Vietnam",
-  "Cambodia": "Camboya",
-  "Malaysia": "Malasia",
-  "Singapore": "Singapur",
-  "Indonesia": "Indonesia",
-  "Brunei": "Brunéi",
-  "Philippines": "Filipinas",
-  "Timor-Leste": "Timor Oriental",
-  // África del Norte
-  "Morocco": "Marruecos",
-  "Algeria": "Argelia",
-  "Tunisia": "Túnez",
-  "Libya": "Libia",
-  "Egypt": "Egipto",
-  "Sudan": "Sudán",
-  "South Sudan": "Sudán del Sur",
-  // África Occidental
-  "Mauritania": "Mauritania",
-  "Mali": "Malí",
-  "Senegal": "Senegal",
-  "Gambia": "Gambia",
-  "Guinea-Bissau": "Guinea-Bisáu",
-  "Guinea": "Guinea",
-  "Sierra Leone": "Sierra Leona",
-  "Liberia": "Liberia",
-  "Ivory Coast": "Costa de Marfil",
-  "Ghana": "Ghana",
-  "Togo": "Togo",
-  "Benin": "Benín",
-  "Nigeria": "Nigeria",
-  "Burkina Faso": "Burkina Faso",
-  "Niger": "Níger",
-  "Cape Verde": "Cabo Verde",
-  // África Central
-  "Cameroon": "Camerún",
-  "Chad": "Chad",
-  "Central African Rep.": "Rep. Centroafricana",
-  "Eq. Guinea": "Guinea Ecuatorial",
-  "Gabon": "Gabón",
-  "Congo": "Congo",
-  "DR Congo": "Rep. Dem. del Congo",
-  "São Tomé and Príncipe": "Santo Tomé y Príncipe",
-  // África Oriental
-  "Ethiopia": "Etiopía",
-  "Eritrea": "Eritrea",
-  "Djibouti": "Yibuti",
-  "Somalia": "Somalia",
-  "Kenya": "Kenia",
-  "Uganda": "Uganda",
-  "Rwanda": "Ruanda",
-  "Burundi": "Burundi",
-  "Tanzania": "Tanzania",
-  "Mozambique": "Mozambique",
-  "Malawi": "Malaui",
-  "Zambia": "Zambia",
-  "Zimbabwe": "Zimbabue",
-  // África Austral
-  "Angola": "Angola",
-  "Namibia": "Namibia",
-  "Botswana": "Botsuana",
-  "South Africa": "Sudáfrica",
-  "Lesotho": "Lesoto",
-  "Swaziland": "Suazilandia",
-  "Eswatini": "Suazilandia",
-  "Madagascar": "Madagascar",
-  "Comoros": "Comoras",
-  "Mauritius": "Mauricio",
-  "Seychelles": "Seychelles",
-  // Oceanía
-  "Australia": "Australia",
-  "New Zealand": "Nueva Zelanda",
-  "Papua New Guinea": "Papúa Nueva Guinea",
-  "Fiji": "Fiyi",
-  "Solomon Is.": "Islas Salomón",
-  "Vanuatu": "Vanuatu",
-  "Samoa": "Samoa",
-  "Kiribati": "Kiribati",
-  "Tonga": "Tonga",
-  "Micronesia": "Micronesia",
-  "Palau": "Palaos",
-  "Marshall Is.": "Islas Marshall",
-  "Nauru": "Nauru",
+// ─── FUNCIONES DE PAÍS (alimentadas por datos de BD) ────────
+// El diccionario COUNTRY_NAMES_ES, realPopulations y COUNTRY_PRESETS
+// fueron migrados a la tabla paises_base en PostgreSQL.
+// Estas funciones ahora reciben los datos cargados como parámetro.
+
+// Cache interno para el índice de países (se construye al cargar datos)
+let _paisesIndex: Record<string, PaisBase> = {};
+let _paisesNombreESIndex: Record<string, string> = {};
+
+/**
+ * Construye los índices internos a partir del array de PaisBase cargado de la BD.
+ * Se llama una sola vez al recibir los datos del backend.
+ */
+export const buildPaisesIndex = (paises: PaisBase[]): void => {
+  _paisesIndex = {};
+  _paisesNombreESIndex = {};
+  for (const p of paises) {
+    _paisesIndex[p.pais_id.toLowerCase()] = p;
+    _paisesNombreESIndex[p.pais_id] = p.nombre_es;
+  }
 };
 
 /**
@@ -445,134 +276,58 @@ export const COUNTRY_NAMES_ES: Record<string, string> = {
  * Si no hay traducción, devuelve el nombre original.
  */
 export const translateCountry = (nameEN: string): string => {
-  return COUNTRY_NAMES_ES[nameEN] ?? nameEN;
+  return _paisesNombreESIndex[nameEN] ?? nameEN;
 };
 
-const realPopulations: Record<string, number> = {
-  "China": 1420000000,
-  "India": 1440000000,
-  "Indonesia": 278000000,
-  "Pakistan": 242000000,
-  "Bangladesh": 173000000,
-  "Japan": 123000000,
-  "Philippines": 117000000,
-  "Vietnam": 99000000,
-  "Turkey": 86000000,
-  "Iran": 89000000,
-  "Thailand": 71000000,
-  "South Korea": 51000000,
-  "Saudi Arabia": 37000000,
-  "Iraq": 45000000,
-  "Afghanistan": 42000000,
-  "Yemen": 34000000,
-  "Nepal": 31000000,
-  "North Korea": 26000000,
-  "Taiwan": 24000000,
-  "Sri Lanka": 22000000,
-  "Kazakhstan": 20000000,
-  "Syria": 23000000,
-  "Cambodia": 17000000,
-  "Jordan": 11000000,
-  "Azerbaijan": 10000000,
-  "United Arab Emirates": 10000000,
-  "Israel": 9500000,
-  "Singapore": 6000000,
-  "United States of America": 341000000,
-  "Brazil": 216000000,
-  "Mexico": 129000000,
-  "Colombia": 52000000,
-  "Argentina": 46000000,
-  "Peru": 34000000,
-  "Venezuela": 29000000,
-  "Chile": 20000000,
-  "Ecuador": 18000000,
-  "Guatemala": 18000000,
-  "Cuba": 11000000,
-  "Haiti": 11500000,
-  "Dominican Rep.": 11300000,
-  "Bolivia": 12000000,
-  "Honduras": 10500000,
-  "Paraguay": 7000000,
-  "El Salvador": 6500000,
-  "Nicaragua": 7000000,
-  "Costa Rica": 5200000,
-  "Panama": 4500000,
-  "Uruguay": 3400000,
-  "Jamaica": 2800000,
-  "Puerto Rico": 3200000,
-  "Canada": 39000000,
-  "Russia": 144000000,
-  "Germany": 84000000,
-  "United Kingdom": 68000000,
-  "France": 65000000,
-  "Italy": 59000000,
-  "Spain": 48000000,
-  "Ukraine": 38000000,
-  "Poland": 38000000,
-  "Romania": 19000000,
-  "Netherlands": 18000000,
-  "Belgium": 12000000,
-  "Sweden": 10500000,
-  "Czechia": 10500000,
-  "Greece": 10300000,
-  "Portugal": 10300000,
-  "Hungary": 9600000,
-  "Belarus": 9500000,
-  "Austria": 9000000,
-  "Switzerland": 8900000,
-  "Bulgaria": 6800000,
-  "Serbia": 6700000,
-  "Denmark": 5900000,
-  "Finland": 5600000,
-  "Slovakia": 5400000,
-  "Norway": 5500000,
-  "Ireland": 5100000,
-  "Croatia": 4000000,
-  "Nigeria": 224000000,
-  "Ethiopia": 126000000,
-  "Egypt": 113000000,
-  "DR Congo": 102000000,
-  "Tanzania": 67000000,
-  "South Africa": 60000000,
-  "Kenya": 55000000,
-  "Uganda": 48000000,
-  "Sudan": 48000000,
-  "Algeria": 45000000,
-  "Morocco": 38000000,
-  "Angola": 36000000,
-  "Ghana": 34000000,
-  "Madagascar": 30000000,
-  "Mozambique": 33000000,
-  "Ivory Coast": 29000000,
-  "Cameroon": 28000000,
-  "Niger": 27000000,
-  "Mali": 23000000,
-  "Burkina Faso": 23000000,
-  "Malawi": 21000000,
-  "Zambia": 20000000,
-  "Somalia": 18000000,
-  "Senegal": 17500000,
-  "Zimbabwe": 16000000,
-  "Guinea": 14000000,
-  "Rwanda": 14000000,
-  "Benin": 13500000,
-  "Tunisia": 12500000,
-  "Burundi": 13000000,
-  "South Sudan": 11000000,
-  "Togo": 9000000,
-  "Libya": 7000000,
-  "Congo": 6000000,
-  "Central African Rep.": 5700000,
-  "Mauritania": 4800000,
-  "Eritrea": 3700000,
-  "Namibia": 2600000,
-  "Gambia": 2700000,
-  "Botswana": 2600000,
-  "Gabon": 2400000,
-  "Lesotho": 2300000,
-  "Australia": 26000000,
-  "New Zealand": 5200000,
-  "Papua New Guinea": 10000000
+/**
+ * Devuelve el preset geopolítico completo de un país desde los datos de BD.
+ */
+export const getPresetForCountry = (name: string): {
+  gdpPerCapita: number;
+  ejercitoMultiplicador: number;
+  composicion: { infanteria: number; caballeria: number; artilleria: number };
+  multiplicadorReclutamiento?: number;
+  multiplicadorPesadas?: number;
+  tasa_natalidad?: number;
+  tasa_mortalidad?: number;
+} => {
+  const norm = name.toLowerCase();
+  
+  // Buscar en el índice (match exacto, luego parcial)
+  let pais = _paisesIndex[norm];
+  if (!pais) {
+    for (const [key, p] of Object.entries(_paisesIndex)) {
+      if (norm.includes(key) || key.includes(norm)) {
+        pais = p;
+        break;
+      }
+    }
+  }
+
+  if (pais) {
+    return {
+      gdpPerCapita: pais.gdp_per_capita_base,
+      ejercitoMultiplicador: pais.ejercito_multiplicador,
+      composicion: {
+        infanteria: pais.pct_composicion_infanteria,
+        caballeria: pais.pct_composicion_caballeria,
+        artilleria: pais.pct_composicion_artilleria,
+      },
+      multiplicadorReclutamiento: pais.multiplicador_reclutamiento !== 1.0 ? pais.multiplicador_reclutamiento : undefined,
+      multiplicadorPesadas: pais.multiplicador_pesadas !== 1.0 ? pais.multiplicador_pesadas : undefined,
+      tasa_natalidad: pais.tasa_natalidad_diaria,
+      tasa_mortalidad: pais.tasa_mortalidad_diaria,
+    };
+  }
+
+  // Fallback para países no registrados en BD
+  return {
+    gdpPerCapita: 5000,
+    ejercitoMultiplicador: 1.0,
+    composicion: { infanteria: 0.70, caballeria: 0.20, artilleria: 0.10 },
+    tasa_natalidad: 0.0033,
+    tasa_mortalidad: 0.0022,
+  };
 };
 
 export interface PaisPreset {
@@ -589,161 +344,9 @@ export interface PaisPreset {
   tasa_mortalidad?: number;
 }
 
-export const COUNTRY_PRESETS: Record<string, PaisPreset> = {
-  "united states of america": {
-    gdpPerCapita: 65000,
-    ejercitoMultiplicador: 2.5,
-    composicion: { infanteria: 0.50, caballeria: 0.30, artilleria: 0.20 },
-    multiplicadorPesadas: 0.85,
-    tasa_natalidad: 0.0030,
-    tasa_mortalidad: 0.0023
-  },
-  "india": {
-    gdpPerCapita: 15000,
-    ejercitoMultiplicador: 1.8,
-    composicion: { infanteria: 0.85, caballeria: 0.10, artilleria: 0.05 },
-    multiplicadorReclutamiento: 0.8,
-    tasa_natalidad: 0.0045,
-    tasa_mortalidad: 0.0019
-  },
-  "russia": {
-    gdpPerCapita: 12000,
-    ejercitoMultiplicador: 2.2,
-    composicion: { infanteria: 0.40, caballeria: 0.20, artilleria: 0.40 },
-    multiplicadorPesadas: 0.85,
-    tasa_natalidad: 0.0024,
-    tasa_mortalidad: 0.0035
-  },
-  "china": {
-    gdpPerCapita: 25000,
-    ejercitoMultiplicador: 2.8,
-    composicion: { infanteria: 0.70, caballeria: 0.20, artilleria: 0.10 },
-    multiplicadorReclutamiento: 0.8,
-    tasa_natalidad: 0.0017,
-    tasa_mortalidad: 0.0020
-  },
-  "brazil": {
-    gdpPerCapita: 10000,
-    ejercitoMultiplicador: 0.9,
-    composicion: { infanteria: 0.60, caballeria: 0.30, artilleria: 0.10 },
-    tasa_natalidad: 0.0038,
-    tasa_mortalidad: 0.0016
-  },
-  "mexico": {
-    gdpPerCapita: 10000,
-    ejercitoMultiplicador: 0.9,
-    composicion: { infanteria: 0.60, caballeria: 0.30, artilleria: 0.10 },
-    tasa_natalidad: 0.0038,
-    tasa_mortalidad: 0.0016
-  }
-};
-
-export const getPresetForCountry = (name: string): PaisPreset => {
-  const norm = name.toLowerCase();
-  
-  if (norm.includes("estados unidos") || norm.includes("usa") || norm.includes("united states")) {
-    return COUNTRY_PRESETS["united states of america"];
-  }
-  if (norm.includes("india") || norm.includes("ind")) {
-    return COUNTRY_PRESETS["india"];
-  }
-  if (norm.includes("rusia") || norm.includes("russia") || norm.includes("rus")) {
-    return COUNTRY_PRESETS["russia"];
-  }
-  if (norm.includes("china") || norm.includes("chn")) {
-    return COUNTRY_PRESETS["china"];
-  }
-  if (norm.includes("brasil") || norm.includes("brazil") || norm.includes("bra")) {
-    return COUNTRY_PRESETS["brazil"];
-  }
-  if (norm.includes("méxico") || norm.includes("mexico") || norm.includes("mex")) {
-    return COUNTRY_PRESETS["mexico"];
-  }
-
-  for (const [key, preset] of Object.entries(COUNTRY_PRESETS)) {
-    if (norm === key || norm.includes(key) || key.includes(norm)) {
-      return preset;
-    }
-  }
-
-  // Default values
-  let gdpPerCapita = 5000;
-  if (["germany", "united kingdom", "france", "japan", "singapore", "switzerland", "canada", "australia", "alemania", "reino unido", "francia", "japón", "singapur", "suiza", "canadá"].some(c => norm.includes(c))) {
-    gdpPerCapita = 60000;
-  } else if (["china", "turkey", "saudi arabia", "south korea", "spain", "italy", "poland", "turquía", "arabia saudita", "corea del sur", "españa", "italia", "polonia"].some(c => norm.includes(c))) {
-    gdpPerCapita = 25000;
-  } else {
-    gdpPerCapita = 3000;
-  }
-
-  // Generador Demográfico Geopolítico Realista por región y desarrollo
-  let baseNatalidad = 12.0; // por cada 1000 al año (base global promedio)
-  let baseMortalidad = 8.0;  // por cada 1000 al año (base global promedio)
-
-  const isAfrica = ["nigeria", "congo", "ethiopia", "uganda", "angola", "mali", "niger", "chad", "somalia", "sudan", "kenya", "tanzania", "mozambique", "ghana", "madagascar", "cameroon", "cote", "ivory", "burkina", "zambia", "malawi", "senegal", "zimbabwe", "guinea", "rwanda", "benin", "burundi", "togo", "eritrea", "namibia", "gambia", "botswana", "gabon", "lesotho", "liberia", "sierra", "mauritania", "central african", "libya", "tunisia", "algeria", "morocco", "egipto", "egypt", "sudáfrica", "south africa"].some(c => norm.includes(c));
-  
-  const isEuropeEastAsia = ["germany", "france", "united kingdom", "italy", "spain", "poland", "japan", "south korea", "ukraine", "romania", "netherlands", "belgium", "switzerland", "sweden", "austria", "belarus", "bulgaria", "hungary", "portugal", "greece", "czech", "denmark", "finland", "norway", "ireland", "croatia", "slovakia", "lithuania", "latvia", "estonia", "taiwan", "singapore", "alemania", "francia", "reino unido", "italia", "españa", "polonia", "japón", "corea del sur", "ucrania", "rumania", "países bajos", "bélgica", "suiza", "suecia", "austria", "bielorrusia", "bulgaria", "hungría", "portugal", "grecia", "república checa", "dinamarca", "finlandia", "noruega", "irlanda", "croacia", "eslovaquia", "lituania", "letonia", "estonia", "taiwán", "singapur", "australia", "canada", "canadá", "new zealand", "nueva zelanda"].some(c => norm.includes(c));
-
-  const isLatinAmerica = ["mexico", "brazil", "colombia", "argentina", "peru", "venezuela", "chile", "ecuador", "guatemala", "cuba", "bolivia", "dominican", "honduras", "paraguay", "el salvador", "nicaragua", "costa rica", "panama", "uruguay", "puerto rico", "méxico", "brasil", "república dominicana", "panamá"].some(c => norm.includes(c));
-
-  const isMiddleEastSouthAsia = ["pakistan", "bangladesh", "indonesia", "philippines", "vietnam", "turkey", "iran", "thailand", "saudi", "iraq", "afghanistan", "yemen", "nepal", "sri lanka", "kazakhstan", "syria", "cambodia", "jordan", "azerbaijan", "uae", "united arab", "israel", "pakistán", "turquía", "irán", "tailandia", "arabia", "afganistán", "siria", "camboya", "jordania", "azerbaiyán", "emiratos"].some(c => norm.includes(c));
-
-  if (isAfrica) {
-    // Tasas altas de natalidad, mortalidad moderada a baja (poblaciones jóvenes)
-    baseNatalidad = 25.0 + (gdpPerCapita < 5000 ? 10.0 : 0.0);
-    baseMortalidad = 6.5 + (gdpPerCapita < 5000 ? 2.5 : 0.0);
-  } else if (isEuropeEastAsia) {
-    // Tasas muy bajas de natalidad, mortalidad moderada-alta (poblaciones envejecidas)
-    baseNatalidad = 7.5;
-    baseMortalidad = 9.5;
-  } else if (isLatinAmerica) {
-    // Transición demográfica: natalidad moderada, mortalidad baja (bono demográfico)
-    baseNatalidad = 13.5;
-    baseMortalidad = 6.0;
-  } else if (isMiddleEastSouthAsia) {
-    // Crecimiento sostenido moderado-alto
-    baseNatalidad = 17.5;
-    baseMortalidad = 6.5;
-  } else {
-    // Fallback general basado en GDP per capita
-    if (gdpPerCapita >= 60000) {
-      baseNatalidad = 9.0;
-      baseMortalidad = 8.5;
-    } else if (gdpPerCapita >= 25000) {
-      baseNatalidad = 11.5;
-      baseMortalidad = 7.5;
-    } else {
-      baseNatalidad = 15.0;
-      baseMortalidad = 7.0;
-    }
-  }
-
-  // Introducir variaciones estocásticas únicas y deterministas usando un simple hash del nombre
-  let nameHash = 0;
-  for (let i = 0; i < norm.length; i++) {
-    nameHash += norm.charCodeAt(i) * (i + 1);
-  }
-  
-  // Variación natalidad: +/- 15%
-  const varNatalidad = 0.85 + ((nameHash % 30) / 100);
-  // Variación mortalidad: +/- 15%
-  const varMortalidad = 0.85 + (((nameHash * 7) % 30) / 100);
-
-  const finalNatalidadAnual = baseNatalidad * varNatalidad;
-  const finalMortalidadAnual = baseMortalidad * varMortalidad;
-
-  // Convertir tasa anualizada por cada 1,000 habitantes a porcentaje diario (%)
-  const tasa_natalidad = Number((finalNatalidadAnual / 3650).toFixed(6));
-  const tasa_mortalidad = Number((finalMortalidadAnual / 3650).toFixed(6));
-
-  return {
-    gdpPerCapita,
-    ejercitoMultiplicador: 1.0,
-    composicion: { infanteria: 0.70, caballeria: 0.20, artilleria: 0.10 },
-    tasa_natalidad,
-    tasa_mortalidad
-  };
-};
+// COUNTRY_NAMES_ES eliminado — ahora en tabla paises_base
+// realPopulations eliminado — ahora en tabla paises_base
+// COUNTRY_PRESETS eliminado — ahora en tabla paises_base
 
 const eventosAleatorios: EventoAleatorio[] = [
   // ── ALERTAS (Pérdidas) ──────────────────────────────────────
@@ -1378,9 +981,19 @@ export const fetchTechTree = async () => {
   return initialHabilidades;
 };
 
-export const fetchCountryStats = async () => {
-  await simulateNetworkDelay();
-  return realPopulations;
+export const fetchCountryStats = async (): Promise<PaisBase[]> => {
+  try {
+    const response = await fetch('http://localhost:3000/api/paises-base');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const paises: PaisBase[] = await response.json();
+    // Construir índice interno para translateCountry/getPresetForCountry
+    buildPaisesIndex(paises);
+    return paises;
+  } catch (error) {
+    console.error('Error al cargar países base desde backend:', error);
+    // Retorna array vacío — las funciones usarán fallbacks
+    return [];
+  }
 };
 
 
@@ -1476,14 +1089,14 @@ export const normalizeName = (name: string): string => {
   return norm;
 };
 
-export const getRealPopulation = (name: string, seed: number, populations?: Record<string, number>): number => {
+export const getRealPopulation = (name: string, seed: number, _unused?: any): number => {
   const norm = normalizeName(name);
-  const targetPopulations = populations || realPopulations;
-  for (const [key, value] of Object.entries(targetPopulations)) {
-    const keyLower = key.toLowerCase();
-    if (norm === keyLower || norm.includes(keyLower) || keyLower.includes(norm)) {
+  
+  // Buscar en el índice de países cargados de BD
+  for (const [key, pais] of Object.entries(_paisesIndex)) {
+    if (norm === key || norm.includes(key) || key.includes(norm)) {
       const growthFactor = 1.05 + ((seed % 15) / 100);
-      return Math.floor(value * growthFactor);
+      return Math.floor(pais.poblacion_real_tierra * growthFactor);
     }
   }
   return Math.floor((2000000 + (seed * 150000) % 43000000) * 1.1);

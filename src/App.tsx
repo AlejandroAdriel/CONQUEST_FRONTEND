@@ -26,7 +26,7 @@ import type {
   Habilidad, Tropas,
   HQStartingPreset, TroopBaseCosts, CombatPowerMultipliers,
   MaintenanceTier, SimulationConstants, Pais,
-  DBCriticalEvent, DBDecayingNotification
+  DBCriticalEvent, DBDecayingNotification, PaisBase
 } from "./database/mockAPI";
 import Login from "./components/Login";
 import StartMenu from "./components/StartMenu";
@@ -208,7 +208,7 @@ export default function App() {
   const eventosAleatoriosRef = useRef<any[]>([]);
   const criticalTemplatesRef = useRef<DBCriticalEvent[]>([]);
   const decayTemplatesRef = useRef<DBDecayingNotification[]>([]);
-  const countryStatsRef = useRef<Record<string, number>>({});
+  const countryStatsRef = useRef<PaisBase[]>([]);
   const hqPresetsRef = useRef<HQStartingPreset[]>([]);
   const troopCostsRef = useRef<TroopBaseCosts>({ infanteria: 10, caballeria: 25, artilleria: 60 });
   const combatMultipliersRef = useRef<CombatPowerMultipliers>({ infanteria: 1, caballeria: 1.5, artilleria: 3 });
@@ -356,7 +356,7 @@ export default function App() {
   // Cargar geometrías e inicializar todos los países al iniciar el juego
   useEffect(() => {
     if (Object.keys(paises).length > 0) return;
-    if (currentScreen === 'game' && playerHQ && Object.keys(countryStatsRef.current).length > 0 && !paisesInicializados) {
+    if (currentScreen === 'game' && playerHQ && countryStatsRef.current.length > 0 && !paisesInicializados) {
       const initPaises = async () => {
         try {
           const res = await fetch(geoUrl);

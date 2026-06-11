@@ -3,7 +3,7 @@ import {
   Globe, Shield, Users, DollarSign, Swords, Crosshair,
   ChevronRight, X, Hexagon, MapPin, Zap, Search
 } from "lucide-react";
-import { fetchCountryStats, translateCountry, getRealEconomy, getRealEjercitoDetalle } from "../database/mockAPI";
+import { fetchCountryStats, getRealEconomy, getRealEjercitoDetalle, type PaisBase } from "../database/mockAPI";
 
 interface CountryData {
   id: string;
@@ -51,8 +51,10 @@ export default function SelectHQ({ onDeploy, onCancel }: SelectHQProps) {
   useEffect(() => {
     const loadCountries = async () => {
       try {
-        const populations = await fetchCountryStats();
-        const countries: CountryData[] = Object.entries(populations).map(([name, pop]) => {
+        const paisesBase = await fetchCountryStats();
+        const countries: CountryData[] = paisesBase.map((pb) => {
+          const name = pb.pais_id;
+          const pop = pb.poblacion_real_tierra;
           const seed = name.charCodeAt(0) + (name.length > 1 ? name.charCodeAt(1) : 0);
 
           // Economía unificada de base de datos
@@ -64,7 +66,7 @@ export default function SelectHQ({ onDeploy, onCancel }: SelectHQProps) {
 
           return {
             id: name,
-            nombre: translateCountry(name),
+            nombre: pb.nombre_es,
             poblacion: pop,
             economia,
             ejercito
