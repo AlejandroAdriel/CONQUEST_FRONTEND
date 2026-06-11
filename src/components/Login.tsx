@@ -3,8 +3,8 @@ import {
   Hexagon, Terminal, ShieldAlert, ShieldCheck, Cpu,
   Lock, User, ChevronRight, Eye, EyeOff, Mail, Globe, UserPlus
 } from 'lucide-react';
-import { authenticateOperator, registerOperator } from '../database/mockAPI';
-import type { OperarioUser } from '../database/mockAPI';
+import { authenticateOperator, registerOperator } from '../database/auth';
+import type { OperarioUser } from '../types/user';
 
 interface LoginProps {
   onLoginSuccess: (user: OperarioUser) => void;
@@ -118,8 +118,8 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onCancel }) => {
       }, 1200);
     } else {
       const errs: Record<string, string> = {};
-      if (result.error === 'ID_TOMADO')    errs.username = 'ID YA REGISTRADO EN LA RED';
-      if (result.error === 'EMAIL_TOMADO') errs.email    = 'CORREO YA VINCULADO A UNA CUENTA';
+      if ('error' in result && result.error === 'ID_TOMADO')    errs.username = 'ID YA REGISTRADO EN LA RED';
+      if ('error' in result && result.error === 'EMAIL_TOMADO') errs.email    = 'CORREO YA VINCULADO A UNA CUENTA';
       setRegErrors(errs);
       setLogs(p => [...p, '> ERROR: CONFLICTO DE IDENTIDAD EN LA BASE DE DATOS.']);
       setIsLoading(false);

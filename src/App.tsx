@@ -19,8 +19,10 @@ import {
   normalizeName, getRealPopulation, getRealEconomy, getRealEjercitoDetalle,
   unlockHabilidad,
 } from "./database/mockAPI";
+import type { OperarioUser } from "./types/user";
+import { logoutOperator, getPersistedOperator } from "./database/auth";
 import type {
-  Habilidad, OperarioUser, Tropas,
+  Habilidad, Tropas,
   HQStartingPreset, TroopBaseCosts, CombatPowerMultipliers,
   MaintenanceTier, SimulationConstants, Pais,
   DBCriticalEvent, DBDecayingNotification
@@ -142,6 +144,13 @@ const getDemographicsInfo = (
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<OperarioUser | null>(null);
+
+  useEffect(() => {
+    const user = getPersistedOperator();
+    if (user) {
+      setCurrentUser(user);
+    }
+  }, []);
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<'start' | 'login' | 'select_hq' | 'game'>('start');
   const [playerHQ, setPlayerHQ] = useState<{ id: string, nombre: string } | null>(null);
@@ -1267,6 +1276,7 @@ export default function App() {
             user={currentUser}
             onClose={() => setShowUserProfile(false)}
             onLogout={() => {
+              logoutOperator();
               setCurrentUser(null);
               setShowUserProfile(false);
             }}
@@ -2260,6 +2270,7 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => {
+                    logoutOperator();
                     setIsSystemMenuOpen(false);
                     setCurrentUser(null);
                     setCurrentScreen('start');
@@ -2278,6 +2289,7 @@ export default function App() {
           user={currentUser}
           onClose={() => setShowUserProfile(false)}
           onLogout={() => {
+            logoutOperator();
             setCurrentUser(null);
             setShowUserProfile(false);
             setIsSystemMenuOpen(false);

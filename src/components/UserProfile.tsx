@@ -3,7 +3,7 @@ import {
   Hexagon, Globe, Mail, Terminal, Shield, ShieldCheck,
   Calendar, LogOut, X, Cpu, Activity, Users, DollarSign
 } from 'lucide-react';
-import type { OperarioUser } from '../database/mockAPI';
+import type { OperarioUser } from '../types/user';
 
 interface UserProfileProps {
   user: OperarioUser;
