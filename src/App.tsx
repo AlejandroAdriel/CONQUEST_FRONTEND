@@ -17,11 +17,10 @@ import {
   fetchCriticalEventTemplates, fetchDecayEventTemplates,
   translateCountry, getPresetForCountry,
   normalizeName, getRealPopulation, getRealEconomy, getRealEjercitoDetalle,
-  unlockHabilidad,
 } from "./database/mockAPI";
 import type { OperarioUser } from "./types/user";
 import { logoutOperator, getPersistedOperator } from "./database/auth";
-import { saveGame, initializeNewGame } from "./database/saves";
+import { saveGame, initializeNewGame, unlockHabilidad } from "./database/saves";
 import type { DBGameSave } from "./database/saves";
 import type {
   Habilidad, Tropas,

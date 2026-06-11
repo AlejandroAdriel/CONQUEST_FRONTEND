@@ -77,8 +77,24 @@ export const deleteGame = async (partidaId: number): Promise<boolean> => {
   try {
     const result = await api.delete<{ success: boolean }>(`/api/saves/${partidaId}`);
     return result.success;
-  } catch (error) {
+} catch (error) {
     console.error("Error al eliminar la partida:", error);
     return false;
+  }
+};
+
+// Desbloquear una habilidad en la partida actual
+export const unlockHabilidad = async (
+  partidaId: number,
+  habilidadId: string
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    return await api.post<{ success: boolean; error?: string }>(
+      `/api/partidas/${partidaId}/habilidades/desbloquear`,
+      { habilidadId }
+    );
+  } catch (error: any) {
+    console.error("Error al desbloquear habilidad:", error);
+    return { success: false, error: error?.message || "Error desconocido" };
   }
 };
