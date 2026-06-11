@@ -1127,3 +1127,99 @@ export const getRealEjercitoDetalle = (isAliado: boolean, population: number, se
     artilleria: Math.floor(baseSize * preset.composicion.artilleria),
   };
 };
+
+// ─── INTEGRACIÓN DEL MÓDULO DE TROPAS CON POSTGRESQL ───────────
+
+export interface TropaCatalogo {
+  id: number;
+  nombre: string;
+  costoBase: number;
+  multiplicadorCombate: number;
+  subtipo: 'infanteria' | 'caballeria' | 'artilleria';
+  bono: number;
+}
+
+export interface NuevaTropaPayload {
+  nombre: string;
+  costoBase: number;
+  multiplicadorCombate: number;
+  subtipo: 'infanteria' | 'caballeria' | 'artilleria';
+  bono: number;
+}
+
+export interface ReporteLogistica {
+  division: string;
+  totalTropas: number;
+  costoPromedio: number;
+  multiplicadorCombatePromedio: number;
+  costoMaximo: number;
+  costoMinimo: number;
+}
+
+/**
+ * Obtiene el catálogo completo de tropas unificado desde el backend.
+ */
+export const fetchCatalogoTropas = async (): Promise<TropaCatalogo[]> => {
+  try {
+    const response = await fetch('http://localhost:3000/api/tropas');
+    if (!response.ok) {
+      throw new Error(`Error HTTP: ${response.status} ${response.statusText}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error al obtener catálogo de tropas de la BD:', error);
+    throw error;
+  }
+};
+
+/**
+ * Registra una nueva tropa de forma atómica/transaccional en el backend.
+ */
+export const registrarNuevaTropaBD = async (data: NuevaTropaPayload): Promise<{ success: boolean; message: string; data?: TropaCatalogo; error?: string }> => {
+  try {
+    const response = await fetch('http://localhost:3000/api/tropas/crear', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      return {
+        success: false,
+        error: result.error || 'ERROR_REGISTRO',
+        message: result.message || 'Error al registrar la tropa.'
+      };
+    }
+    return {
+      success: true,
+      message: result.message,
+      data: result.data
+    };
+  } catch (error) {
+    console.error('Error al registrar nueva tropa en la BD:', error);
+    return {
+      success: false,
+      error: 'NETWORK_ERROR',
+      message: 'No se pudo conectar con el servidor de base de datos.'
+    };
+  }
+};
+
+/**
+ * Obtiene el reporte estadístico de logística por división militar.
+ */
+export const fetchReporteLogistica = async (): Promise<ReporteLogistica[]> => {
+  try {
+    const response = await fetch('http://localhost:3000/api/tropas/reportes/logistica');
+    if (!response.ok) {
+      throw new Error(`Error HTTP: ${response.status} ${response.statusText}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error al obtener reporte de logística de tropas:', error);
+    throw error;
+  }
+};
+
