@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { 
   Terminal, ShieldAlert, ShieldCheck, Play, Key, Database, Cpu, Wifi, Activity, User
 } from "lucide-react";
-import type { OperarioUser } from '../database/mockAPI';
+import type { OperarioUser } from '../types/user';
 
 interface StartMenuProps {
   onStartGame: () => void;
