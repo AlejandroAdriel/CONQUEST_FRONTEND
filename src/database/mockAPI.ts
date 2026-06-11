@@ -6,6 +6,17 @@
 
 // ─── TIPOS ───────────────────────────────────────────────────
 
+export type OperarioUser = {
+  id: string;         // UUID / username único
+  username: string;
+  email: string;
+  nombre: string;
+  pais: string;
+  password: string;   // En producción: hash. Aquí texto plano (mock)
+  fechaRegistro: string; // ISO string
+  rango: string;      // Grado táctico calculado
+};
+
 export type Habilidad = {
   id: string;
   nombre: string;
@@ -164,7 +175,61 @@ const INITIAL_GAME_STATE = {
   tropas: { infanteria: 5000, caballeria: 2000, artilleria: 500 }
 };
 
+// ─── CUENTAS SEMILLA (hardcodeadas — viajan con git) ────────
+// Estas cuentas existen en todos los navegadores y entornos.
+// Agrega aquí las cuentas del equipo de desarrollo.
+const SEED_OPERARIOS: OperarioUser[] = [
+  {
+    id: "ALEJANDRO",
+    username: "ALEJANDRO",
+    email: "alejandro@conquest.net",
+    nombre: "Alejandro",
+    pais: "México",
+    password: "123",
+    fechaRegistro: "2099-11-12T08:00:00.000Z",
+    rango: "COMANDANTE SUPREMO"
+  },
+  {
+    id: "NEXUS-09",
+    username: "NEXUS-09",
+    email: "nexus09@conquest.net",
+    nombre: "Nexus Agent 09",
+    pais: "Desconocido",
+    password: "admin",
+    fechaRegistro: "2099-11-12T08:00:00.000Z",
+    rango: "OPERARIO DE ÉLITE"
+  }
+];
 
+// ─── CAPA DE PERSISTENCIA LOCAL (localStorage) ──────────────
+// Los usuarios registrados desde la UI se guardan aquí.
+// Solo persisten en el navegador local — NO viajan con git.
+const LS_KEY = "conquest_operarios_v1";
+
+const getLocalOperarios = (): OperarioUser[] => {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveLocalOperarios = (users: OperarioUser[]) => {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(users));
+  } catch {
+    // Silenciar errores de cuota/privacidad
+  }
+};
+
+// Combina semillas + registros locales. Las semillas siempre tienen prioridad.
+const getAllOperarios = (): OperarioUser[] => {
+  const local = getLocalOperarios();
+  const seedIds = new Set(SEED_OPERARIOS.map(u => u.username.toLowerCase()));
+  const localFiltered = local.filter(u => !seedIds.has(u.username.toLowerCase()));
+  return [...SEED_OPERARIOS, ...localFiltered];
+};
 
 // ─── DICCIONARIO DE TRADUCCIÓN DE PAÍSES (ES) ───────────────
 // Clave: nombre nativo en inglés (tal cual viene del GeoJSON/TopoJSON)
@@ -1347,7 +1412,57 @@ export const fetchDecayEventTemplates = async (): Promise<DBDecayingNotification
   return DECAY_EVENT_TEMPLATES;
 };
 
+// Devuelve el objeto OperarioUser completo si las credenciales son válidas, o null.
+export const authenticateOperator = async (username: string, password: string): Promise<OperarioUser | null> => {
+  await simulateNetworkDelay();
+  const all = getAllOperarios();
+  const user = all.find(
+    op => op.username.toLowerCase() === username.toLowerCase() && op.password === password
+  );
+  return user ?? null;
+};
 
+// Registra un nuevo operario. Devuelve el usuario creado o un mensaje de error.
+export const registerOperator = async (data: {
+  nombre: string;
+  email: string;
+  username: string;
+  password: string;
+  pais: string;
+}): Promise<{ success: true; user: OperarioUser } | { success: false; error: string }> => {
+  await simulateNetworkDelay();
+
+  const all = getAllOperarios();
+
+  if (all.some(op => op.username.toLowerCase() === data.username.toLowerCase())) {
+    return { success: false, error: "ID_TOMADO" };
+  }
+  if (all.some(op => op.email.toLowerCase() === data.email.toLowerCase())) {
+    return { success: false, error: "EMAIL_TOMADO" };
+  }
+
+  const newUser: OperarioUser = {
+    id: data.username.toUpperCase(),
+    username: data.username.toUpperCase(),
+    email: data.email,
+    nombre: data.nombre,
+    pais: data.pais,
+    password: data.password,
+    fechaRegistro: new Date().toISOString(),
+    rango: "OPERARIO NOVATO"
+  };
+
+  const local = getLocalOperarios();
+  local.push(newUser);
+  saveLocalOperarios(local);
+
+  return { success: true, user: newUser };
+};
+
+export const logoutOperator = () => {
+  // En producción: invalidar token. Aquí no se borra el usuario registrado,
+  // solo se limpia la sesión activa (manejada por estado React en App.tsx).
+};
 
 // ─── GENERADORES Y NORMALIZADORES DE NACIÓN (STORED PROCEDURES MOCK) ───
 
