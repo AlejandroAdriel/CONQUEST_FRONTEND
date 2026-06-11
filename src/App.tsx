@@ -20,6 +20,8 @@ import {
 } from "./database/mockAPI";
 import type { OperarioUser } from "./types/user";
 import { logoutOperator, getPersistedOperator } from "./database/auth";
+import { saveGame, initializeNewGame } from "./database/saves";
+import type { DBGameSave } from "./database/saves";
 import type {
   Habilidad, Tropas,
   HQStartingPreset, TroopBaseCosts, CombatPowerMultipliers,
@@ -143,6 +145,7 @@ const getDemographicsInfo = (
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<OperarioUser | null>(null);
+  const [activePartida, setActivePartida] = useState<DBGameSave | null>(null);
 
   useEffect(() => {
     const user = getPersistedOperator();
@@ -1238,11 +1241,25 @@ export default function App() {
         {showSaves && (
           <SaveFilesMenu
             onClose={() => setShowSaves(false)}
-            onLoadSave={() => {
+            onLoadSave={(save) => {
+              setActivePartida(save);
+              setPresupuesto(save.budget);
+              setTropas({ infanteria: save.tropas_infanteria, caballeria: save.tropas_caballeria, artilleria: save.tropas_artilleria });
+              setPlayerHQ({ id: save.hq, nombre: translateCountry(save.hq) });
+              setFechaVirtual(new Date(new Date(2099, 10, 12).getTime() + (save.campaignDays - 1) * 24 * 3600 * 1000));
+              setSpeedLevel(save.velocidad as 1 | 2 | 3 || 1);
+              setIsPlaying(!save.pausado);
               setCurrentScreen('game');
               setShowSaves(false);
             }}
-            onNewGame={() => {
+            onNewGame={(save) => {
+              setActivePartida(save);
+              setPresupuesto(save.budget);
+              setTropas({ infanteria: save.tropas_infanteria, caballeria: save.tropas_caballeria, artilleria: save.tropas_artilleria });
+              setPlayerHQ({ id: save.hq, nombre: translateCountry(save.hq) });
+              setFechaVirtual(new Date(new Date(2099, 10, 12).getTime() + (save.campaignDays - 1) * 24 * 3600 * 1000));
+              setSpeedLevel(save.velocidad as 1 | 2 | 3 || 1);
+              setIsPlaying(!save.pausado);
               setCurrentScreen('game');
               setShowSaves(false);
             }}
@@ -1303,6 +1320,66 @@ export default function App() {
       />
     );
   }
+
+  const handleSaveCurrentState = async () => {
+    if (!currentUser) {
+      alert("SISTEMA: SE REQUIERE OPERARIO AUTENTICADO PARA GUARDAR LA PARTIDA.");
+      return;
+    }
+
+    const days = Math.floor((fechaVirtual.getTime() - new Date(2099, 10, 12).getTime()) / (1000 * 3600 * 24)) + 1;
+
+    let partida = activePartida;
+    if (!partida) {
+      const randomNode = `SECURE-NODE-${Math.floor(100 + Math.random() * 950)}`;
+      const newSave = await initializeNewGame({
+        usuario_id: Number(currentUser.id),
+        commander_id: randomNode,
+        hq_pais_id: playerHQ?.id || "México",
+        oro: presupuesto,
+        tropas_infanteria: tropas.infanteria,
+        tropas_caballeria: tropas.caballeria,
+        tropas_artilleria: tropas.artilleria,
+        velocidad: speedLevel,
+        pausado: !isPlaying
+      });
+      if (newSave) {
+        partida = newSave;
+        setActivePartida(newSave);
+      } else {
+        alert("ERROR: NO SE PUDO CREAR EL SLOT DE GUARDADO EN LA BASE DE DATOS.");
+        return;
+      }
+    }
+
+    const success = await saveGame(partida.id, {
+      dias_campana: days,
+      porcentaje_dominio: 2.1,
+      oro: presupuesto,
+      tropas_infanteria: tropas.infanteria,
+      tropas_caballeria: tropas.caballeria,
+      tropas_artilleria: tropas.artilleria,
+      habilidad_puntos: 0,
+      velocidad: speedLevel,
+      pausado: !isPlaying
+    });
+
+    if (success) {
+      setActivePartida({
+        ...partida,
+        campaignDays: days,
+        budget: presupuesto,
+        tropas_infanteria: tropas.infanteria,
+        tropas_caballeria: tropas.caballeria,
+        tropas_artilleria: tropas.artilleria,
+        velocidad: speedLevel,
+        pausado: !isPlaying
+      });
+      alert("SISTEMA: ESTADO DE LA SIMULACIÓN COPIADO AL SILO SEGURO.");
+    } else {
+      alert("ERROR: NO SE PUDO GUARDAR EL ESTADO EN LA BASE DE DATOS.");
+    }
+  };
 
   return (
     <div className="h-[100dvh] w-full flex flex-col bg-[#030712] text-slate-200 overflow-hidden select-none" onMouseMove={handleMouseMove}>
@@ -2196,11 +2273,25 @@ export default function App() {
       {showSaves && (
         <SaveFilesMenu
           onClose={() => setShowSaves(false)}
-          onLoadSave={() => {
+          onLoadSave={(save) => {
+            setActivePartida(save);
+            setPresupuesto(save.budget);
+            setTropas({ infanteria: save.tropas_infanteria, caballeria: save.tropas_caballeria, artilleria: save.tropas_artilleria });
+            setPlayerHQ({ id: save.hq, nombre: translateCountry(save.hq) });
+            setFechaVirtual(new Date(new Date(2099, 10, 12).getTime() + (save.campaignDays - 1) * 24 * 3600 * 1000));
+            setSpeedLevel(save.velocidad as 1 | 2 | 3 || 1);
+            setIsPlaying(!save.pausado);
             setCurrentScreen('game');
             setShowSaves(false);
           }}
-          onNewGame={() => {
+          onNewGame={(save) => {
+            setActivePartida(save);
+            setPresupuesto(save.budget);
+            setTropas({ infanteria: save.tropas_infanteria, caballeria: save.tropas_caballeria, artilleria: save.tropas_artilleria });
+            setPlayerHQ({ id: save.hq, nombre: translateCountry(save.hq) });
+            setFechaVirtual(new Date(new Date(2099, 10, 12).getTime() + (save.campaignDays - 1) * 24 * 3600 * 1000));
+            setSpeedLevel(save.velocidad as 1 | 2 | 3 || 1);
+            setIsPlaying(!save.pausado);
             setCurrentScreen('game');
             setShowSaves(false);
           }}
@@ -2228,10 +2319,7 @@ export default function App() {
                   [ REANUDAR SIMULACIÓN ]
                 </button>
                 <button
-                  onClick={() => {
-                    console.log("Guardado táctico completado en la terminal conquest.");
-                    alert("SISTEMA: ESTADO DE LA SIMULACIÓN COPIADO AL SILO SEGURO.");
-                  }}
+                  onClick={handleSaveCurrentState}
                   className="w-full border border-slate-800 hover:border-cyan-500 bg-slate-950/50 hover:bg-cyan-950/20 text-slate-400 hover:text-cyan-400 py-3 px-4 transition-all duration-300 rounded-sm font-bold"
                 >
                   [ GUARDAR ESTADO ACTUAL ]

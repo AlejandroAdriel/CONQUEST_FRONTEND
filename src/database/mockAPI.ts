@@ -23,17 +23,7 @@ export type Habilidad = {
   tiempoRestante?: number;
 };
 
-export interface SaveFile {
-  id: string;
-  commanderID: string;
-  hq: string;
-  creationDate: string;
-  lastSaveDate: string;
-  campaignDays: number;
-  dominionPercent: number;
-  budget: number;
-  troops: number;
-}
+
 
 export type Tropas = {
   infanteria: number;
@@ -1239,41 +1229,7 @@ const initialHabilidades: Habilidad[] = [
   { id: "M_ULTIMATE", nombre: "Iniciativa de Destrucción Mutua / Proyecto Némesis", costo: 600000, desbloqueada: false, prerrequisitos: ["M_PROTO_1", "M_PROTO_2"], tipo_bono: "Aniquilación Táctica Instantánea", categoria: "militar", rama: "Definitiva", nivel: 7, x: 3300, y: 2000, tiempo_investigacion_dias: 730 },
 ];
 
-const initialSaves: SaveFile[] = [
-  {
-    id: "save-01",
-    commanderID: "OMEGA-PROTOCOL-01",
-    hq: "ESTADOS UNIDOS",
-    creationDate: "2027-05-01 08:30",
-    lastSaveDate: "2027-05-15 22:45",
-    campaignDays: 14,
-    dominionPercent: 32.5,
-    budget: 125000,
-    troops: 45000
-  },
-  {
-    id: "save-02",
-    commanderID: "NEXUS-COMMANDER-09",
-    hq: "ALEMANIA",
-    creationDate: "2027-04-10 12:15",
-    lastSaveDate: "2027-04-20 18:33",
-    campaignDays: 10,
-    dominionPercent: 15.2,
-    budget: 84000,
-    troops: 28000
-  },
-  {
-    id: "save-03",
-    commanderID: "SHADOW-OPERATOR-X",
-    hq: "JAPÓN",
-    creationDate: "2027-05-18 19:00",
-    lastSaveDate: "2027-06-02 01:10",
-    campaignDays: 25,
-    dominionPercent: 68.9,
-    budget: 310000,
-    troops: 112000
-  }
-];
+
 
 // ─── TABLAS DE CONFIGURACIÓN DE JUEGO (GAME CONFIG TABLES) ──
 
@@ -1362,10 +1318,7 @@ export const fetchCountryStats = async () => {
   return realPopulations;
 };
 
-export const fetchSavedGames = async () => {
-  await simulateNetworkDelay();
-  return initialSaves;
-};
+
 
 export const fetchHQStartingPresets = async (): Promise<HQStartingPreset[]> => {
   return HQ_STARTING_PRESETS;

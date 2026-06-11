@@ -2,61 +2,80 @@ import { useState, useEffect } from "react";
 import { 
   Database, Trash2, Shield, Calendar, DollarSign, Users, Award, Plus, X 
 } from "lucide-react";
-import { fetchSavedGames } from "../database/mockAPI";
-import type { SaveFile } from "../database/mockAPI";
+import { fetchSavedGames, initializeNewGame, deleteGame } from "../database/saves";
+import type { DBGameSave } from "../database/saves";
+import { getPersistedOperator } from "../database/auth";
 
 interface SaveFilesMenuProps {
   onClose: () => void;
-  onLoadSave?: (saveId: string) => void;
-  onNewGame?: () => void;
+  onLoadSave?: (save: DBGameSave) => void;
+  onNewGame?: (save: DBGameSave) => void;
 }
 
 export default function SaveFilesMenu({ onClose, onLoadSave, onNewGame }: SaveFilesMenuProps) {
-  const [saves, setSaves] = useState<(SaveFile | null)[]>([null]);
+  const [saves, setSaves] = useState<(DBGameSave | null)[]>([null]);
 
   useEffect(() => {
     const loadSaves = async () => {
       try {
-        const data = await fetchSavedGames();
-        setSaves([...data, null]);
+        const user = getPersistedOperator();
+        if (user && user.id) {
+          const data = await fetchSavedGames(Number(user.id));
+          setSaves([...data, null]);
+        } else {
+          setSaves([null]);
+        }
       } catch (err) {
-        console.error(err);
+        console.error("Error al cargar partidas:", err);
       }
     };
     loadSaves();
   }, []);
 
-  const handlePurge = (id: string) => {
-    setSaves(prev => prev.map(save => save?.id === id ? null : save));
-  };
-
-  const handleInitialize = (index: number) => {
-    const newSave: SaveFile = {
-      id: `save-${Math.random().toString(36).substr(2, 9)}`,
-      commanderID: `SECURE-NODE-${Math.floor(100 + Math.random() * 900)}`,
-      hq: "MÉXICO",
-      creationDate: new Date().toISOString().replace("T", " ").substr(0, 16),
-      lastSaveDate: new Date().toISOString().replace("T", " ").substr(0, 16),
-      campaignDays: 1,
-      dominionPercent: 2.1,
-      budget: 5000,
-      troops: 7500
-    };
-
-    setSaves(prev => {
-      const updated = [...prev];
-      updated[index] = newSave;
-      return updated;
-    });
-
-    if (onNewGame) {
-      onNewGame();
+  const handlePurge = async (id: number) => {
+    const success = await deleteGame(id);
+    if (success) {
+      setSaves(prev => prev.filter(save => save === null || save.id !== id));
+    } else {
+      alert("ERROR AL ELIMINAR LA PARTIDA DE LA BASE DE DATOS.");
     }
   };
 
-  const handleLoad = (id: string) => {
+  const handleInitialize = async (index: number) => {
+    const user = getPersistedOperator();
+    if (!user || !user.id) {
+      alert("SISTEMA: REQUIERE OPERARIO AUTENTICADO PARA INICIALIZAR.");
+      return;
+    }
+
+    const randomNode = `SECURE-NODE-${Math.floor(100 + Math.random() * 950)}`;
+    const newSave = await initializeNewGame({
+      usuario_id: Number(user.id),
+      commander_id: randomNode,
+      hq_pais_id: "México", // sede por defecto
+      oro: 5000,
+      tropas_infanteria: 5000,
+      tropas_caballeria: 2000,
+      tropas_artilleria: 500
+    });
+
+    if (newSave) {
+      setSaves(prev => {
+        const updated = [...prev];
+        updated[index] = newSave;
+        return updated;
+      });
+      if (onNewGame) {
+        onNewGame(newSave);
+      }
+    } else {
+      alert("ERROR AL CREAR PARTIDA EN LA BASE DE DATOS.");
+    }
+  };
+
+  const handleLoad = (save: DBGameSave) => {
     if (onLoadSave) {
-      onLoadSave(id);
+      onLoadSave(save);
     }
   };
 
@@ -194,7 +213,7 @@ export default function SaveFilesMenu({ onClose, onLoadSave, onNewGame }: SaveFi
                     </button>
 
                     <button 
-                      onClick={() => handleLoad(save.id)}
+                      onClick={() => handleLoad(save)}
                       className="text-[10px] font-black border border-slate-800 hover:border-cyan-500 bg-slate-950/50 text-slate-400 hover:text-cyan-400 py-2 px-6 transition-all duration-300"
                     >
                       [ CARGAR ENLACE ]
