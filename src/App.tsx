@@ -19,7 +19,7 @@ import {
   normalizeName, getRealPopulation, getRealEconomy, getRealEjercitoDetalle,
 } from "./database/mockAPI";
 import type { OperarioUser } from "./types/user";
-import { logoutOperator, getPersistedOperator } from "./database/auth";
+import { logoutOperator, getPersistedOperator, refreshAuthSession } from "./database/auth";
 import { saveGame, initializeNewGame, unlockHabilidad } from "./database/saves";
 import type { DBGameSave } from "./database/saves";
 import type {
@@ -148,10 +148,14 @@ export default function App() {
   const [activePartida, setActivePartida] = useState<DBGameSave | null>(null);
 
   useEffect(() => {
-    const user = getPersistedOperator();
-    if (user) {
-      setCurrentUser(user);
-    }
+    const restoreSession = async () => {
+      // refreshAuthSession: verifica Supabase Auth y actualiza localStorage
+      const user = await refreshAuthSession();
+      if (user) {
+        setCurrentUser(user);
+      }
+    };
+    restoreSession();
   }, []);
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<'start' | 'login' | 'select_hq' | 'game'>('start');
@@ -1291,8 +1295,8 @@ export default function App() {
           <UserProfile
             user={currentUser}
             onClose={() => setShowUserProfile(false)}
-            onLogout={() => {
-              logoutOperator();
+            onLogout={async () => {
+              await logoutOperator();
               setCurrentUser(null);
               setShowUserProfile(false);
             }}
@@ -2356,8 +2360,8 @@ export default function App() {
                   [ GESTOR DE ARCHIVOS ]
                 </button>
                 <button
-                  onClick={() => {
-                    logoutOperator();
+                  onClick={async () => {
+                    await logoutOperator();
                     setIsSystemMenuOpen(false);
                     setCurrentUser(null);
                     setCurrentScreen('start');
@@ -2375,8 +2379,8 @@ export default function App() {
         <UserProfile
           user={currentUser}
           onClose={() => setShowUserProfile(false)}
-          onLogout={() => {
-            logoutOperator();
+          onLogout={async () => {
+            await logoutOperator();
             setCurrentUser(null);
             setShowUserProfile(false);
             setIsSystemMenuOpen(false);

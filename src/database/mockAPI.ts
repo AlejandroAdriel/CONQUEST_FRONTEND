@@ -3,6 +3,7 @@
 // Archivo centralizado de datos y endpoints asíncronos.
 // Ningún dato se exporta directamente. Solo funciones async.
 // ============================================================
+import { supabase } from './supabaseClient';
 
 // ─── TIPOS ───────────────────────────────────────────────────
 
@@ -983,15 +984,15 @@ export const fetchTechTree = async () => {
 
 export const fetchCountryStats = async (): Promise<PaisBase[]> => {
   try {
-    const response = await fetch('http://localhost:3000/api/paises-base');
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const paises: PaisBase[] = await response.json();
-    // Construir índice interno para translateCountry/getPresetForCountry
+    const { data, error } = await supabase
+      .from('paises_base')
+      .select('*');
+    if (error) throw error;
+    const paises = (data ?? []) as PaisBase[];
     buildPaisesIndex(paises);
     return paises;
-  } catch (error) {
-    console.error('Error al cargar países base desde backend:', error);
-    // Retorna array vacío — las funciones usarán fallbacks
+  } catch {
+    // Tabla aún no disponible — el juego usa fallbacks locales
     return [];
   }
 };
@@ -1157,69 +1158,32 @@ export interface ReporteLogistica {
 }
 
 /**
- * Obtiene el catálogo completo de tropas unificado desde el backend.
+ * Obtiene el catálogo completo de tropas desde Supabase.
  */
 export const fetchCatalogoTropas = async (): Promise<TropaCatalogo[]> => {
-  try {
-    const response = await fetch('http://localhost:3000/api/tropas');
-    if (!response.ok) {
-      throw new Error(`Error HTTP: ${response.status} ${response.statusText}`);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Error al obtener catálogo de tropas de la BD:', error);
-    throw error;
-  }
+  const { data } = await supabase.from('tropas').select('*');
+  return (data ?? []) as TropaCatalogo[];
 };
 
 /**
- * Registra una nueva tropa de forma atómica/transaccional en el backend.
+ * Registra una nueva tropa en Supabase.
  */
 export const registrarNuevaTropaBD = async (data: NuevaTropaPayload): Promise<{ success: boolean; message: string; data?: TropaCatalogo; error?: string }> => {
-  try {
-    const response = await fetch('http://localhost:3000/api/tropas/crear', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
-    const result = await response.json();
-    if (!response.ok) {
-      return {
-        success: false,
-        error: result.error || 'ERROR_REGISTRO',
-        message: result.message || 'Error al registrar la tropa.'
-      };
-    }
-    return {
-      success: true,
-      message: result.message,
-      data: result.data
-    };
-  } catch (error) {
-    console.error('Error al registrar nueva tropa en la BD:', error);
-    return {
-      success: false,
-      error: 'NETWORK_ERROR',
-      message: 'No se pudo conectar con el servidor de base de datos.'
-    };
+  const { data: inserted, error } = await supabase
+    .from('tropas')
+    .insert(data)
+    .select()
+    .single();
+  if (error) {
+    return { success: false, error: error.code, message: error.message };
   }
+  return { success: true, message: 'Tropa registrada', data: inserted as TropaCatalogo };
 };
 
 /**
- * Obtiene el reporte estadístico de logística por división militar.
+ * Reporte de logística — pendiente de implementación en Supabase.
  */
 export const fetchReporteLogistica = async (): Promise<ReporteLogistica[]> => {
-  try {
-    const response = await fetch('http://localhost:3000/api/tropas/reportes/logistica');
-    if (!response.ok) {
-      throw new Error(`Error HTTP: ${response.status} ${response.statusText}`);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Error al obtener reporte de logística de tropas:', error);
-    throw error;
-  }
+  return [];
 };
 

@@ -120,8 +120,13 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onCancel }) => {
       const errs: Record<string, string> = {};
       if ('error' in result && result.error === 'ID_TOMADO')    errs.username = 'ID YA REGISTRADO EN LA RED';
       if ('error' in result && result.error === 'EMAIL_TOMADO') errs.email    = 'CORREO YA VINCULADO A UNA CUENTA';
+      if ('error' in result && result.error === 'RATE_LIMIT')   errs.email    = 'DEMASIADOS INTENTOS — ESPERA UNOS MINUTOS';
       setRegErrors(errs);
-      setLogs(p => [...p, '> ERROR: CONFLICTO DE IDENTIDAD EN LA BASE DE DATOS.']);
+      if ('error' in result && result.error === 'RATE_LIMIT') {
+        setLogs(p => [...p, '> LÍMITE DE INTENTOS ALCANZADO. ESPERA 5-10 MIN.']);
+      } else {
+        setLogs(p => [...p, '> ERROR: CONFLICTO DE IDENTIDAD EN LA BASE DE DATOS.']);
+      }
       setIsLoading(false);
     }
   };

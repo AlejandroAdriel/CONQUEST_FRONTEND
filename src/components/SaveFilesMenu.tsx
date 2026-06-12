@@ -19,9 +19,12 @@ export default function SaveFilesMenu({ onClose, onLoadSave, onNewGame }: SaveFi
     const loadSaves = async () => {
       try {
         const user = getPersistedOperator();
-        if (user && user.id) {
-          const data = await fetchSavedGames(Number(user.id));
+        if (user && user.dbId) {
+          const data = await fetchSavedGames(user.dbId);
           setSaves([...data, null]);
+        } else if (user && !user.dbId) {
+          // usuario sin dbId (sesión antigua) — solo mostramos slot vacío
+          setSaves([null]);
         } else {
           setSaves([null]);
         }
@@ -43,16 +46,16 @@ export default function SaveFilesMenu({ onClose, onLoadSave, onNewGame }: SaveFi
 
   const handleInitialize = async (index: number) => {
     const user = getPersistedOperator();
-    if (!user || !user.id) {
+    if (!user || !user.dbId) {
       alert("SISTEMA: REQUIERE OPERARIO AUTENTICADO PARA INICIALIZAR.");
       return;
     }
 
     const randomNode = `SECURE-NODE-${Math.floor(100 + Math.random() * 950)}`;
     const newSave = await initializeNewGame({
-      usuario_id: Number(user.id),
+      usuario_id: user.dbId,
       commander_id: randomNode,
-      hq_pais_id: "México", // sede por defecto
+      hq_pais_id: "México",
       oro: 5000,
       tropas_infanteria: 5000,
       tropas_caballeria: 2000,
