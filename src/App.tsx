@@ -1352,6 +1352,10 @@ export default function App() {
       alert("SISTEMA: SE REQUIERE OPERARIO AUTENTICADO PARA GUARDAR LA PARTIDA.");
       return;
     }
+    if (!currentUser.dbId) {
+      alert("SISTEMA: SESIÓN SIN PERFIL VÁLIDO. CERRÁ SESIÓN Y VOLVÉ A INGRESAR.");
+      return;
+    }
 
     const days = Math.floor((fechaVirtual.getTime() - new Date(2099, 10, 12).getTime()) / (1000 * 3600 * 24)) + 1;
 
@@ -1359,7 +1363,7 @@ export default function App() {
     if (!partida) {
       const randomNode = `SECURE-NODE-${Math.floor(100 + Math.random() * 950)}`;
       const newSave = await initializeNewGame({
-        usuario_id: Number(currentUser.id),
+        usuario_id: currentUser.dbId,
         commander_id: randomNode,
         hq_pais_id: playerHQ?.id || "México",
         oro: presupuesto,
@@ -1378,7 +1382,7 @@ export default function App() {
       }
     }
 
-    const success = await saveGame(partida.id, {
+    const success = await saveGame(partida.partida_id, {
       dias_campana: days,
       porcentaje_dominio: 2.1,
       oro: presupuesto,

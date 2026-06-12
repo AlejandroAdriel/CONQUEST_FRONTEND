@@ -46,21 +46,24 @@ export const fetchSavedGames = async (usuarioDbId: number): Promise<DBGameSave[]
           dias_campana,
           porcentaje_dominio,
           fecha_creacion,
-          ultima_vez_guardado
-        ),
-        tiempos:partida_id (
-          velocidad,
-          pausado
+          ultima_vez_guardado,
+          tiempos (
+            velocidad,
+            pausado
+          )
         )
       `)
       .eq('usuario_id', usuarioDbId);
 
-    if (error) throw error;
+    if (error) {
+      console.error('[fetchSavedGames] Error:', error);
+      return [];
+    }
 
     return (data ?? []).map((row: any) => {
       const p = row.partidas ?? {};
-      // tiempos es un array (1-to-many), tomamos el primero
-      const t = Array.isArray(row.tiempos) ? row.tiempos[0] : row.tiempos ?? {};
+      // tiempos es array (1-to-many desde partidas), tomamos el primero
+      const t = Array.isArray(p.tiempos) ? p.tiempos[0] : p.tiempos ?? {};
       return {
         id:               row.jugador_id,
         partida_id:       p.partida_id,
@@ -80,10 +83,12 @@ export const fetchSavedGames = async (usuarioDbId: number): Promise<DBGameSave[]
         lastSaveDate:     p.ultima_vez_guardado ?? '',
       } as DBGameSave;
     });
-  } catch {
+  } catch (e) {
+    console.error('[fetchSavedGames] Exception:', e);
     return [];
   }
 };
+
 
 // ─── INICIALIZAR NUEVA PARTIDA ────────────────────────────────
 
