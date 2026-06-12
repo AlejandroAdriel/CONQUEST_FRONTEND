@@ -79,11 +79,10 @@ export const refreshAuthSession = async (): Promise<OperarioUser | null> => {
 export const authenticateOperator = async (
   usernameOrEmail: string,
   password: string
-): Promise<OperarioUser | null> => {
+): Promise<OperarioUser | { error: 'NOT_FOUND' | 'WRONG_PASSWORD' }> => {
   const input = usernameOrEmail.trim();
   const isEmail = input.includes('@');
 
-  // Buscar por correo si el input parece un email, sino por username
   const query = supabase
     .from('usuarios')
     .select('usuario_id, username, correo, nombre, pais, rango, fecha_registro');
@@ -93,14 +92,14 @@ export const authenticateOperator = async (
     : query.ilike('username', input.toUpperCase())
   ).maybeSingle();
 
-  if (!row) return null;
+  if (!row) return { error: 'NOT_FOUND' };
 
   const { data: authData, error } = await supabase.auth.signInWithPassword({
     email:    row.correo,
     password: password,
   });
 
-  if (error || !authData.user) return null;
+  if (error || !authData.user) return { error: 'WRONG_PASSWORD' };
 
   const user = rowToUser(row as UsuarioRow, authData.user.id);
   persistSession(user);

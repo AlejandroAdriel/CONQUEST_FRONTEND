@@ -62,18 +62,22 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onCancel }) => {
     setLoginError(null);
     setLogs(p => [...p, '> VALIDANDO HASH DE ACCESO...']);
 
-    const user = await authenticateOperator(loginId, loginPass);
+    const result = await authenticateOperator(loginId, loginPass);
 
-    if (user) {
+    if ('id' in result) {
+      // Login exitoso
       setLogs(p => [...p, '> ENCRIPTACIÓN RSA-4096 CONFIRMADA.']);
       setTimeout(() => {
         setLogs(p => [...p, '> ACCESO AUTORIZADO. REDIRIGIENDO...']);
-        onLoginSuccess(user);
+        onLoginSuccess(result);
       }, 900);
+    } else if (result.error === 'NOT_FOUND') {
+      setLoginError('wrong_user');
+      setLogs(p => [...p, '> ERROR: ID DE OPERARIO NO REGISTRADO EN LA RED.']);
+      setIsLoading(false);
     } else {
-      // Distinguir si el username existe o no
-      const userExists = loginId.trim().length > 0;
-      setLoginError(userExists ? 'wrong_pass' : 'wrong_user');
+      // WRONG_PASSWORD
+      setLoginError('wrong_pass');
       setShakePass(true);
       setTimeout(() => setShakePass(false), 600);
       setLogs(p => [...p, '> ERROR: HASH NO COINCIDE. ACCESO DENEGADO.']);
