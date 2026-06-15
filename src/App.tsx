@@ -19,7 +19,7 @@ import {
   normalizeName, getRealPopulation, getRealEconomy, getRealEjercitoDetalle,
 } from "./database/mockAPI";
 import type { OperarioUser } from "./types/user";
-import { logoutOperator, getPersistedOperator, refreshAuthSession } from "./database/auth";
+import { logoutOperator, refreshAuthSession } from "./database/auth";
 import { saveGame, initializeNewGame, unlockHabilidad } from "./database/saves";
 import type { DBGameSave } from "./database/saves";
 import type {
