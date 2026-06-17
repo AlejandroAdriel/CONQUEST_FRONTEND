@@ -11,7 +11,7 @@ import {
   ChevronsRight, Globe, Cpu
 } from "lucide-react";
 import {
-  fetchInitialGameState, fetchRandomEvents, fetchTechTree, fetchCountryStats,
+  fetchInitialGameState, fetchRandomEvents, fetchCountryStats,
   fetchHQStartingPresets, fetchTroopBaseCosts, fetchCombatMultipliers,
   fetchMaintenanceTiers, fetchSimulationConstants,
   fetchCriticalEventTemplates, fetchDecayEventTemplates,
@@ -20,10 +20,12 @@ import {
 } from "./database/mockAPI";
 import type { OperarioUser } from "./types/user";
 import { logoutOperator, refreshAuthSession } from "./database/auth";
-import { saveGame, initializeNewGame, unlockHabilidad } from "./database/saves";
+import { saveGame, initializeNewGame } from "./database/saves";
+import { unlockHabilidad, fetchTechTree } from "./database/game";
 import type { DBGameSave } from "./database/saves";
+import type { Habilidad } from "./types/habilidades";
 import type {
-  Habilidad, Tropas,
+  Tropas,
   HQStartingPreset, TroopBaseCosts, CombatPowerMultipliers,
   MaintenanceTier, SimulationConstants, Pais,
   DBCriticalEvent, DBDecayingNotification, PaisBase
@@ -79,6 +81,11 @@ const getDemographicsInfo = (
   const tieneReclutamientoAgresivo = pais.dias_reclutamiento_agresivo !== undefined && pais.dias_reclutamiento_agresivo > 0;
   if (tieneReclutamientoAgresivo) {
     tasaNatalidadEfectiva *= 0.8;
+  }
+
+  // 5. Singularidad Tecnológica (D_SUPER_2): aumenta la natalidad en conquistados un +25%
+  if (pais.conquistado && habilidades.some(h => h.id === "D_SUPER_2" && h.desbloqueada)) {
+    tasaNatalidadEfectiva *= 1.25;
   }
 
   // 2. Colapso por Invasión: mortalidad 4.0x
@@ -729,9 +736,23 @@ export default function App() {
     if (Object.keys(currentPaises).length === 0) return;
 
     let totalIngresoJugador = 0;
-    const tieneAlgoritmos = currentHabilidades.some(h => h.nombre === "Algoritmos Financieros" && h.desbloqueada);
-    const multiplicadorTech = tieneAlgoritmos ? 1.15 : 1.0;
+    
+    // Dynamic modifiers from unlocked skills
+    let goldMultiplier = 1.0;
+    if (currentHabilidades.some(h => h.id === "D_B1_1" && h.desbloqueada)) goldMultiplier += 0.10;
+    if (currentHabilidades.some(h => h.id === "D_EXP_1" && h.desbloqueada)) goldMultiplier += 0.15;
+    if (currentHabilidades.some(h => h.id === "D_EXP_3" && h.desbloqueada)) goldMultiplier += 0.20;
+    if (currentHabilidades.some(h => h.id === "D_CONV_1" && h.desbloqueada)) goldMultiplier += 0.25;
+    if (currentHabilidades.some(h => h.id === "D_EXP_5" && h.desbloqueada)) goldMultiplier += 0.05;
+
+    let growthRateMultiplier = 1.0;
+    if (currentHabilidades.some(h => h.id === "D_B1_2" && h.desbloqueada)) growthRateMultiplier += 0.25;
+    if (currentHabilidades.some(h => h.id === "D_CONV_3" && h.desbloqueada)) growthRateMultiplier += 0.50;
+
     const sc = simConstantsRef.current;
+    const currentGrowthRate = sc.dailyEconomicGrowthRate * growthRateMultiplier;
+
+    const nuevosMensajes: Evento[] = [];
 
     // 2. Simulación para cada país
     Object.keys(currentPaises).forEach(id => {
@@ -763,31 +784,49 @@ export default function App() {
         tasaMortalidadEfectiva *= 0.85;
       }
 
+      // 5. Singularidad Tecnológica (D_SUPER_2): aumenta la natalidad en conquistados un +25%
+      if (pais.conquistado && currentHabilidades.some(h => h.id === "D_SUPER_2" && h.desbloqueada)) {
+        tasaNatalidadEfectiva *= 1.25;
+      }
+
       // Ecuación demográfica neta diaria
       const nacimientosDia = pais.poblacion * (tasaNatalidadEfectiva / 100);
       const defuncionesDia = pais.poblacion * (tasaMortalidadEfectiva / 100);
       pais.poblacion = Math.round(pais.poblacion + nacimientosDia - defuncionesDia);
 
       // B. Economía dinámica (Crecimiento orgánico diario)
-      pais.economia = pais.economia * (1 + sc.dailyEconomicGrowthRate);
+      pais.economia = pais.economia * (1 + currentGrowthRate);
 
       // C. Generación de Oro balanceada (Fórmula base con factores configurables)
       const ingreso = ((pais.economia * sc.incomeFormulaEcoFactor) + (pais.poblacion * sc.incomeFormulaPopFactor)) / sc.incomeDivisor;
 
       if (pais.conquistado) {
         // Si pertenece al jugador, sumamos a sus ingresos con multiplicador tech
-        totalIngresoJugador += ingreso * multiplicadorTech;
+        totalIngresoJugador += ingreso * goldMultiplier;
       } else {
         // Si pertenece a la IA, se acumula en su tesoro interno
         pais.oro_ia = (pais.oro_ia || 0) + ingreso;
 
         // D. Fuerza Militar Dinámica (Reclutamiento IA)
-        // Si su ejército está bajo, gasta 100 de oro para reclutar
         const seed = id.charCodeAt(0) + (id.length > 1 ? id.charCodeAt(1) : 0);
         const targetEjercito = Math.max(100, Math.floor(Math.sqrt(pais.poblacion) * (5 + (seed % 5))));
         if (pais.ejercito_ia < targetEjercito && pais.oro_ia >= sc.iaRecruitmentCost) {
           pais.oro_ia -= sc.iaRecruitmentCost;
-          const reclutas = Math.floor(Math.random() * (sc.iaRecruitMaxReclutas - sc.iaRecruitMinReclutas + 1)) + sc.iaRecruitMinReclutas;
+
+          // Modificaciones de reclutamiento IA (cibersabotajes)
+          let recruitmentMultiplier = 1.0;
+          if (currentHabilidades.some(h => h.id === "M_EXP_6" && h.desbloqueada)) {
+            recruitmentMultiplier *= 0.75;
+          }
+          if (currentHabilidades.some(h => h.id === "M_ULTIMATE" && h.desbloqueada)) {
+            recruitmentMultiplier *= 0.15;
+          }
+          if (isUnderAttack && currentHabilidades.some(h => h.id === "M_CONV_4" && h.desbloqueada)) {
+            recruitmentMultiplier *= 0.50;
+          }
+
+          const baseReclutas = Math.floor(Math.random() * (sc.iaRecruitMaxReclutas - sc.iaRecruitMinReclutas + 1)) + sc.iaRecruitMinReclutas;
+          const reclutas = Math.max(0, Math.round(baseReclutas * recruitmentMultiplier));
           pais.ejercito_ia += reclutas;
 
           if (!pais.ejercito_ia_detalle) {
@@ -811,6 +850,27 @@ export default function App() {
     const numConquistados = Object.values(currentPaises).filter(p => p.conquistado).length;
     totalIngresoJugador = Math.floor(totalIngresoJugador * (1 + numConquistados * sc.conquestBonusPerCountry));
 
+    // D_ULTIMATE: 2% de probabilidad diaria de anexar pacíficamente un país enemigo al azar
+    const tieneUltimateDesarrollo = currentHabilidades.some(h => h.id === "D_ULTIMATE" && h.desbloqueada);
+    if (tieneUltimateDesarrollo && Math.random() < 0.02) {
+      const unconqueredCountries = Object.values(currentPaises).filter(p => !p.conquistado);
+      if (unconqueredCountries.length > 0) {
+        const randomCountry = unconqueredCountries[Math.floor(Math.random() * unconqueredCountries.length)];
+        randomCountry.conquistado = true;
+        randomCountry.ejercito_ia = 0;
+        randomCountry.ejercito_ia_detalle = { infanteria: 0, caballeria: 0, artilleria: 0 };
+        currentPaises[randomCountry.id] = randomCountry;
+
+        nuevosMensajes.push({
+          id: Math.random().toString(),
+          fecha: fechaVirtual,
+          titulo: `ASIMILACIÓN COMPLETADA: ${randomCountry.nombre.toUpperCase()}`,
+          mensaje: `El Protocolo de Asimilación Planetaria Total (D_ULTIMATE) ha integrado pacíficamente la infraestructura y gobierno de ${randomCountry.nombre} a nuestra red neuronal global.`,
+          tipo: "success"
+        });
+      }
+    }
+
     // 3. Mantenimiento del Jugador y Crisis de Suministros escalonada (Economía sustentable)
     const totalTropasJugador = currentTropas.infanteria + currentTropas.caballeria + currentTropas.artilleria;
 
@@ -822,10 +882,15 @@ export default function App() {
     const mntArt = mntTier.costArt;
     const desRate = mntTier.desertionRate;
 
+    // Modificadores de mantenimiento de habilidades
+    let maintenanceMultiplier = 1.0;
+    if (currentHabilidades.some(h => h.id === "D_EXP_2" && h.desbloqueada)) maintenanceMultiplier -= 0.15;
+    if (currentHabilidades.some(h => h.id === "D_CONV_2" && h.desbloqueada)) maintenanceMultiplier -= 0.25;
+
     const costoMantenimiento = Math.floor(
-      (currentTropas.infanteria * mntInf) +
-      (currentTropas.caballeria * mntCab) +
-      (currentTropas.artilleria * mntArt)
+      ((currentTropas.infanteria * mntInf) +
+       (currentTropas.caballeria * mntCab) +
+       (currentTropas.artilleria * mntArt)) * maintenanceMultiplier
     );
 
     let desertoresMsg = "";
@@ -855,8 +920,6 @@ export default function App() {
     currentPresupuesto += totalIngresoJugador;
 
     // 4. Diario de Guerra - Eventos de simulación diaria
-    const nuevosMensajes: Evento[] = [];
-
     if (huboDesercion) {
       nuevosMensajes.push({
         id: Math.random().toString(),
@@ -932,19 +995,55 @@ export default function App() {
 
         if (totalTropasEnviadas <= 0) return;
 
-        // Poder del Jugador (multiplicadores desde config)
+        // Poder del Jugador (multiplicadores desde config y habilidades)
         const cm = combatMultipliersRef.current;
-        const poderJugador = infEnviada * cm.infanteria + cabEnviada * cm.caballeria + artEnviada * cm.artilleria;
+        
+        let multInf = 1.0;
+        if (currentHabilidades.some(h => h.id === "M_B1_1" && h.desbloqueada)) multInf += 0.15;
+        if (currentHabilidades.some(h => h.id === "M_EXP_1" && h.desbloqueada)) multInf += 0.25;
+        if (currentHabilidades.some(h => h.id === "M_CONV_1" && h.desbloqueada)) multInf += 0.35;
+        if (currentHabilidades.some(h => h.id === "M_ORB_1" && h.desbloqueada)) multInf += 0.40;
+        if (currentHabilidades.some(h => h.id === "M_PROTO_1" && h.desbloqueada)) multInf += 0.40;
 
-        // Poder de la IA defensora
+        let multCab = 1.0;
+        if (currentHabilidades.some(h => h.id === "M_B1_2" && h.desbloqueada)) multCab += 0.15;
+        if (currentHabilidades.some(h => h.id === "M_EXP_5" && h.desbloqueada)) multCab += 0.25;
+        if (currentHabilidades.some(h => h.id === "M_ORB_3" && h.desbloqueada)) multCab += 0.35;
+        if (currentHabilidades.some(h => h.id === "M_PROTO_1" && h.desbloqueada)) multCab += 0.40;
+
+        let multArt = 1.0;
+        if (currentHabilidades.some(h => h.id === "M_B1_3" && h.desbloqueada)) multArt += 0.15;
+        if (currentHabilidades.some(h => h.id === "M_EXP_4" && h.desbloqueada)) multArt += 0.25;
+        if (currentHabilidades.some(h => h.id === "M_CONV_3" && h.desbloqueada)) multArt += 0.35;
+        if (currentHabilidades.some(h => h.id === "M_ORB_3" && h.desbloqueada)) multArt += 0.35;
+        if (currentHabilidades.some(h => h.id === "M_PROTO_1" && h.desbloqueada)) multArt += 0.40;
+
+        const poderJugador = (infEnviada * cm.infanteria * multInf) +
+                             (cabEnviada * cm.caballeria * multCab) +
+                             (artEnviada * cm.artilleria * multArt);
+
+        // Poder de la IA defensora (debuffs de defensa enemiga)
+        let iaDefenseMultiplier = 1.0;
+        if (currentHabilidades.some(h => h.id === "M_EXP_2" && h.desbloqueada)) iaDefenseMultiplier -= 0.15;
+        if (currentHabilidades.some(h => h.id === "M_PROTO_2" && h.desbloqueada)) iaDefenseMultiplier -= 0.50;
+        if (currentHabilidades.some(h => h.id === "M_ULTIMATE" && h.desbloqueada)) iaDefenseMultiplier -= 0.40;
+        iaDefenseMultiplier = Math.max(0.10, iaDefenseMultiplier);
+
         const detailIA = paisDestino.ejercito_ia_detalle || { infanteria: paisDestino.ejercito_ia, caballeria: 0, artilleria: 0 };
-        const poderIA = detailIA.infanteria * cm.infanteria + detailIA.caballeria * cm.caballeria + detailIA.artilleria * cm.artilleria;
+        const basePoderIA = detailIA.infanteria * cm.infanteria + detailIA.caballeria * cm.caballeria + detailIA.artilleria * cm.artilleria;
+        const poderIA = basePoderIA * iaDefenseMultiplier;
 
-        // Tasa de bajas (basada en el ratio de poder con margen aleatorio)
+        // Tasa de bajas (basada en el ratio de poder con margen aleatorio y reducciones del jugador)
         const ratioIA = poderIA / (poderJugador || 1);
         const ratioJugador = poderJugador / (poderIA || 1);
 
-        const rateJugador = Math.min(0.95, (0.1 + Math.random() * 0.3) * ratioIA);
+        let casualtyMultiplier = 1.0;
+        if (currentHabilidades.some(h => h.id === "M_B1_4" && h.desbloqueada)) casualtyMultiplier *= 0.90;
+        if (currentHabilidades.some(h => h.id === "M_CONV_2" && h.desbloqueada)) casualtyMultiplier *= 0.80;
+        if (currentHabilidades.some(h => h.id === "M_ORB_1" && h.desbloqueada)) casualtyMultiplier *= 0.85;
+        if (currentHabilidades.some(h => h.id === "M_ORB_2" && h.desbloqueada)) casualtyMultiplier *= 0.70;
+
+        const rateJugador = Math.min(0.95, (0.1 + Math.random() * 0.3) * ratioIA * casualtyMultiplier);
         const rateIA = Math.min(0.95, (0.2 + Math.random() * 0.4) * ratioJugador);
 
         // Bajas
@@ -1077,8 +1176,9 @@ export default function App() {
       return;
     }
 
+    const transitDays = habilidades.some(h => h.id === "D_EXP_5" && h.desbloqueada) ? 12 : 17;
     const fechaImpacto = new Date(fechaVirtual);
-    fechaImpacto.setDate(fechaImpacto.getDate() + simConstantsRef.current.attackTransitDays);
+    fechaImpacto.setDate(fechaImpacto.getDate() + transitDays);
 
     setAtaquesEnCola(prev => [...prev, {
       id: Math.random().toString(),
@@ -1101,7 +1201,7 @@ export default function App() {
       id: Math.random().toString(),
       fecha: fechaVirtual,
       titulo: "DESPLIEGUE DE INVASIÓN MÚLTIPLE",
-      mensaje: `Un convoy táctico con destino a ${paisSeleccionado.nombre} ha salido de los silos de transporte. Desplegadas: 👤${infanteriaAEnviar} Infantería, ⚡${caballeriaAEnviar} Caballería, 💀${artilleriaAEnviar} Artillería (Total: ${totalAEnviar} fuerzas). Impacto satelital estimado en T-${simConstantsRef.current.attackTransitDays} días (${fechaImpacto.toLocaleDateString()}).`,
+      mensaje: `Un convoy táctico con destino a ${paisSeleccionado.nombre} ha salido de los silos de transporte. Desplegadas: 👤${infanteriaAEnviar} Infantería, ⚡${caballeriaAEnviar} Caballería, 💀${artilleriaAEnviar} Artallería (Total: ${totalAEnviar} fuerzas). Impacto satelital estimado en T-${transitDays} días (${fechaImpacto.toLocaleDateString()}).`,
       tipo: "info"
     }, ...prev]);
 
@@ -1140,16 +1240,27 @@ export default function App() {
     const costoCabUnit = Math.floor(tc.caballeria * multGral * multPesadas);
     const costoArtUnit = Math.floor(tc.artilleria * multGral * multPesadas);
 
-    const costoTotal = infanteriaAMovilizar * costoInfUnit + caballeriaAMovilizar * costoCabUnit + artilleriaAMovilizar * costoArtUnit;
+    let mobilizationCostMultiplier = 1.0;
+    if (habilidades.some(h => h.id === "D_B1_3" && h.desbloqueada)) mobilizationCostMultiplier -= 0.10;
+    if (habilidades.some(h => h.id === "D_EXP_4" && h.desbloqueada)) mobilizationCostMultiplier -= 0.20;
+    if (habilidades.some(h => h.id === "D_SUPER_1" && h.desbloqueada)) mobilizationCostMultiplier -= 0.35;
+
+    const baseCostoTotal = infanteriaAMovilizar * costoInfUnit + caballeriaAMovilizar * costoCabUnit + artilleriaAMovilizar * costoArtUnit;
+    const costoTotal = Math.floor(baseCostoTotal * mobilizationCostMultiplier);
+
     if (presupuesto < costoTotal) {
       alert("Presupuesto global insuficiente.");
       return;
     }
 
     const scm = simConstantsRef.current;
-    const maxMovilizable = Math.floor(livePais.poblacion * scm.mobilizationPopLimit);
+    let mobilizationPopLimit = scm.mobilizationPopLimit;
+    if (habilidades.some(h => h.id === "D_CONV_3" && h.desbloqueada)) {
+      mobilizationPopLimit = 0.10;
+    }
+    const maxMovilizable = Math.floor(livePais.poblacion * mobilizationPopLimit);
     if (totalMovilizado > maxMovilizable) {
-      alert(`La movilización excede el límite crítico del ${(scm.mobilizationPopLimit * 100).toFixed(0)}% de la población actual (Máximo: ${maxMovilizable} habitantes).`);
+      alert(`La movilización excede el límite crítico del ${(mobilizationPopLimit * 100).toFixed(0)}% de la población actual (Máximo: ${maxMovilizable} habitantes).`);
       return;
     }
 
@@ -1214,16 +1325,15 @@ export default function App() {
       }
     }
 
-    // --- Delegar al backend: él valida prerrequisitos, duplicados y existencia ---
-    // Usamos partida_id = 1 como identificador de sesión actual.
-    // TODO: reemplazar 1 por el ID de partida real cuando se implemente la gestión de partidas.
-    const PARTIDA_ACTUAL_ID = 1;
+    const PARTIDA_ACTUAL_ID = activePartida?.partida_id;
 
-    const resultado = await unlockHabilidad(PARTIDA_ACTUAL_ID, habilidad.id);
+    if (PARTIDA_ACTUAL_ID) {
+      const resultado = await unlockHabilidad(PARTIDA_ACTUAL_ID, habilidad.id);
 
-    if (!resultado.success) {
-      alert(`No se puede investigar: ${resultado.error}`);
-      return;
+      if (!resultado.success) {
+        alert(`No se puede investigar: ${resultado.error}`);
+        return;
+      }
     }
 
     // Descontar presupuesto y activar el temporizador de investigación (estado de UI local)
@@ -1267,7 +1377,7 @@ export default function App() {
         {showSaves && (
           <SaveFilesMenu
             onClose={() => setShowSaves(false)}
-            onLoadSave={(save) => {
+            onLoadSave={async (save) => {
               setActivePartida(save);
               setPresupuesto(save.budget);
               setTropas({ infanteria: save.tropas_infanteria, caballeria: save.tropas_caballeria, artilleria: save.tropas_artilleria });
@@ -1275,10 +1385,12 @@ export default function App() {
               setFechaVirtual(new Date(new Date(2099, 10, 12).getTime() + (save.campaignDays - 1) * 24 * 3600 * 1000));
               setSpeedLevel(save.velocidad as 1 | 2 | 3 || 1);
               setIsPlaying(!save.pausado);
+              const techTree = await fetchTechTree(save.partida_id);
+              setHabilidades(techTree);
               setCurrentScreen('game');
               setShowSaves(false);
             }}
-            onNewGame={(save) => {
+            onNewGame={async (save) => {
               setActivePartida(save);
               setPresupuesto(save.budget);
               setTropas({ infanteria: save.tropas_infanteria, caballeria: save.tropas_caballeria, artilleria: save.tropas_artilleria });
@@ -1286,6 +1398,8 @@ export default function App() {
               setFechaVirtual(new Date(new Date(2099, 10, 12).getTime() + (save.campaignDays - 1) * 24 * 3600 * 1000));
               setSpeedLevel(save.velocidad as 1 | 2 | 3 || 1);
               setIsPlaying(!save.pausado);
+              const techTree = await fetchTechTree(save.partida_id);
+              setHabilidades(techTree);
               setCurrentScreen('game');
               setShowSaves(false);
             }}
@@ -1298,6 +1412,9 @@ export default function App() {
             onLogout={async () => {
               await logoutOperator();
               setCurrentUser(null);
+              setActivePartida(null);
+              const techTree = await fetchTechTree();
+              setHabilidades(techTree);
               setShowUserProfile(false);
             }}
           />
@@ -1682,7 +1799,15 @@ export default function App() {
                   <span className="text-slate-500">Economía:</span>
                   <span className="text-emerald-400 text-right font-mono">{formatEconomy(livePais.economia)}</span>
                   <span className="text-slate-500">Fuerza:</span>
-                  <span className="text-rose-400 text-right font-mono">{livePais.conquistado ? '-' : livePais.ejercito_ia.toLocaleString()}</span>
+                  <span className="text-rose-400 text-right font-mono">
+                    {livePais.conquistado 
+                      ? '-' 
+                      : (habilidades.some(h => (h.id === "D_EXP_5" || h.id === "M_ORB_4") && h.desbloqueada)
+                          ? livePais.ejercito_ia.toLocaleString()
+                          : `~${(Math.max(100, Math.round(livePais.ejercito_ia / 250) * 250)).toLocaleString()} (EST.)`
+                        )
+                    }
+                  </span>
                 </div>
 
                 {/* Reporte Demográfico en Tooltip */}
@@ -1813,30 +1938,48 @@ export default function App() {
                     <span className={`${demo.tendenciaColor} font-bold text-[10px]`}>{demo.tendencia.toUpperCase()}</span>
                   </div>
                 </div>
-                {!livePais.conquistado && (
-                  <div className="bg-rose-950/20 p-3 rounded-sm border border-rose-900/30 col-span-2 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <div className="text-rose-400 text-[10px] uppercase tracking-widest font-bold">Fuerza Militar (IA)</div>
-                      <div className="font-mono text-rose-500 font-bold">{livePais.ejercito_ia.toLocaleString()}</div>
-                    </div>
-                    {livePais.ejercito_ia_detalle && (
-                      <div className="grid grid-cols-3 gap-1.5 text-[9px] font-mono text-slate-400 pt-1.5 border-t border-rose-900/20">
-                        <div className="flex flex-col items-center bg-slate-950/40 py-1 rounded border border-rose-950/30">
-                          <span className="text-slate-500 text-[8px]">👤 INF (1x)</span>
-                          <span className="text-rose-400 font-bold">{livePais.ejercito_ia_detalle.infanteria.toLocaleString()}</span>
-                        </div>
-                        <div className="flex flex-col items-center bg-slate-950/40 py-1 rounded border border-rose-950/30">
-                          <span className="text-slate-500 text-[8px]">⚡ CAB (1.5x)</span>
-                          <span className="text-rose-400 font-bold">{livePais.ejercito_ia_detalle.caballeria.toLocaleString()}</span>
-                        </div>
-                        <div className="flex flex-col items-center bg-slate-950/40 py-1 rounded border border-rose-950/30">
-                          <span className="text-slate-500 text-[8px]">💀 ART (3x)</span>
-                          <span className="text-rose-400 font-bold">{livePais.ejercito_ia_detalle.artilleria.toLocaleString()}</span>
+                {!livePais.conquistado && (() => {
+                  const tieneIntelSat = habilidades.some(h => (h.id === "D_EXP_5" || h.id === "M_ORB_4") && h.desbloqueada);
+                  return (
+                    <div className="bg-rose-950/20 p-3 rounded-sm border border-rose-900/30 col-span-2 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <div className="text-rose-400 text-[10px] uppercase tracking-widest font-bold">Fuerza Militar (IA)</div>
+                        <div className="font-mono text-rose-500 font-bold">
+                          {tieneIntelSat 
+                            ? livePais.ejercito_ia.toLocaleString() 
+                            : `~${(Math.max(100, Math.round(livePais.ejercito_ia / 250) * 250)).toLocaleString()} (ESTIMADO)`}
                         </div>
                       </div>
-                    )}
-                  </div>
-                )}
+                      {livePais.ejercito_ia_detalle && (
+                        <div className="grid grid-cols-3 gap-1.5 text-[9px] font-mono text-slate-400 pt-1.5 border-t border-rose-900/20">
+                          <div className="flex flex-col items-center bg-slate-950/40 py-1 rounded border border-rose-950/30">
+                            <span className="text-slate-500 text-[8px]">👤 INF (1x)</span>
+                            <span className="text-rose-400 font-bold">
+                              {tieneIntelSat ? livePais.ejercito_ia_detalle.infanteria.toLocaleString() : "???"}
+                            </span>
+                          </div>
+                          <div className="flex flex-col items-center bg-slate-950/40 py-1 rounded border border-rose-950/30">
+                            <span className="text-slate-500 text-[8px]">⚡ CAB (1.5x)</span>
+                            <span className="text-rose-400 font-bold">
+                              {tieneIntelSat ? livePais.ejercito_ia_detalle.caballeria.toLocaleString() : "???"}
+                            </span>
+                          </div>
+                          <div className="flex flex-col items-center bg-slate-950/40 py-1 rounded border border-rose-950/30">
+                            <span className="text-slate-500 text-[8px]">💀 ART (3x)</span>
+                            <span className="text-rose-400 font-bold">
+                              {tieneIntelSat ? livePais.ejercito_ia_detalle.artilleria.toLocaleString() : "???"}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      {!tieneIntelSat && (
+                        <div className="text-[7.5px] text-slate-500 font-mono text-center pt-1 italic uppercase tracking-wider animate-pulse">
+                          [ REQUERIDO: REGISTRO SATELITAL D_EXP_5 O M_ORB_4 ]
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               {!livePais.conquistado && (
@@ -2303,7 +2446,7 @@ export default function App() {
       {showSaves && (
         <SaveFilesMenu
           onClose={() => setShowSaves(false)}
-          onLoadSave={(save) => {
+          onLoadSave={async (save) => {
             setActivePartida(save);
             setPresupuesto(save.budget);
             setTropas({ infanteria: save.tropas_infanteria, caballeria: save.tropas_caballeria, artilleria: save.tropas_artilleria });
@@ -2311,10 +2454,12 @@ export default function App() {
             setFechaVirtual(new Date(new Date(2099, 10, 12).getTime() + (save.campaignDays - 1) * 24 * 3600 * 1000));
             setSpeedLevel(save.velocidad as 1 | 2 | 3 || 1);
             setIsPlaying(!save.pausado);
+            const techTree = await fetchTechTree(save.partida_id);
+            setHabilidades(techTree);
             setCurrentScreen('game');
             setShowSaves(false);
           }}
-          onNewGame={(save) => {
+          onNewGame={async (save) => {
             setActivePartida(save);
             setPresupuesto(save.budget);
             setTropas({ infanteria: save.tropas_infanteria, caballeria: save.tropas_caballeria, artilleria: save.tropas_artilleria });
@@ -2322,6 +2467,8 @@ export default function App() {
             setFechaVirtual(new Date(new Date(2099, 10, 12).getTime() + (save.campaignDays - 1) * 24 * 3600 * 1000));
             setSpeedLevel(save.velocidad as 1 | 2 | 3 || 1);
             setIsPlaying(!save.pausado);
+            const techTree = await fetchTechTree(save.partida_id);
+            setHabilidades(techTree);
             setCurrentScreen('game');
             setShowSaves(false);
           }}
