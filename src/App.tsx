@@ -4,6 +4,7 @@ import { CriticalEventModal } from "./components/CriticalEventModal";
 import { useState, useEffect, useRef } from "react";
 import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
+import type { ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
 import {
   Play, Pause, FastForward, Terminal,
   ShieldAlert, ShieldCheck, Info,
@@ -12,7 +13,7 @@ import {
 } from "lucide-react";
 import {
   fetchInitialGameState, fetchRandomEvents, fetchCountryStats,
-  fetchHQStartingPresets, fetchTroopBaseCosts, fetchCombatMultipliers,
+  fetchHQStartingPresets,
   fetchMaintenanceTiers, fetchSimulationConstants,
   fetchCriticalEventTemplates, fetchDecayEventTemplates,
   translateCountry, getPresetForCountry,
@@ -22,13 +23,16 @@ import type { OperarioUser } from "./types/user";
 import { logoutOperator, refreshAuthSession } from "./database/auth";
 import { saveGame, initializeNewGame } from "./database/saves";
 import { unlockHabilidad, fetchTechTree } from "./database/game";
+import { fetchCatalogoTropas, distribuirTropasDetalle, deducirTropasDetalle, calcularFuerzaTotal, ajustarTropasDetalle } from "./database/troops";
 import type { DBGameSave } from "./database/saves";
 import type { Habilidad } from "./types/habilidades";
+import type { Tropa } from "./types/tropas";
 import type {
   Tropas,
-  HQStartingPreset, TroopBaseCosts, CombatPowerMultipliers,
+  HQStartingPreset,
   MaintenanceTier, SimulationConstants, Pais,
-  DBCriticalEvent, DBDecayingNotification, PaisBase
+  DBCriticalEvent, DBDecayingNotification, PaisBase,
+  TroopBaseCosts, CombatPowerMultipliers
 } from "./database/mockAPI";
 import Login from "./components/Login";
 import StartMenu from "./components/StartMenu";
@@ -53,6 +57,19 @@ type Evento = {
   titulo: string;
   mensaje: string;
   tipo: "success" | "alert" | "info";
+};
+
+/** Geometría TopoJSON retornada por react-simple-maps */
+type GeoFeature = {
+  id: string;
+  properties: { name: string };
+};
+
+/** Forma mínima del game state que reciben los callbacks de eventos */
+type GameStateBridge = {
+  setOro: (val: number | ((prev: number) => number)) => void;
+  setTropas: (val: Tropas | ((prev: Tropas) => Tropas)) => void;
+  setPaises: (val: Record<string, Pais> | ((prev: Record<string, Pais>) => Record<string, Pais>)) => void;
 };
 
 const getDomId = (name: string): string => {
@@ -109,8 +126,8 @@ const getDemographicsInfo = (
   // Crecimiento Neto Diario
   const netRate = tasaNatalidadEfectiva - tasaMortalidadEfectiva;
   
-  let tendencia = "Estable / Lineal";
-  let tendenciaColor = "text-cyan-400";
+  let tendencia: string;
+  let tendenciaColor: string;
 
   if (isUnderAttack) {
     tendencia = "Colapso (Guerra)";
@@ -118,23 +135,21 @@ const getDemographicsInfo = (
   } else if (tieneBancarrota) {
     tendencia = "Crisis (Bancarrota)";
     tendenciaColor = "text-rose-500 font-bold animate-pulse";
+  } else if (netRate > 0.002) {
+    tendencia = "Crecimiento Agresivo";
+    tendenciaColor = "text-emerald-400 font-bold";
+  } else if (netRate > 0.0005) {
+    tendencia = "Crecimiento Saludable";
+    tendenciaColor = "text-emerald-500";
+  } else if (netRate > -0.0002 && netRate <= 0.0005) {
+    tendencia = "Estable / Lineal";
+    tendenciaColor = "text-cyan-400";
+  } else if (netRate > -0.001 && netRate <= -0.0002) {
+    tendencia = "Estancamiento / Decreciente";
+    tendenciaColor = "text-amber-500";
   } else {
-    if (netRate > 0.002) {
-      tendencia = "Crecimiento Agresivo";
-      tendenciaColor = "text-emerald-400 font-bold";
-    } else if (netRate > 0.0005) {
-      tendencia = "Crecimiento Saludable";
-      tendenciaColor = "text-emerald-500";
-    } else if (netRate > -0.0002 && netRate <= 0.0005) {
-      tendencia = "Estable / Lineal";
-      tendenciaColor = "text-cyan-400";
-    } else if (netRate > -0.001 && netRate <= -0.0002) {
-      tendencia = "Estancamiento / Decreciente";
-      tendenciaColor = "text-amber-500";
-    } else {
-      tendencia = "Crecimiento Negativo / Crisis";
-      tendenciaColor = "text-rose-500 font-bold";
-    }
+    tendencia = "Crecimiento Negativo / Crisis";
+    tendenciaColor = "text-rose-500 font-bold";
   }
 
   return {
@@ -175,6 +190,13 @@ export default function App() {
   const [speedLevel, setSpeedLevel] = useState<1 | 2 | 3>(1);
   const [paises, setPaises] = useState<Record<string, Pais>>({});
   const [tropas, setTropas] = useState<Tropas>({ infanteria: 0, caballeria: 0, artilleria: 0 });
+  const [catalogoTropas, setCatalogoTropas] = useState<Tropa[]>([]);
+  const catalogoTropasRef = useRef<Tropa[]>([]);
+  useEffect(() => { catalogoTropasRef.current = catalogoTropas; }, [catalogoTropas]);
+
+  const [tropasDetalle, setTropasDetalle] = useState<Record<number, number>>({});
+  const tropasDetalleRef = useRef<Record<number, number>>({});
+  useEffect(() => { tropasDetalleRef.current = tropasDetalle; }, [tropasDetalle]);
   const [presupuesto, setPresupuesto] = useState(0);
   const [habilidades, setHabilidades] = useState<Habilidad[]>([]);
   const [ataquesEnCola, setAtaquesEnCola] = useState<AtaqueEnCola[]>([]);
@@ -184,14 +206,20 @@ export default function App() {
   const { addNotification, triggerCriticalEvent, isPaused, logAction } = gameState;
 
   const [criticalCountdown, setCriticalCountdown] = useState<number | null>(null);
-  const [pendingCriticalEvent, setPendingCriticalEvent] = useState<any | null>(null);
+  const [pendingCriticalEvent, setPendingCriticalEvent] = useState<import('./types/tacticalEvents').CriticalEvent | null>(null);
 
   useEffect(() => {
     gameState.registerBridge({
       presupuesto,
       setPresupuesto,
       tropas,
-      setTropas,
+      setTropas: (val: Tropas | ((prev: Tropas) => Tropas)) => {
+        setTropas(prev => {
+          const next = typeof val === 'function' ? val(prev) : val;
+          setTropasDetalle(distribuirTropasDetalle(next.infanteria, next.caballeria, next.artilleria));
+          return next;
+        });
+      },
       paises,
       setPaises,
       pendingCriticalEvent,
@@ -216,7 +244,7 @@ export default function App() {
   ]);
 
   const [isDbLoading, setIsDbLoading] = useState(true);
-  const eventosAleatoriosRef = useRef<any[]>([]);
+  const eventosAleatoriosRef = useRef<import('./database/mockAPI').DBRandomEvent[]>([]);
   const criticalTemplatesRef = useRef<DBCriticalEvent[]>([]);
   const decayTemplatesRef = useRef<DBDecayingNotification[]>([]);
   const countryStatsRef = useRef<PaisBase[]>([]);
@@ -238,20 +266,20 @@ export default function App() {
   const [hoveredPais, setHoveredPais] = useState<Pais | null>(null);
   const [, setMousePos] = useState({ x: 0, y: 0 });
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
-  const timeoutRef = useRef<any>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [infanteriaAEnviar, setInfanteriaAEnviar] = useState(0);
   const [caballeriaAEnviar, setCaballeriaAEnviar] = useState(0);
   const [artilleriaAEnviar, setArtilleriaAEnviar] = useState(0);
-  const [infanteriaAMovilizar, setInfanteriaAMovilizar] = useState(0);
-  const [caballeriaAMovilizar, setCaballeriaAMovilizar] = useState(0);
-  const [artilleriaAMovilizar, setArtilleriaAMovilizar] = useState(0);
+  const [cantidadesReclutar, setCantidadesReclutar] = useState<Record<number, number>>({});
   const [mostrarArbol, setMostrarArbol] = useState(false);
   const [tabIyd, setTabIyd] = useState<"desarrollo" | "militar">("desarrollo");
+  // eslint-disable-next-line react-hooks/purity
   const diasParaEventoRef = useRef(10 + Math.floor(Math.random() * 6));
+  // eslint-disable-next-line react-hooks/purity
   const diasParaEventoEspecialRef = useRef(30 + Math.floor(Math.random() * 20)); // Cada 30 a 50 días (mitad de frecuencia)
   const isPanningRef = useRef(false);
-  const transformComponentRef = useRef<any>(null);
-  const techTreeTransformRef = useRef<any>(null);
+  const transformComponentRef = useRef<ReactZoomPanPinchRef | null>(null);
+  const techTreeTransformRef = useRef<ReactZoomPanPinchRef | null>(null);
 
   // Alinear el Árbol de Habilidades al extremo izquierdo al abrir o cambiar de pestaña
   useEffect(() => {
@@ -265,7 +293,7 @@ export default function App() {
     }
   }, [mostrarArbol, tabIyd]);
 
-  const generarStatsPais = (geo: any): Pais => {
+  const generarStatsPais = (geo: GeoFeature): Pais => {
     const id = geo.id || "000";
     const nameEN = geo.properties.name || "Unknown";
     const nombre = translateCountry(nameEN);
@@ -282,6 +310,12 @@ export default function App() {
     const tasa_natalidad = preset.tasa_natalidad ?? 0.0033;
     const tasa_mortalidad = preset.tasa_mortalidad ?? 0.0022;
 
+    const ejercito_ia_detalle_nuevo = distribuirTropasDetalle(
+      ejercito_ia_detalle.infanteria,
+      ejercito_ia_detalle.caballeria,
+      ejercito_ia_detalle.artilleria
+    );
+
     return {
       id: id,
       nombre: nombre,
@@ -291,13 +325,14 @@ export default function App() {
       conquistado: isAliado,
       oro_ia: 0,
       ejercito_ia_detalle: ejercito_ia_detalle,
+      ejercito_ia_detalle_nuevo: ejercito_ia_detalle_nuevo,
       tasa_natalidad: tasa_natalidad,
       tasa_mortalidad: tasa_mortalidad,
       dias_reclutamiento_agresivo: 0
     };
   };
 
-  const getPais = (geo: any): Pais => {
+  const getPais = (geo: GeoFeature): Pais => {
     return paises[geo.id] || generarStatsPais(geo);
   };
 
@@ -315,14 +350,13 @@ export default function App() {
   useEffect(() => {
     const bootstrap = async () => {
       try {
-        const [gameState, events, techTree, countryData, hqPresets, troopCosts, combatMults, mntTiers, simConsts, critTemplates, decayTemplates] = await Promise.all([
+        const [gameState, events, techTree, countryData, hqPresets, catalogo, mntTiers, simConsts, critTemplates, decayTemplates] = await Promise.all([
           fetchInitialGameState(),
           fetchRandomEvents(),
           fetchTechTree(),
           fetchCountryStats(),
           fetchHQStartingPresets(),
-          fetchTroopBaseCosts(),
-          fetchCombatMultipliers(),
+          fetchCatalogoTropas(),
           fetchMaintenanceTiers(),
           fetchSimulationConstants(),
           fetchCriticalEventTemplates(),
@@ -330,14 +364,25 @@ export default function App() {
         ]);
         setPresupuesto(gameState.presupuesto);
         setTropas(gameState.tropas);
+        setTropasDetalle(distribuirTropasDetalle(gameState.tropas.infanteria, gameState.tropas.caballeria, gameState.tropas.artilleria));
+        setCatalogoTropas(catalogo);
         eventosAleatoriosRef.current = events;
         criticalTemplatesRef.current = critTemplates;
         decayTemplatesRef.current = decayTemplates;
         countryStatsRef.current = countryData;
         setHabilidades(techTree);
         hqPresetsRef.current = hqPresets;
-        troopCostsRef.current = troopCosts;
-        combatMultipliersRef.current = combatMults;
+        // Derived base costs and combat multipliers for backwards compatibility in event modifiers if any
+        troopCostsRef.current = {
+          infanteria: catalogo.find(c => c.subtipo === 'infanteria')?.costo_base || 10,
+          caballeria: catalogo.find(c => c.subtipo === 'caballeria')?.costo_base || 25,
+          artilleria: catalogo.find(c => c.subtipo === 'artilleria')?.costo_base || 60,
+        };
+        combatMultipliersRef.current = {
+          infanteria: catalogo.find(c => c.subtipo === 'infanteria')?.multiplicador_combate || 1.0,
+          caballeria: catalogo.find(c => c.subtipo === 'caballeria')?.multiplicador_combate || 1.5,
+          artilleria: catalogo.find(c => c.subtipo === 'artilleria')?.multiplicador_combate || 3.0,
+        };
         maintenanceTiersRef.current = mntTiers;
         simConstantsRef.current = simConsts;
         // Actualizar intervalos de eventos con constantes cargadas
@@ -375,7 +420,7 @@ export default function App() {
           const geometries = worldData.objects.countries.geometries;
           const initialCountries: Record<string, Pais> = {};
 
-          geometries.forEach((geo: any) => {
+          geometries.forEach((geo: GeoFeature) => {
             const id = geo.id || "000";
             const nameEN = geo.properties ? geo.properties.name : "Unknown";
             const nombre = translateCountry(nameEN);
@@ -390,6 +435,12 @@ export default function App() {
             const tasa_natalidad = preset.tasa_natalidad ?? 0.0033;
             const tasa_mortalidad = preset.tasa_mortalidad ?? 0.0022;
 
+            const ejercito_ia_detalle_nuevo = distribuirTropasDetalle(
+              ejercito_ia_detalle.infanteria,
+              ejercito_ia_detalle.caballeria,
+              ejercito_ia_detalle.artilleria
+            );
+
             initialCountries[id] = {
               id: id,
               nombre: nombre,
@@ -399,6 +450,7 @@ export default function App() {
               conquistado: isAliado,
               oro_ia: 0,
               ejercito_ia_detalle: ejercito_ia_detalle,
+              ejercito_ia_detalle_nuevo: ejercito_ia_detalle_nuevo,
               tasa_natalidad: tasa_natalidad,
               tasa_mortalidad: tasa_mortalidad,
               dias_reclutamiento_agresivo: 0
@@ -424,8 +476,10 @@ export default function App() {
       if (pendingCriticalEvent) {
         triggerCriticalEvent(pendingCriticalEvent);
       }
-      setCriticalCountdown(null);
-      setPendingCriticalEvent(null);
+      setTimeout(() => {
+        setCriticalCountdown(null);
+        setPendingCriticalEvent(null);
+      }, 0);
       return;
     }
 
@@ -480,19 +534,19 @@ export default function App() {
 
       const choices = template.choices.map(choice => {
         const choiceLabel = formatString(choice.label);
-        const action = (gState: any) => {
+        const action = (gState: GameStateBridge) => {
           if (choice.efecto_oro) {
             gState.setOro((o: number) => Math.max(0, o + choice.efecto_oro!));
           }
           if (choice.efecto_infanteria || choice.efecto_caballeria || choice.efecto_artilleria) {
-            gState.setTropas((t: any) => ({
+            gState.setTropas((t: Tropas) => ({
               infanteria: Math.max(0, t.infanteria + (choice.efecto_infanteria || 0)),
               caballeria: Math.max(0, t.caballeria + (choice.efecto_caballeria || 0)),
               artilleria: Math.max(0, t.artilleria + (choice.efecto_artilleria || 0))
             }));
           }
           if (choice.hq_economia_multiplier && hqId) {
-            gState.setPaises((prev: any) => {
+            gState.setPaises((prev: Record<string, Pais>) => {
               const copy = { ...prev };
               if (copy[hqId]) {
                 copy[hqId] = { ...copy[hqId], economia: Math.floor(copy[hqId].economia * choice.hq_economia_multiplier!) };
@@ -501,7 +555,7 @@ export default function App() {
             });
           }
           if (choice.hq_poblacion_multiplier && hqId) {
-            gState.setPaises((prev: any) => {
+            gState.setPaises((prev: Record<string, Pais>) => {
               const copy = { ...prev };
               if (copy[hqId]) {
                 copy[hqId] = { ...copy[hqId], poblacion: Math.floor(copy[hqId].poblacion * choice.hq_poblacion_multiplier!) };
@@ -510,7 +564,7 @@ export default function App() {
             });
           }
           if (choice.target_ejercito_ia_multiplier && targetCountry) {
-            gState.setPaises((prev: any) => {
+            gState.setPaises((prev: Record<string, Pais>) => {
               const copy = { ...prev };
               if (copy[targetCountry.id]) {
                 copy[targetCountry.id] = { ...copy[targetCountry.id], ejercito_ia: Math.floor(copy[targetCountry.id].ejercito_ia * choice.target_ejercito_ia_multiplier!) };
@@ -519,7 +573,7 @@ export default function App() {
             });
           }
           if (choice.colony_economia_multiplier && targetAllied) {
-            gState.setPaises((prev: any) => {
+            gState.setPaises((prev: Record<string, Pais>) => {
               const copy = { ...prev };
               if (copy[targetAllied.id]) {
                 copy[targetAllied.id] = { ...copy[targetAllied.id], economia: Math.floor(copy[targetAllied.id].economia * choice.colony_economia_multiplier!) };
@@ -590,7 +644,7 @@ export default function App() {
         const label = formatString(option.label, optCostVal, optBenefitVal);
         const consequence = formatString(option.consequence, optCostVal, optBenefitVal);
 
-        const action = (gState: any) => {
+        const action = (gState: GameStateBridge) => {
           let computedOroChange = 0;
           if (option.efecto_oro) computedOroChange += option.efecto_oro;
           if (optBenefitVal) computedOroChange += optBenefitVal;
@@ -601,7 +655,7 @@ export default function App() {
           }
 
           if (option.efecto_infanteria || option.efecto_caballeria || option.efecto_artilleria) {
-            gState.setTropas((t: any) => ({
+            gState.setTropas((t: Tropas) => ({
               infanteria: Math.max(0, t.infanteria + (option.efecto_infanteria || 0)),
               caballeria: Math.max(0, t.caballeria + (option.efecto_caballeria || 0)),
               artilleria: Math.max(0, t.artilleria + (option.efecto_artilleria || 0))
@@ -609,7 +663,7 @@ export default function App() {
           }
 
           if (option.hq_economia_multiplier && hqId) {
-            gState.setPaises((prev: any) => {
+            gState.setPaises((prev: Record<string, Pais>) => {
               const copy = { ...prev };
               if (copy[hqId]) {
                 copy[hqId] = { ...copy[hqId], economia: Math.floor(copy[hqId].economia * option.hq_economia_multiplier!) };
@@ -619,7 +673,7 @@ export default function App() {
           }
 
           if (option.hq_poblacion_multiplier && hqId) {
-            gState.setPaises((prev: any) => {
+            gState.setPaises((prev: Record<string, Pais>) => {
               const copy = { ...prev };
               if (copy[hqId]) {
                 copy[hqId] = { ...copy[hqId], poblacion: Math.floor(copy[hqId].poblacion * option.hq_poblacion_multiplier!) };
@@ -629,7 +683,7 @@ export default function App() {
           }
 
           if (option.target_ejercito_ia_multiplier && targetCountry) {
-            gState.setPaises((prev: any) => {
+            gState.setPaises((prev: Record<string, Pais>) => {
               const copy = { ...prev };
               if (copy[targetCountry.id]) {
                 copy[targetCountry.id] = { ...copy[targetCountry.id], ejercito_ia: Math.floor(copy[targetCountry.id].ejercito_ia * option.target_ejercito_ia_multiplier!) };
@@ -639,7 +693,7 @@ export default function App() {
           }
 
           if (option.colony_economia_multiplier && targetAllied) {
-            gState.setPaises((prev: any) => {
+            gState.setPaises((prev: Record<string, Pais>) => {
               const copy = { ...prev };
               if (copy[targetAllied.id]) {
                 copy[targetAllied.id] = { ...copy[targetAllied.id], economia: Math.floor(copy[targetAllied.id].economia * option.colony_economia_multiplier!) };
@@ -649,7 +703,7 @@ export default function App() {
           }
 
           if (option.colony_poblacion_multiplier && targetAllied) {
-            gState.setPaises((prev: any) => {
+            gState.setPaises((prev: Record<string, Pais>) => {
               const copy = { ...prev };
               if (copy[targetAllied.id]) {
                 copy[targetAllied.id] = { ...copy[targetAllied.id], poblacion: Math.floor(copy[targetAllied.id].poblacion * option.colony_poblacion_multiplier!) };
@@ -671,9 +725,9 @@ export default function App() {
         };
       });
 
-      const onExpire = (gState: any) => {
+      const onExpire = (gState: GameStateBridge) => {
         if (template.onExpire_hq_economia_multiplier && hqId) {
-          gState.setPaises((prev: any) => {
+          gState.setPaises((prev: Record<string, Pais>) => {
             const copy = { ...prev };
             if (copy[hqId]) {
               copy[hqId] = { ...copy[hqId], economia: Math.floor(copy[hqId].economia * template.onExpire_hq_economia_multiplier!) };
@@ -682,7 +736,7 @@ export default function App() {
           });
         }
         if (template.onExpire_colony_poblacion_multiplier && targetAllied) {
-          gState.setPaises((prev: any) => {
+          gState.setPaises((prev: Record<string, Pais>) => {
             const copy = { ...prev };
             if (copy[targetAllied.id]) {
               copy[targetAllied.id] = { ...copy[targetAllied.id], poblacion: Math.floor(copy[targetAllied.id].poblacion * template.onExpire_colony_poblacion_multiplier!) };
@@ -840,6 +894,19 @@ export default function App() {
           pais.ejercito_ia_detalle.infanteria += addInf;
           pais.ejercito_ia_detalle.caballeria += addCab;
           pais.ejercito_ia_detalle.artilleria += addArt;
+
+          const detailedReclutas = distribuirTropasDetalle(addInf, addCab, addArt);
+          if (!pais.ejercito_ia_detalle_nuevo) {
+            pais.ejercito_ia_detalle_nuevo = distribuirTropasDetalle(
+              pais.ejercito_ia_detalle.infanteria - addInf,
+              pais.ejercito_ia_detalle.caballeria - addCab,
+              pais.ejercito_ia_detalle.artilleria - addArt
+            );
+          }
+          Object.entries(detailedReclutas).forEach(([tIdStr, qty]) => {
+            const tId = Number(tIdStr);
+            pais.ejercito_ia_detalle_nuevo[tId] = (pais.ejercito_ia_detalle_nuevo[tId] || 0) + qty;
+          });
         }
       }
 
@@ -896,6 +963,7 @@ export default function App() {
     let desertoresMsg = "";
     let huboDesercion = false;
     let nuevasTropas = { ...currentTropas };
+    let nuevasTropasDetalle = { ...tropasDetalleRef.current };
 
     // Restar mantenimiento
     currentPresupuesto -= costoMantenimiento;
@@ -912,6 +980,10 @@ export default function App() {
       nuevasTropas.infanteria = Math.max(0, nuevasTropas.infanteria - desInfanteria);
       nuevasTropas.caballeria = Math.max(0, nuevasTropas.caballeria - desCaballeria);
       nuevasTropas.artilleria = Math.max(0, nuevasTropas.artilleria - desArtilleria);
+
+      nuevasTropasDetalle = deducirTropasDetalle(nuevasTropasDetalle, catalogoTropasRef.current, desInfanteria, 'infanteria');
+      nuevasTropasDetalle = deducirTropasDetalle(nuevasTropasDetalle, catalogoTropasRef.current, desCaballeria, 'caballeria');
+      nuevasTropasDetalle = deducirTropasDetalle(nuevasTropasDetalle, catalogoTropasRef.current, desArtilleria, 'artilleria');
 
       desertoresMsg = `Tasa de deserción logística activa (${(desRate * 100).toFixed(1)}%). Bajas: -${desInfanteria} Inf, -${desCaballeria} Cab, -${desArtilleria} Art.`;
     }
@@ -945,15 +1017,21 @@ export default function App() {
         }
         let nuevaInf = nuevasTropas.infanteria;
         if (eventoAzar.efecto_infanteria !== undefined) {
-          nuevaInf = Math.max(0, nuevaInf + eventoAzar.efecto_infanteria);
+          const diff = eventoAzar.efecto_infanteria;
+          nuevasTropasDetalle = ajustarTropasDetalle(nuevasTropasDetalle, catalogoTropasRef.current, diff, 'infanteria');
+          nuevaInf = Math.max(0, nuevaInf + diff);
         }
         let nuevaCab = nuevasTropas.caballeria;
         if (eventoAzar.efecto_caballeria !== undefined) {
-          nuevaCab = Math.max(0, nuevaCab + eventoAzar.efecto_caballeria);
+          const diff = eventoAzar.efecto_caballeria;
+          nuevasTropasDetalle = ajustarTropasDetalle(nuevasTropasDetalle, catalogoTropasRef.current, diff, 'caballeria');
+          nuevaCab = Math.max(0, nuevaCab + diff);
         }
         let nuevaArt = nuevasTropas.artilleria;
         if (eventoAzar.efecto_artilleria !== undefined) {
-          nuevaArt = Math.max(0, nuevaArt + eventoAzar.efecto_artilleria);
+          const diff = eventoAzar.efecto_artilleria;
+          nuevasTropasDetalle = ajustarTropasDetalle(nuevasTropasDetalle, catalogoTropasRef.current, diff, 'artilleria');
+          nuevaArt = Math.max(0, nuevaArt + diff);
         }
         currentPresupuesto = nuevoOro;
         nuevasTropas = {
@@ -996,7 +1074,6 @@ export default function App() {
         if (totalTropasEnviadas <= 0) return;
 
         // Poder del Jugador (multiplicadores desde config y habilidades)
-        const cm = combatMultipliersRef.current;
         
         let multInf = 1.0;
         if (currentHabilidades.some(h => h.id === "M_B1_1" && h.desbloqueada)) multInf += 0.15;
@@ -1018,9 +1095,10 @@ export default function App() {
         if (currentHabilidades.some(h => h.id === "M_ORB_3" && h.desbloqueada)) multArt += 0.35;
         if (currentHabilidades.some(h => h.id === "M_PROTO_1" && h.desbloqueada)) multArt += 0.40;
 
-        const poderJugador = (infEnviada * cm.infanteria * multInf) +
-                             (cabEnviada * cm.caballeria * multCab) +
-                             (artEnviada * cm.artilleria * multArt);
+        const detalleJugadorEnviado = distribuirTropasDetalle(infEnviada, cabEnviada, artEnviada);
+        const poderJugador = calcularFuerzaTotal(detalleJugadorEnviado, catalogoTropasRef.current, 'infanteria') * multInf +
+                             calcularFuerzaTotal(detalleJugadorEnviado, catalogoTropasRef.current, 'caballeria') * multCab +
+                             calcularFuerzaTotal(detalleJugadorEnviado, catalogoTropasRef.current, 'artilleria') * multArt;
 
         // Poder de la IA defensora (debuffs de defensa enemiga)
         let iaDefenseMultiplier = 1.0;
@@ -1030,7 +1108,12 @@ export default function App() {
         iaDefenseMultiplier = Math.max(0.10, iaDefenseMultiplier);
 
         const detailIA = paisDestino.ejercito_ia_detalle || { infanteria: paisDestino.ejercito_ia, caballeria: 0, artilleria: 0 };
-        const basePoderIA = detailIA.infanteria * cm.infanteria + detailIA.caballeria * cm.caballeria + detailIA.artilleria * cm.artilleria;
+        const detailIANuevo = paisDestino.ejercito_ia_detalle_nuevo || distribuirTropasDetalle(
+          detailIA.infanteria,
+          detailIA.caballeria,
+          detailIA.artilleria
+        );
+        const basePoderIA = calcularFuerzaTotal(detailIANuevo, catalogoTropasRef.current);
         const poderIA = basePoderIA * iaDefenseMultiplier;
 
         // Tasa de bajas (basada en el ratio de poder con margen aleatorio y reducciones del jugador)
@@ -1068,7 +1151,7 @@ export default function App() {
 
         const victoria = poderJugador > poderIA;
 
-        let msg = "";
+        let msg: string;
         if (victoria) {
           msg = `¡Victoria en ${paisDestino.nombre}! Las defensas de la IA enemiga colapsaron. ` +
             `Bajas del jugador: 👤${bajasInfJugador} Infantería, ⚡${bajasCabJugador} Caballería, 💀${bajasArtJugador} Artillería (Total: ${totalBajasJugador}). ` +
@@ -1092,20 +1175,34 @@ export default function App() {
             ...paisDestino,
             conquistado: true,
             ejercito_ia: 0,
-            ejercito_ia_detalle: { infanteria: 0, caballeria: 0, artilleria: 0 }
+            ejercito_ia_detalle: { infanteria: 0, caballeria: 0, artilleria: 0 },
+            ejercito_ia_detalle_nuevo: distribuirTropasDetalle(0, 0, 0)
           };
           nuevasTropas.infanteria += survInfJugador;
           nuevasTropas.caballeria += survCabJugador;
           nuevasTropas.artilleria += survArtJugador;
+
+          // Integrar sobrevivientes al inventario del jugador
+          const detalleSurv = distribuirTropasDetalle(survInfJugador, survCabJugador, survArtJugador);
+          Object.entries(detalleSurv).forEach(([tIdStr, qty]) => {
+            const tId = Number(tIdStr);
+            nuevasTropasDetalle[tId] = (nuevasTropasDetalle[tId] || 0) + qty;
+          });
         } else {
           const nuevoDetalle = {
             infanteria: survInfIA,
             caballeria: survCabIA,
             artilleria: survArtIA
           };
+          let detailIANuevoActualizado = { ...detailIANuevo };
+          detailIANuevoActualizado = deducirTropasDetalle(detailIANuevoActualizado, catalogoTropasRef.current, bajasInfIA, 'infanteria');
+          detailIANuevoActualizado = deducirTropasDetalle(detailIANuevoActualizado, catalogoTropasRef.current, bajasCabIA, 'caballeria');
+          detailIANuevoActualizado = deducirTropasDetalle(detailIANuevoActualizado, catalogoTropasRef.current, bajasArtIA, 'artilleria');
+
           currentPaises[paisDestino.id] = {
             ...paisDestino,
             ejercito_ia_detalle: nuevoDetalle,
+            ejercito_ia_detalle_nuevo: detailIANuevoActualizado,
             ejercito_ia: nuevoDetalle.infanteria + nuevoDetalle.caballeria + nuevoDetalle.artilleria
           };
         }
@@ -1152,6 +1249,7 @@ export default function App() {
     // 7. Guardar todos los estados actualizados
     setPaises(currentPaises);
     setTropas(nuevasTropas);
+    setTropasDetalle(nuevasTropasDetalle);
     setPresupuesto(currentPresupuesto);
     setAtaquesEnCola(ataquesPendientes);
     if (habilidadesCambiadas) {
@@ -1196,6 +1294,13 @@ export default function App() {
       caballeria: prev.caballeria - caballeriaAEnviar,
       artilleria: prev.artilleria - artilleriaAEnviar
     }));
+    setTropasDetalle(prev => {
+      let next = { ...prev };
+      next = deducirTropasDetalle(next, catalogoTropasRef.current, infanteriaAEnviar, 'infanteria');
+      next = deducirTropasDetalle(next, catalogoTropasRef.current, caballeriaAEnviar, 'caballeria');
+      next = deducirTropasDetalle(next, catalogoTropasRef.current, artilleriaAEnviar, 'artilleria');
+      return next;
+    });
 
     setDiarioGuerra(prev => [{
       id: Math.random().toString(),
@@ -1216,37 +1321,29 @@ export default function App() {
     setArtilleriaAEnviar(0);
   };
 
-  const handleMovilizarFuerzas = () => {
+  const handleMovilizarUnidadEspecifica = (tropa: Tropa, cantidad: number) => {
     if (!paisSeleccionado || !paisSeleccionado.conquistado) return;
     const livePais = paises[paisSeleccionado.id] || paisSeleccionado;
 
-    if (infanteriaAMovilizar < 0 || caballeriaAMovilizar < 0 || artilleriaAMovilizar < 0) {
-      alert("Cantidad de tropas inválida.");
-      return;
-    }
-
-    const totalMovilizado = infanteriaAMovilizar + caballeriaAMovilizar + artilleriaAMovilizar;
-    if (totalMovilizado <= 0) {
-      alert("Debe seleccionar al menos una unidad para movilizar.");
-      return;
-    }
+    if (cantidad <= 0) return;
 
     const preset = getPresetForCountry(livePais.nombre);
     const multGral = preset.multiplicadorReclutamiento ?? 1.0;
     const multPesadas = preset.multiplicadorPesadas ?? 1.0;
 
-    const tc = troopCostsRef.current;
-    const costoInfUnit = Math.floor(tc.infanteria * multGral);
-    const costoCabUnit = Math.floor(tc.caballeria * multGral * multPesadas);
-    const costoArtUnit = Math.floor(tc.artilleria * multGral * multPesadas);
+    let unitCost = tropa.costo_base;
+    if (tropa.subtipo === 'infanteria') {
+      unitCost = Math.floor(unitCost * multGral);
+    } else {
+      unitCost = Math.floor(unitCost * multGral * multPesadas);
+    }
 
     let mobilizationCostMultiplier = 1.0;
     if (habilidades.some(h => h.id === "D_B1_3" && h.desbloqueada)) mobilizationCostMultiplier -= 0.10;
     if (habilidades.some(h => h.id === "D_EXP_4" && h.desbloqueada)) mobilizationCostMultiplier -= 0.20;
     if (habilidades.some(h => h.id === "D_SUPER_1" && h.desbloqueada)) mobilizationCostMultiplier -= 0.35;
 
-    const baseCostoTotal = infanteriaAMovilizar * costoInfUnit + caballeriaAMovilizar * costoCabUnit + artilleriaAMovilizar * costoArtUnit;
-    const costoTotal = Math.floor(baseCostoTotal * mobilizationCostMultiplier);
+    const costoTotal = Math.floor(unitCost * cantidad * mobilizationCostMultiplier);
 
     if (presupuesto < costoTotal) {
       alert("Presupuesto global insuficiente.");
@@ -1254,48 +1351,60 @@ export default function App() {
     }
 
     const scm = simConstantsRef.current;
-    let mobilizationPopLimit = scm.mobilizationPopLimit;
+    let mobPopLimit = scm.mobilizationPopLimit;
     if (habilidades.some(h => h.id === "D_CONV_3" && h.desbloqueada)) {
-      mobilizationPopLimit = 0.10;
+      mobPopLimit = 0.10;
     }
-    const maxMovilizable = Math.floor(livePais.poblacion * mobilizationPopLimit);
-    if (totalMovilizado > maxMovilizable) {
-      alert(`La movilización excede el límite crítico del ${(mobilizationPopLimit * 100).toFixed(0)}% de la población actual (Máximo: ${maxMovilizable} habitantes).`);
+    const maxMovilizable = Math.floor(livePais.poblacion * mobPopLimit);
+    if (cantidad > maxMovilizable) {
+      alert(`La movilización excede el límite crítico de población.`);
       return;
     }
 
-    // Aplicar los cambios
-    const esMasiva = totalMovilizado >= livePais.poblacion * scm.massiveMobilizationThreshold;
+    const esMasiva = cantidad >= livePais.poblacion * scm.massiveMobilizationThreshold;
+
+    // Actualizar país (población)
     setPaises(prev => {
-      const updated = { ...prev };
-      if (updated[livePais.id]) {
-        updated[livePais.id] = {
-          ...updated[livePais.id],
-          poblacion: updated[livePais.id].poblacion - totalMovilizado,
-          dias_reclutamiento_agresivo: esMasiva ? scm.aggressiveRecruitmentPenaltyDays : (updated[livePais.id].dias_reclutamiento_agresivo || 0)
+      const copy = { ...prev };
+      if (copy[livePais.id]) {
+        copy[livePais.id] = {
+          ...copy[livePais.id],
+          poblacion: copy[livePais.id].poblacion - cantidad,
+          dias_reclutamiento_agresivo: esMasiva ? scm.aggressiveRecruitmentPenaltyDays : (copy[livePais.id].dias_reclutamiento_agresivo || 0)
         };
       }
-      return updated;
+      return copy;
     });
 
+    // Descontar presupuesto
     setPresupuesto(prev => prev - costoTotal);
-    setTropas(prev => ({
-      infanteria: prev.infanteria + infanteriaAMovilizar,
-      caballeria: prev.caballeria + caballeriaAMovilizar,
-      artilleria: prev.artilleria + artilleriaAMovilizar
-    }));
 
+    // Añadir a las tropas del jugador (totales y detalles)
+    setTropas(prev => {
+      const copy = { ...prev };
+      copy[tropa.subtipo] += cantidad;
+      return copy;
+    });
+    setTropasDetalle(prev => {
+      const copy = { ...prev };
+      copy[tropa.tropa_id] = (copy[tropa.tropa_id] || 0) + cantidad;
+      return copy;
+    });
+
+    // Registrar en Diario de Guerra
     setDiarioGuerra(prev => [{
       id: Math.random().toString(),
       fecha: fechaVirtual,
-      titulo: `MOVILIZACIÓN DE RESERVAS: ${livePais.nombre.toUpperCase()}`,
-      mensaje: `Movilización exitosa en ${livePais.nombre}. Se convirtieron ${totalMovilizado} ciudadanos en tropas de reserva: 👤+${infanteriaAMovilizar} Inf, ⚡+${caballeriaAMovilizar} Cab, 💀+${artilleriaAMovilizar} Art.${esMasiva ? " ADVERTENCIA: La movilización masiva de personal reduce temporalmente la natalidad local en un -20% durante los siguientes 90 días virtuales por sustracción de mano de obra civil." : ""} Costo total deducido: €${costoTotal.toLocaleString()}.`,
+      titulo: `MOVILIZACIÓN SATELLITAL: ${livePais.nombre.toUpperCase()}`,
+      mensaje: `Desplegado con éxito: ${cantidad} unidades de "${tropa.nombre_tropa}" en ${livePais.nombre}. Costo de operaciones: €${costoTotal.toLocaleString()}.${esMasiva ? " Penalización de natalidad activa por movilización masiva local." : ""}`,
       tipo: "success"
     }, ...prev]);
 
-    setInfanteriaAMovilizar(0);
-    setCaballeriaAMovilizar(0);
-    setArtilleriaAMovilizar(0);
+    // Resetear contador local para esta tropa
+    setCantidadesReclutar(prev => ({
+      ...prev,
+      [tropa.tropa_id]: 0
+    }));
     setPaisSeleccionado(null);
   };
 
@@ -1381,6 +1490,7 @@ export default function App() {
               setActivePartida(save);
               setPresupuesto(save.budget);
               setTropas({ infanteria: save.tropas_infanteria, caballeria: save.tropas_caballeria, artilleria: save.tropas_artilleria });
+              setTropasDetalle(distribuirTropasDetalle(save.tropas_infanteria, save.tropas_caballeria, save.tropas_artilleria));
               setPlayerHQ({ id: save.hq, nombre: translateCountry(save.hq) });
               setFechaVirtual(new Date(new Date(2099, 10, 12).getTime() + (save.campaignDays - 1) * 24 * 3600 * 1000));
               setSpeedLevel(save.velocidad as 1 | 2 | 3 || 1);
@@ -1394,6 +1504,7 @@ export default function App() {
               setActivePartida(save);
               setPresupuesto(save.budget);
               setTropas({ infanteria: save.tropas_infanteria, caballeria: save.tropas_caballeria, artilleria: save.tropas_artilleria });
+              setTropasDetalle(distribuirTropasDetalle(save.tropas_infanteria, save.tropas_caballeria, save.tropas_artilleria));
               setPlayerHQ({ id: save.hq, nombre: translateCountry(save.hq) });
               setFechaVirtual(new Date(new Date(2099, 10, 12).getTime() + (save.campaignDays - 1) * 24 * 3600 * 1000));
               setSpeedLevel(save.velocidad as 1 | 2 | 3 || 1);
@@ -1451,10 +1562,12 @@ export default function App() {
           if (preset) {
             setTropas({ ...preset.tropas });
             setPresupuesto(preset.presupuesto);
+            setTropasDetalle(distribuirTropasDetalle(preset.tropas.infanteria, preset.tropas.caballeria, preset.tropas.artilleria));
           } else {
             // Safety fallback (should never happen if DB is loaded)
             setTropas({ infanteria: 3000, caballeria: 500, artilleria: 100 });
             setPresupuesto(5000);
+            setTropasDetalle(distribuirTropasDetalle(3000, 500, 100));
           }
 
           setCurrentScreen('game');
@@ -1527,6 +1640,9 @@ export default function App() {
       alert("ERROR: NO SE PUDO GUARDAR EL ESTADO EN LA BASE DE DATOS.");
     }
   };
+
+  // Leer refs una sola vez antes del render para satisfacer react-hooks/refs
+  const simConsts = simConstantsRef.current;
 
   return (
     <div className="h-[100dvh] w-full flex flex-col bg-[#030712] text-slate-200 overflow-hidden select-none" onMouseMove={handleMouseMove}>
@@ -1867,19 +1983,13 @@ export default function App() {
       </div>
 
       {/* DRAWER LATERAL */}
+      {/* eslint-disable-next-line react-hooks/refs */}
       {paisSeleccionado && (() => {
         const livePais = paises[paisSeleccionado.id] || paisSeleccionado;
         const demo = getDemographicsInfo(livePais, presupuesto, ataquesEnCola, habilidades);
         const preset = getPresetForCountry(livePais.nombre);
         const multGral = preset.multiplicadorReclutamiento ?? 1.0;
         const multPesadas = preset.multiplicadorPesadas ?? 1.0;
-
-        const tc = troopCostsRef.current;
-        const costoInfUnit = Math.floor(tc.infanteria * multGral);
-        const costoCabUnit = Math.floor(tc.caballeria * multGral * multPesadas);
-        const costoArtUnit = Math.floor(tc.artilleria * multGral * multPesadas);
-
-        const costoTotal = infanteriaAMovilizar * costoInfUnit + caballeriaAMovilizar * costoCabUnit + artilleriaAMovilizar * costoArtUnit;
         return (
           <div className="absolute right-4 md:right-6 top-20 w-[calc(100%-2rem)] sm:w-80 bg-slate-950/95 border border-slate-700 shadow-2xl rounded-sm backdrop-blur-xl overflow-hidden z-30 flex flex-col max-h-[70dvh] md:max-h-[calc(100dvh-186px)]">
             <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-gradient-to-r from-slate-900 to-slate-950">
@@ -2099,122 +2209,118 @@ export default function App() {
                         Convierta población local en fuerzas de reserva. Costo deducido de su oro global.
                       </div>
 
-                      {/* Movilizar Infantería */}
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between text-[9px] text-slate-400 font-mono">
-                          <span>👤 Reclutar Infantería (€{costoInfUnit})</span>
-                          <span className="text-slate-500">Costo: €{(infanteriaAMovilizar * costoInfUnit).toLocaleString()}</span>
-                        </div>
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            min="0"
-                            value={infanteriaAMovilizar || ""}
-                            onChange={(e) => setInfanteriaAMovilizar(Math.max(0, Number(e.target.value)))}
-                            className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 focus:outline-none focus:border-cyan-500 font-mono text-xs"
-                            placeholder="Cantidad"
-                          />
-                          <button
-                            onClick={() => {
-                              const maxAffordable = Math.floor(presupuesto / costoInfUnit);
-                              const maxByPop = Math.max(0, Math.floor(livePais.poblacion * 0.05) - caballeriaAMovilizar - artilleriaAMovilizar);
-                              setInfanteriaAMovilizar(Math.min(maxAffordable, maxByPop));
-                            }}
-                            className="bg-slate-800 hover:bg-slate-700 text-[10px] px-2.5 rounded-sm border border-slate-700 text-slate-300 font-mono active:scale-95 transition-all"
-                            title="Máxima infantería reclutable según presupuesto y límite de población"
-                          >
-                            MAX
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Movilizar Caballería */}
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between text-[9px] text-slate-400 font-mono">
-                          <span>⚡ Reclutar Caballería (€{costoCabUnit})</span>
-                          <span className="text-slate-500">Costo: €{(caballeriaAMovilizar * costoCabUnit).toLocaleString()}</span>
-                        </div>
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            min="0"
-                            value={caballeriaAMovilizar || ""}
-                            onChange={(e) => setCaballeriaAMovilizar(Math.max(0, Number(e.target.value)))}
-                            className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 focus:outline-none focus:border-cyan-500 font-mono text-xs"
-                            placeholder="Cantidad"
-                          />
-                          <button
-                            onClick={() => {
-                              const maxAffordable = Math.floor(presupuesto / costoCabUnit);
-                              const maxByPop = Math.max(0, Math.floor(livePais.poblacion * 0.05) - infanteriaAMovilizar - artilleriaAMovilizar);
-                              setCaballeriaAMovilizar(Math.min(maxAffordable, maxByPop));
-                            }}
-                            className="bg-slate-800 hover:bg-slate-700 text-[10px] px-2.5 rounded-sm border border-slate-700 text-slate-300 font-mono active:scale-95 transition-all"
-                            title="Máxima caballería reclutable según presupuesto y límite de población"
-                          >
-                            MAX
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Movilizar Artillería */}
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between text-[9px] text-slate-400 font-mono">
-                          <span>💀 Reclutar Artillería (€{costoArtUnit})</span>
-                          <span className="text-slate-500">Costo: €{(artilleriaAMovilizar * costoArtUnit).toLocaleString()}</span>
-                        </div>
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            min="0"
-                            value={artilleriaAMovilizar || ""}
-                            onChange={(e) => setArtilleriaAMovilizar(Math.max(0, Number(e.target.value)))}
-                            className="flex-1 bg-slate-900 border border-slate-700 rounded-sm px-3 py-1.5 text-slate-200 focus:outline-none focus:border-cyan-500 font-mono text-xs"
-                            placeholder="Cantidad"
-                          />
-                          <button
-                            onClick={() => {
-                              const maxAffordable = Math.floor(presupuesto / costoArtUnit);
-                              const maxByPop = Math.max(0, Math.floor(livePais.poblacion * 0.05) - infanteriaAMovilizar - caballeriaAMovilizar);
-                              setArtilleriaAMovilizar(Math.min(maxAffordable, maxByPop));
-                            }}
-                            className="bg-slate-800 hover:bg-slate-700 text-[10px] px-2.5 rounded-sm border border-slate-700 text-slate-300 font-mono active:scale-95 transition-all"
-                            title="Máxima artillería reclutable según presupuesto y límite de población"
-                          >
-                            MAX
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Resumen de Movilización y Botón */}
-                      <div className="pt-3 border-t border-slate-800 space-y-3">
-                        <div className="space-y-1 text-[10px] font-mono">
-                          <div className="flex justify-between text-slate-400">
-                            <span>Ciudadanos a movilizar:</span>
-                            <span className={infanteriaAMovilizar + caballeriaAMovilizar + artilleriaAMovilizar > Math.floor(livePais.poblacion * 0.05) ? "text-rose-500 font-bold" : "text-slate-200"}>
-                              {infanteriaAMovilizar + caballeriaAMovilizar + artilleriaAMovilizar} / {Math.floor(livePais.poblacion * 0.05)} (Máx 5%)
-                            </span>
+                      {/* Límite de movilización */}
+                      {(() => {
+                        const mobPopLimit = habilidades.some(h => h.id === "D_CONV_3" && h.desbloqueada)
+                          ? 0.10
+                          : simConsts.mobilizationPopLimit;
+                        const maxMovilizable = Math.floor(livePais.poblacion * mobPopLimit);
+                        return (
+                          <div className="bg-slate-950/60 border border-slate-800/80 p-2 rounded text-[10px] font-mono text-slate-400 flex flex-col gap-1">
+                            <div className="flex justify-between">
+                              <span>Límite ({(mobPopLimit * 100).toFixed(0)}% Pop):</span>
+                              <span className="text-cyan-400 font-bold">{maxMovilizable.toLocaleString()}</span>
+                            </div>
+                            <div className="w-full bg-slate-900 h-1 rounded overflow-hidden">
+                              <div className="bg-cyan-500 h-full" style={{ width: `${mobPopLimit * 100}%` }}></div>
+                            </div>
                           </div>
-                          <div className="flex justify-between text-slate-400">
-                            <span>Costo de operaciones:</span>
-                            <span className={costoTotal > presupuesto ? "text-rose-500 font-bold" : "text-emerald-400 font-bold"}>
-                              €{costoTotal.toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
+                        );
+                      })()}
 
-                        <button
-                          onClick={handleMovilizarFuerzas}
-                          disabled={
-                            (infanteriaAMovilizar + caballeriaAMovilizar + artilleriaAMovilizar) <= 0 ||
-                            (infanteriaAMovilizar + caballeriaAMovilizar + artilleriaAMovilizar) > Math.floor(livePais.poblacion * 0.05) ||
-                            costoTotal > presupuesto
+                      {/* Grid de Tarjetas Tácticas de Unidades */}
+                      <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                        {catalogoTropas.map((tropa) => {
+                          let unitCost = tropa.costo_base;
+                          if (tropa.subtipo === 'infanteria') {
+                            unitCost = Math.floor(unitCost * multGral);
+                          } else {
+                            unitCost = Math.floor(unitCost * multGral * multPesadas);
                           }
-                          className="w-full bg-cyan-700 hover:bg-cyan-600 disabled:bg-slate-800 disabled:text-slate-600 disabled:border-slate-700 text-white font-bold py-3 px-4 rounded-sm border border-cyan-500 uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer disabled:cursor-not-allowed"
-                        >
-                          <Zap className="w-4 h-4" />
-                          Movilizar Fuerzas
-                        </button>
+
+                          let mobilizationCostMultiplier = 1.0;
+                          if (habilidades.some(h => h.id === "D_B1_3" && h.desbloqueada)) mobilizationCostMultiplier -= 0.10;
+                          if (habilidades.some(h => h.id === "D_EXP_4" && h.desbloqueada)) mobilizationCostMultiplier -= 0.20;
+                          if (habilidades.some(h => h.id === "D_SUPER_1" && h.desbloqueada)) mobilizationCostMultiplier -= 0.35;
+
+                          const cantidad = cantidadesReclutar[tropa.tropa_id] || 0;
+                          const costoTotalUnidad = Math.floor(unitCost * cantidad * mobilizationCostMultiplier);
+
+                          const mobPopLimit = habilidades.some(h => h.id === "D_CONV_3" && h.desbloqueada)
+                            ? 0.10
+                            : simConsts.mobilizationPopLimit;
+                          const maxMovilizable = Math.floor(livePais.poblacion * mobPopLimit);
+
+                          const disabled = cantidad <= 0 || costoTotalUnidad > presupuesto || cantidad > maxMovilizable;
+                          const emoji = tropa.subtipo === 'infanteria' ? '🤖' : tropa.subtipo === 'caballeria' ? '⚡' : '💀';
+                          const subtipoLabel = tropa.subtipo.toUpperCase();
+
+                          return (
+                            <div key={tropa.tropa_id} className="font-mono text-xs border border-slate-800 bg-slate-900/40 p-2.5 rounded hover:border-slate-700 transition-all space-y-2">
+                              {/* Nombre de la unidad con degradado */}
+                              <div className="font-bold flex items-center justify-between text-[10px]">
+                                <span className="bg-gradient-to-r from-cyan-400 to-amber-400 bg-clip-text text-transparent truncate pr-1">
+                                  {emoji} [{subtipoLabel}] - {tropa.nombre_tropa}
+                                </span>
+                              </div>
+
+                              {/* Atributos y Costo unitario */}
+                              <div className="flex justify-between items-center text-[10px]">
+                                <div className="flex gap-2 text-[9px]">
+                                  <span className="text-slate-400">ATK: <span className="text-cyan-400 font-bold">{tropa.multiplicador_combate * 10}</span></span>
+                                  <span className="text-slate-400">DEF: <span className="text-amber-400 font-bold">{tropa.bono_especial * 10}</span></span>
+                                </div>
+                                <div className="text-emerald-400 font-bold text-[10px]">
+                                  €{unitCost} <span className="text-[8px] text-slate-500 font-normal">c/u</span>
+                                </div>
+                              </div>
+
+                              {/* Contador y confirmación */}
+                              <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-800/60">
+                                {/* Controles [ - ] [ + ] */}
+                                <div className="flex items-center gap-1 bg-slate-950/60 px-1.5 py-0.5 rounded border border-slate-800">
+                                  <button 
+                                    type="button"
+                                    onClick={() => setCantidadesReclutar(prev => ({
+                                      ...prev,
+                                      [tropa.tropa_id]: Math.max(0, (prev[tropa.tropa_id] || 0) - 100)
+                                    }))}
+                                    className="w-5 h-5 text-slate-400 hover:text-rose-400 font-bold flex items-center justify-center rounded hover:bg-slate-900 transition-all select-none"
+                                  >
+                                    -
+                                  </button>
+                                  <span className="w-10 text-center font-bold text-[10px] text-slate-200">
+                                    {cantidad}
+                                  </span>
+                                  <button 
+                                    type="button"
+                                    onClick={() => setCantidadesReclutar(prev => {
+                                      const currentVal = prev[tropa.tropa_id] || 0;
+                                      const nextVal = currentVal + 100;
+                                      return {
+                                        ...prev,
+                                        [tropa.tropa_id]: Math.min(nextVal, maxMovilizable)
+                                      };
+                                    })}
+                                    className="w-5 h-5 text-slate-400 hover:text-cyan-400 font-bold flex items-center justify-center rounded hover:bg-slate-900 transition-all select-none"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+
+                                {/* Confirmar e inyectar */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleMovilizarUnidadEspecifica(tropa, cantidad)}
+                                  disabled={disabled}
+                                  className="flex-1 bg-slate-950/80 border border-slate-800 hover:border-cyan-500/50 hover:bg-cyan-950/20 disabled:opacity-40 disabled:hover:border-slate-800 disabled:hover:bg-slate-950/80 text-[9px] uppercase tracking-wider font-bold py-1 px-2 rounded text-slate-300 hover:text-white transition-all disabled:cursor-not-allowed text-center"
+                                >
+                                  {costoTotalUnidad > 0 ? `€${costoTotalUnidad.toLocaleString()}` : '🛠️ Movilizar'}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </>
                   )}
@@ -2372,7 +2478,7 @@ export default function App() {
                         ? Math.min(100, Math.max(0, ((totalCalculatedTime - (hab.tiempoRestante || 0)) / totalCalculatedTime) * 100))
                         : 0;
 
-                      let cardClass = "";
+                      let cardClass: string;
                       if (hab.desbloqueada) {
                         cardClass = "bg-cyan-950/40 border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.3)]";
                       } else if (hab.enDesarrollo) {

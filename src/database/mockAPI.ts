@@ -775,17 +775,6 @@ const HQ_STARTING_PRESETS: HQStartingPreset[] = [
   }
 ];
 
-const TROOP_BASE_COSTS: TroopBaseCosts = {
-  infanteria: 10,
-  caballeria: 25,
-  artilleria: 60
-};
-
-const COMBAT_POWER_MULTIPLIERS: CombatPowerMultipliers = {
-  infanteria: 1.0,
-  caballeria: 1.5,
-  artilleria: 3.0
-};
 
 const MAINTENANCE_TIERS: MaintenanceTier[] = [
   { minTroops: 100001, costInf: 0.02,  costCab: 0.05,  costArt: 0.15, desertionRate: 0.015 },
@@ -852,13 +841,6 @@ export const fetchHQStartingPresets = async (): Promise<HQStartingPreset[]> => {
   return HQ_STARTING_PRESETS;
 };
 
-export const fetchTroopBaseCosts = async (): Promise<TroopBaseCosts> => {
-  return TROOP_BASE_COSTS;
-};
-
-export const fetchCombatMultipliers = async (): Promise<CombatPowerMultipliers> => {
-  return COMBAT_POWER_MULTIPLIERS;
-};
 export const fetchMaintenanceTiers = async (): Promise<MaintenanceTier[]> => {
   return MAINTENANCE_TIERS;
 };
@@ -927,61 +909,5 @@ export const getRealEjercitoDetalle = (isAliado: boolean, population: number, se
   };
 };
 
-// ─── INTEGRACIÓN DEL MÓDULO DE TROPAS CON POSTGRESQL ───────────
 
-export interface TropaCatalogo {
-  id: number;
-  nombre: string;
-  costoBase: number;
-  multiplicadorCombate: number;
-  subtipo: 'infanteria' | 'caballeria' | 'artilleria';
-  bono: number;
-}
-
-export interface NuevaTropaPayload {
-  nombre: string;
-  costoBase: number;
-  multiplicadorCombate: number;
-  subtipo: 'infanteria' | 'caballeria' | 'artilleria';
-  bono: number;
-}
-
-export interface ReporteLogistica {
-  division: string;
-  totalTropas: number;
-  costoPromedio: number;
-  multiplicadorCombatePromedio: number;
-  costoMaximo: number;
-  costoMinimo: number;
-}
-
-/**
- * Obtiene el catálogo completo de tropas desde Supabase.
- */
-export const fetchCatalogoTropas = async (): Promise<TropaCatalogo[]> => {
-  const { data } = await supabase.from('tropas').select('*');
-  return (data ?? []) as TropaCatalogo[];
-};
-
-/**
- * Registra una nueva tropa en Supabase.
- */
-export const registrarNuevaTropaBD = async (data: NuevaTropaPayload): Promise<{ success: boolean; message: string; data?: TropaCatalogo; error?: string }> => {
-  const { data: inserted, error } = await supabase
-    .from('tropas')
-    .insert(data)
-    .select()
-    .single();
-  if (error) {
-    return { success: false, error: error.code, message: error.message };
-  }
-  return { success: true, message: 'Tropa registrada', data: inserted as TropaCatalogo };
-};
-
-/**
- * Reporte de logística — pendiente de implementación en Supabase.
- */
-export const fetchReporteLogistica = async (): Promise<ReporteLogistica[]> => {
-  return [];
-};
 
