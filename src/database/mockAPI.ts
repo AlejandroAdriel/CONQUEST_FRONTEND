@@ -1,21 +1,13 @@
-// ============================================================
-// CONQUEST — CAPA DE ACCESO A DATOS (MOCK API)
-// Archivo centralizado de datos y endpoints asíncronos.
-// Ningún dato se exporta directamente. Solo funciones async.
-// ============================================================
-import { supabase } from './supabaseClient';
 import type { Tropas, TroopBaseCosts, CombatPowerMultipliers } from './troops';
 import type { TropasDetalle } from '../types/tropas';
 
-// Los tipos de tropa viven en troops.ts y types/tropas.ts — se re-exportan aquí
-// para no romper importaciones existentes.
+// Re-exportación de tipos estructurales de tropas para compatibilidad histórica.
 export type { Tropas, TroopBaseCosts, CombatPowerMultipliers, TropasDetalle };
 
-// ─── TIPOS ───────────────────────────────────────────────────
-
-/** Alias de EventoAleatorio para imports que usen DBRandomEvent */
+// Alias para mantener la referencia histórica de DBRandomEvent.
 export type DBRandomEvent = EventoAleatorio;
 
+// Estructura de datos para un evento aleatorio simple de la simulación diaria.
 export interface EventoAleatorio {
   id: string;
   titulo: string;
@@ -27,6 +19,7 @@ export interface EventoAleatorio {
   efecto_artilleria?: number;
 }
 
+// Estructura de una opción seleccionable dentro de un evento crítico interactivo.
 export interface DBCriticalChoice {
   id: string;
   label: string;
@@ -41,6 +34,7 @@ export interface DBCriticalChoice {
   colony_economia_multiplier?: number;
 }
 
+// Estructura de un evento crítico narrativo con opciones y consecuencias tácticas.
 export interface DBCriticalEvent {
   code: string;
   title: string;
@@ -48,6 +42,7 @@ export interface DBCriticalEvent {
   choices: DBCriticalChoice[];
 }
 
+// Estructura de una opción seleccionable en un evento temporal de barra de progreso.
 export interface DBDecayingOption {
   id: string;
   label: string;
@@ -67,6 +62,7 @@ export interface DBDecayingOption {
   logActionMsg: string;
 }
 
+// Estructura de una alerta con cuenta regresiva visual y decaimiento en el HUD.
 export interface DBDecayingNotification {
   code: string;
   title: string;
@@ -82,14 +78,15 @@ export interface DBDecayingNotification {
   onExpire_colony_poblacion_multiplier?: number;
 }
 
+// Estructura de las condiciones iniciales (oro y tropas) para HQ elegibles.
 export interface HQStartingPreset {
   tier: number;
-  countries: string[];          // nombres normalizados (minúsculas)
+  countries: string[];
   presupuesto: number;
   tropas: Tropas;
 }
 
-
+// Estructura para definir costos de mantenimiento y deserciones por rango de tropas.
 export interface MaintenanceTier {
   minTroops: number;
   costInf: number;
@@ -98,6 +95,7 @@ export interface MaintenanceTier {
   desertionRate: number;
 }
 
+// Estructura para almacenar las constantes de balance de la simulación de juego.
 export interface SimulationConstants {
   dailyEconomicGrowthRate: number;
   incomeFormulaEcoFactor: number;
@@ -117,19 +115,14 @@ export interface SimulationConstants {
   attackTransitDays: number;
 }
 
-// ─── DATOS PRIVADOS (NO EXPORTADOS) ─────────────────────────
-
+// Estado del presupuesto y ejércitos para inicializar una nueva campaña.
 const INITIAL_GAME_STATE = {
   presupuesto: 5000,
   tropas: { infanteria: 5000, caballeria: 2000, artilleria: 500 }
 };
 
-// COUNTRY_NAMES_ES eliminado — ahora en tabla paises_base
-// realPopulations eliminado — ahora en tabla paises_base
-// COUNTRY_PRESETS eliminado — ahora en tabla paises_base
-
+// Colección local de eventos diarios aleatorios 
 const eventosAleatorios: EventoAleatorio[] = [
-  // ── ALERTAS (Pérdidas) ──────────────────────────────────────
   { 
     id: "random-01",
     titulo: "SABOTAJE EN LA RED CLIMÁTICA",
@@ -175,12 +168,10 @@ const eventosAleatorios: EventoAleatorio[] = [
   { 
     id: "random-07",
     titulo: "ATAQUE A CADENA DE SUMINISTRO",
-    mensaje: "Agentes hostiles infiltraron nuestra cadena de producción de municiones inteligentes, insertando firmware defectuoso. Lote completo inutilizado. Impacto: -300 Créditos de Oro.", 
+    mensaje: "Agentes hostiles infiltraron nuestra cadena de producción de micronúcleos inteligentes, insertando firmware defectuoso. Lote completo inutilizado. Impacto: -300 Créditos de Oro.", 
     tipo: "alert", 
     efecto_oro: -300
   },
-
-  // ── ÉXITOS (Ganancias) ──────────────────────────────────────
   { 
     id: "random-08",
     titulo: "CAMPAÑA DE CONSCRIPCIÓN SATELITAL",
@@ -230,8 +221,6 @@ const eventosAleatorios: EventoAleatorio[] = [
     tipo: "success", 
     efecto_infanteria: 300
   },
-
-  // ── INFORMATIVOS (Sin efecto mecánico) ──────────────────────
   { 
     id: "random-15",
     titulo: "TREGUA DIGITAL ESTABLECIDA",
@@ -270,6 +259,7 @@ const eventosAleatorios: EventoAleatorio[] = [
   }
 ];
 
+// Colección local de eventos interactivos con decisiones 
 const CRITICAL_EVENT_TEMPLATES: DBCriticalEvent[] = [
   {
     code: "CORP_MERGER_OFFER",
@@ -465,6 +455,7 @@ const CRITICAL_EVENT_TEMPLATES: DBCriticalEvent[] = [
   }
 ];
 
+// Colección local de alertas de decaimiento temporal en el HUD
 const DECAY_EVENT_TEMPLATES: DBDecayingNotification[] = [
   {
     code: "NET_MINING_OVERLOAD",
@@ -614,8 +605,7 @@ const DECAY_EVENT_TEMPLATES: DBDecayingNotification[] = [
   }
 ];
 
-// ─── TABLAS DE CONFIGURACIÓN DE JUEGO (GAME CONFIG TABLES) ──
-
+// Presets de presupuesto y tropas iniciales según el Tier de importancia del país del HQ.
 const HQ_STARTING_PRESETS: HQStartingPreset[] = [
   {
     tier: 1,
@@ -631,13 +621,13 @@ const HQ_STARTING_PRESETS: HQStartingPreset[] = [
   },
   {
     tier: 3,
-    countries: [],  // Fallback: cualquier país no listado en tiers superiores
+    countries: [],
     presupuesto: 5000,
     tropas: { infanteria: 3000, caballeria: 500, artilleria: 100 }
   }
 ];
 
-
+// Tabla de costos diarios de mantenimiento y deserción clasificados por tamaño del ejército.
 const MAINTENANCE_TIERS: MaintenanceTier[] = [
   { minTroops: 100001, costInf: 0.018, costCab: 0.045, costArt: 0.10,  desertionRate: 0.012 },
   { minTroops: 50001,  costInf: 0.012, costCab: 0.032, costArt: 0.08,  desertionRate: 0.008 },
@@ -645,13 +635,14 @@ const MAINTENANCE_TIERS: MaintenanceTier[] = [
   { minTroops: 0,      costInf: 0.004, costCab: 0.012, costArt: 0.032, desertionRate: 0.001 }
 ];
 
+// Constantes globales de balanceo del simulador de campaña y combate.
 const SIMULATION_CONSTANTS: SimulationConstants = {
-  dailyEconomicGrowthRate:    0.00005,  // crecimiento orgánico diario de la economía de cada país
-  incomeFormulaEcoFactor:     0.1,      // peso del GDP en la fórmula de ingresos
-  incomeFormulaPopFactor:     0.001,    // peso de la población en la fórmula de ingresos
-  incomeDivisor:              800,      // divisor global (↓ = más ingresos); era 2000 → muy bajo
-  conquestBonusPerCountry:    0.02,     // bonus por país conquistado (era 0.05 → snowball fuerte)
-  iaRecruitmentCost:          150,      // oro que gasta la IA por ronda de reclutamiento (era 100)
+  dailyEconomicGrowthRate:    0.00005,
+  incomeFormulaEcoFactor:     0.1,
+  incomeFormulaPopFactor:     0.001,
+  incomeDivisor:              800,
+  conquestBonusPerCountry:    0.02,
+  iaRecruitmentCost:          150,
   iaRecruitMinReclutas:       5,
   iaRecruitMaxReclutas:       15,
   eventIntervalMin:           10,
@@ -661,50 +652,45 @@ const SIMULATION_CONSTANTS: SimulationConstants = {
   mobilizationPopLimit:       0.05,
   massiveMobilizationThreshold: 0.01,
   aggressiveRecruitmentPenaltyDays: 90,
-  attackTransitDays:          8         // era 17 → muy lento; 8 días es más ágil
+  attackTransitDays:          8
 };
 
-// ─── SIMULADOR DE DELAY DE RED ──────────────────────────────
-
+// Generador de delay simulado para asincronía de red.
 const simulateNetworkDelay = () => new Promise(r => setTimeout(r, 500));
 
-// ─── ENDPOINTS ASÍNCRONOS (SERVICIOS) ───────────────────────
-
+// Retorna el presupuesto y tropas iniciales del jugador.
 export const fetchInitialGameState = async () => {
   await simulateNetworkDelay();
   return INITIAL_GAME_STATE;
 };
 
+// Retorna la lista de plantillas de eventos aleatorios de simulación.
 export const fetchRandomEvents = async () => {
   await simulateNetworkDelay();
   return eventosAleatorios;
 };
 
-
-
-
-
+// Retorna las plantillas de inicio para la selección de HQ.
 export const fetchHQStartingPresets = async (): Promise<HQStartingPreset[]> => {
   return HQ_STARTING_PRESETS;
 };
 
+// Retorna las escalas de coste de mantenimiento del ejército.
 export const fetchMaintenanceTiers = async (): Promise<MaintenanceTier[]> => {
   return MAINTENANCE_TIERS;
 };
 
+// Retorna los coeficientes numéricos que controlan el ciclo de simulación.
 export const fetchSimulationConstants = async (): Promise<SimulationConstants> => {
   return SIMULATION_CONSTANTS;
 };
 
+// Retorna las plantillas de decisiones e impactos para eventos críticos interactivos.
 export const fetchCriticalEventTemplates = async (): Promise<DBCriticalEvent[]> => {
   return CRITICAL_EVENT_TEMPLATES;
 };
 
+// Retorna las plantillas de alertas con decaimiento temporal en el HUD.
 export const fetchDecayEventTemplates = async (): Promise<DBDecayingNotification[]> => {
   return DECAY_EVENT_TEMPLATES;
 };
-
-
-
-
-

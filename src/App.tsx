@@ -22,7 +22,7 @@ import {
   normalizeName, getRealPopulation, getRealEconomy, getRealEjercitoDetalle,
 } from "./database/countries";
 import type { OperarioUser } from "./types/user";
-import { logoutOperator, getPersistedOperator, refreshAuthSession } from "./database/auth";
+import { logoutOperator, refreshAuthSession } from "./database/auth";
 import { saveGame, initializeNewGame } from "./database/saves";
 import { fetchTechTree } from "./database/game";
 import {
@@ -49,7 +49,7 @@ import SelectHQ from "./components/SelectHQ";
 import UserProfile from "./components/UserProfile";
 import { ActionLog } from "./components/ActionLog";
 import { geoMiller } from "d3-geo-projection";
-// Geometría del mapa del mundo (TopoJSON)
+
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
 type AtaqueEnCola = {
@@ -67,13 +67,13 @@ type Evento = {
   tipo: "success" | "alert" | "info";
 };
 
-/** Geometría TopoJSON retornada por react-simple-maps */
+
 type GeoFeature = {
   id: string;
   properties: { name: string };
 };
 
-/** Forma mínima del game state que reciben los callbacks de eventos */
+
 type GameStateBridge = {
   setOro: (val: number | ((prev: number) => number)) => void;
   setTropas: (val: Tropas | ((prev: Tropas) => Tropas)) => void;
@@ -102,36 +102,36 @@ const getDemographicsInfo = (
   let tasaNatalidadEfectiva = pais.tasa_natalidad ?? 0.0033;
   let tasaMortalidadEfectiva = pais.tasa_mortalidad ?? 0.0022;
 
-  // 1. Reclutamiento Agresivo: penalización natalidad -20%
+  
   const tieneReclutamientoAgresivo = pais.dias_reclutamiento_agresivo !== undefined && pais.dias_reclutamiento_agresivo > 0;
   if (tieneReclutamientoAgresivo) {
     tasaNatalidadEfectiva *= 0.8;
   }
 
-  // 5. Singularidad Tecnológica (D_SUPER_2): aumenta la natalidad en conquistados un +25%
+  
   if (pais.conquistado && habilidades.some(h => h.id === "D_SUPER_2" && h.desbloqueada)) {
     tasaNatalidadEfectiva *= 1.25;
   }
 
-  // 2. Colapso por Invasión: mortalidad 4.0x
+  
   const isUnderAttack = ataquesEnCola.some(a => a.pais_destino_id === pais.id);
   if (isUnderAttack) {
     tasaMortalidadEfectiva *= 4.0;
   }
 
-  // 3. Hambruna / Bancarrota Global: si presupuesto global es 0 y es conquistado, mortalidad +50%
+  
   const tieneBancarrota = currentPresupuesto <= 0 && pais.conquistado;
   if (tieneBancarrota) {
     tasaMortalidadEfectiva *= 1.5;
   }
 
-  // 4. Sinergias de I+D: -15% de mortalidad permanente
+  
   const tieneMedicos = habilidades.some(h => (h.id === "M_EXP_3" || h.nombre === "Inyecciones de Nanobots Médicos") && h.desbloqueada);
   if (tieneMedicos && pais.conquistado) {
     tasaMortalidadEfectiva *= 0.85;
   }
 
-  // Crecimiento Neto Diario
+  
   const netRate = tasaNatalidadEfectiva - tasaMortalidadEfectiva;
 
   let tendencia = "Estable / Lineal";
@@ -179,7 +179,7 @@ export default function App() {
 
   useEffect(() => {
     const restoreSession = async () => {
-      // refreshAuthSession: verifica Supabase Auth y actualiza localStorage
+      
       const user = await refreshAuthSession();
       if (user) {
         setCurrentUser(user);
@@ -237,7 +237,7 @@ export default function App() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // Referencias para evitar cierres obsoletos en la simulación
+  
   const presupuestoRef = useRef(presupuesto);
   const tropasRef = useRef(tropas);
   const paisesRef = useRef(paises);
@@ -281,15 +281,15 @@ export default function App() {
   const [cantidadesReclutar, setCantidadesReclutar] = useState<Record<number, number>>({});
   const [mostrarArbol, setMostrarArbol] = useState(false);
   const [tabIyd, setTabIyd] = useState<"desarrollo" | "militar">("desarrollo");
-  // eslint-disable-next-line react-hooks/purity
+  
   const diasParaEventoRef = useRef(10 + Math.floor(Math.random() * 6));
-  // eslint-disable-next-line react-hooks/purity
-  const diasParaEventoEspecialRef = useRef(30 + Math.floor(Math.random() * 20)); // Cada 30 a 50 días (mitad de frecuencia)
+  
+  const diasParaEventoEspecialRef = useRef(30 + Math.floor(Math.random() * 20)); 
   const isPanningRef = useRef(false);
   const transformComponentRef = useRef<ReactZoomPanPinchRef | null>(null);
   const techTreeTransformRef = useRef<ReactZoomPanPinchRef | null>(null);
 
-  // Alinear el Árbol de Habilidades al extremo izquierdo al abrir o cambiar de pestaña
+  
   useEffect(() => {
     if (mostrarArbol) {
       const timer = setTimeout(() => {
@@ -354,7 +354,7 @@ export default function App() {
     };
   }, []);
 
-  // Bootstrap: Carga inicial de datos desde la capa de acceso
+  
   useEffect(() => {
     const bootstrap = async () => {
       try {
@@ -389,7 +389,7 @@ export default function App() {
         combatMultipliersRef.current = derivarCombatMultipliers(catalogo);
         maintenanceTiersRef.current = mntTiers;
         simConstantsRef.current = simConsts;
-        // Actualizar intervalos de eventos con constantes cargadas
+        
         diasParaEventoRef.current = simConsts.eventIntervalMin + Math.floor(Math.random() * simConsts.eventIntervalRandom);
         diasParaEventoEspecialRef.current = simConsts.specialEventIntervalMin + Math.floor(Math.random() * simConsts.specialEventIntervalRandom);
       } finally {
@@ -401,11 +401,11 @@ export default function App() {
 
   useEffect(() => {
     if (currentScreen === 'game' && playerHQ) {
-      // Timeout táctico para asegurar que el SVG del mapa ya se dibujó en el DOM
+      
       const timer = setTimeout(() => {
         if (transformComponentRef.current) {
-          // API: zoomToElement(nodeId, scale, animationTime, animationType)
-          // Usamos escala 8 para enfocar bien países pequeños
+          
+          
           transformComponentRef.current.zoomToElement(getDomId(playerHQ.nombre), 8, 1800, "easeOutQuart");
         }
       }, 150);
@@ -413,7 +413,7 @@ export default function App() {
     }
   }, [currentScreen, playerHQ]);
 
-  // Cargar geometrías e inicializar todos los países al iniciar el juego
+  
   useEffect(() => {
     if (Object.keys(paises).length > 0) return;
     if (currentScreen === 'game' && playerHQ && countryStatsRef.current.length > 0 && !paisesInicializados) {
@@ -494,16 +494,16 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [criticalCountdown, pendingCriticalEvent]);
 
-  // Helper para valores proporcionales al presupuesto
+  
   const getProportionalValue = (basePercent: number = 0.1, minValue: number = 1000): number => {
     const value = Math.floor(presupuestoRef.current * basePercent);
     return Math.max(value, minValue);
   };
 
   const lanzarEventoEspecial = () => {
-    const isCritical = Math.random() < 0.125; // Críticos un cuarto de frecuentes que antes
+    const isCritical = Math.random() < 0.125; 
 
-    // Obtener listas de países dinámicamente
+    
     const currentPaises = { ...paisesRef.current };
     const allied = Object.values(currentPaises).filter(p => p.conquistado);
     const hostile = Object.values(currentPaises).filter(p => !p.conquistado);
@@ -511,20 +511,20 @@ export default function App() {
 
     if (isCritical) {
       if (criticalTemplatesRef.current.length === 0) return;
-      // Elegir una plantilla aleatoria
+      
       const template = criticalTemplatesRef.current[Math.floor(Math.random() * criticalTemplatesRef.current.length)];
 
-      // Validar requisitos de plantilla
+      
       if ((template.code === "BORDER_MOBILIZATION" || template.code === "BORDER_SMUGGLING_RAID" || template.code === "DISSIDENT_TREATY") && (allied.length === 0 || hostile.length === 0)) return;
       if (template.code === "TACTICAL_ALLIANCE_OFFER" || template.code === "SPY_NETWORK_LEAK") {
         if (hostile.length === 0) return;
       }
 
-      // Elegir objetivos aleatorios
+      
       const targetCountry = hostile.length > 0 ? hostile[Math.floor(Math.random() * hostile.length)] : null;
       const targetAllied = allied.length > 0 ? allied[Math.floor(Math.random() * allied.length)] : null;
 
-      // Parsear placeholders
+      
       const formatString = (str: string): string => {
         if (!str) return "";
         return str
@@ -606,7 +606,7 @@ export default function App() {
       setPendingCriticalEvent(picked);
       setCriticalCountdown(3);
     } else {
-      // Lanzar un DecayingNotification (Eventos temporales con balances de recursos profundos y expiraciones)
+      
       if (decayTemplatesRef.current.length === 0) return;
       const template = decayTemplatesRef.current[Math.floor(Math.random() * decayTemplatesRef.current.length)];
 
@@ -616,7 +616,7 @@ export default function App() {
       const targetCountry = hostile.length > 0 ? hostile[Math.floor(Math.random() * hostile.length)] : null;
       const targetAllied = allied.length > 0 ? allied[Math.floor(Math.random() * allied.length)] : null;
 
-      // Calcular valores proporcionales
+      
       const costVal = template.costProportionalPercent ? getProportionalValue(template.costProportionalPercent) : 0;
       const benefitVal = template.benefitProportionalPercent ? getProportionalValue(template.benefitProportionalPercent) : 0;
 
@@ -781,21 +781,22 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isPlaying, speedLevel, isSimulationPaused]);
 
+  // Loop de simulación diaria: procesa la economía, ataques en curso, desarrollo de habilidades y eventos aleatorios.
   useEffect(() => {
     if (currentScreen !== 'game' || !isPlaying || isSimulationPaused) return;
 
-    // 1. Obtener valores actuales desde las referencias para evitar stale closures
+    
     const currentPaises = { ...paisesRef.current };
     const currentTropas = { ...tropasRef.current };
     let currentPresupuesto = presupuestoRef.current;
     const currentHabilidades = habilidadesRef.current;
 
-    // Si los países aún no están inicializados, no simulamos este día
+    
     if (Object.keys(currentPaises).length === 0) return;
 
     let totalIngresoJugador = 0;
     
-    // Dynamic modifiers from unlocked skills
+    
     let goldMultiplier = 1.0;
     if (currentHabilidades.some(h => h.id === "D_B1_1" && h.desbloqueada)) goldMultiplier += 0.10;
     if (currentHabilidades.some(h => h.id === "D_EXP_1" && h.desbloqueada)) goldMultiplier += 0.15;
@@ -812,66 +813,66 @@ export default function App() {
 
     const nuevosMensajes: Evento[] = [];
 
-    // 2. Simulación para cada país
+    
     Object.keys(currentPaises).forEach(id => {
       const pais = { ...currentPaises[id] };
-      // A. Población dinámica (Cálculo demográfico realista y asimétrico con modificadores dinámicos)
+      
       let tasaNatalidadEfectiva = pais.tasa_natalidad ?? 0.0033;
       let tasaMortalidadEfectiva = pais.tasa_mortalidad ?? 0.0022;
 
-      // 1. Reclutamiento Agresivo: penalización natalidad -20%
+      
       if (pais.dias_reclutamiento_agresivo && pais.dias_reclutamiento_agresivo > 0) {
         tasaNatalidadEfectiva *= 0.8;
         pais.dias_reclutamiento_agresivo -= 1;
       }
 
-      // 2. Colapso por Invasión: mortalidad 4.0x
+      
       const isUnderAttack = ataquesEnCola.some(a => a.pais_destino_id === pais.id);
       if (isUnderAttack) {
         tasaMortalidadEfectiva *= 4.0;
       }
 
-      // 3. Hambruna / Bancarrota Global: si presupuesto <= 0 en conquistado, mortalidad +50%
+      
       if (currentPresupuesto <= 0 && pais.conquistado) {
         tasaMortalidadEfectiva *= 1.5;
       }
 
-      // 4. Sinergias de I+D: investigación médica M_EXP_3 reduce -15% mortalidad en conquistados
+      
       const tieneMedicos = currentHabilidades.some(h => (h.id === "M_EXP_3" || h.nombre === "Inyecciones de Nanobots Médicos") && h.desbloqueada);
       if (tieneMedicos && pais.conquistado) {
         tasaMortalidadEfectiva *= 0.85;
       }
 
-      // 5. Singularidad Tecnológica (D_SUPER_2): aumenta la natalidad en conquistados un +25%
+      
       if (pais.conquistado && currentHabilidades.some(h => h.id === "D_SUPER_2" && h.desbloqueada)) {
         tasaNatalidadEfectiva *= 1.25;
       }
 
-      // Ecuación demográfica neta diaria
+      
       const nacimientosDia = pais.poblacion * (tasaNatalidadEfectiva / 100);
       const defuncionesDia = pais.poblacion * (tasaMortalidadEfectiva / 100);
       pais.poblacion = Math.round(pais.poblacion + nacimientosDia - defuncionesDia);
 
-      // B. Economía dinámica (Crecimiento orgánico diario)
+      
       pais.economia = pais.economia * (1 + currentGrowthRate);
 
-      // C. Generación de Oro balanceada (Fórmula base con factores configurables)
+      
       const ingreso = ((pais.economia * sc.incomeFormulaEcoFactor) + (pais.poblacion * sc.incomeFormulaPopFactor)) / sc.incomeDivisor;
 
       if (pais.conquistado) {
-        // Si pertenece al jugador, sumamos a sus ingresos con multiplicador tech
+        
         totalIngresoJugador += ingreso * goldMultiplier;
       } else {
-        // Si pertenece a la IA, se acumula en su tesoro interno
+        
         pais.oro_ia = (pais.oro_ia || 0) + ingreso;
 
-        // D. Fuerza Militar Dinámica (Reclutamiento IA)
+        
         const seed = id.charCodeAt(0) + (id.length > 1 ? id.charCodeAt(1) : 0);
         const targetEjercito = Math.max(100, Math.floor(Math.sqrt(pais.poblacion) * (5 + (seed % 5))));
         if (pais.ejercito_ia < targetEjercito && pais.oro_ia >= sc.iaRecruitmentCost) {
           pais.oro_ia -= sc.iaRecruitmentCost;
 
-          // Modificaciones de reclutamiento IA (cibersabotajes)
+          
           let recruitmentMultiplier = 1.0;
           if (currentHabilidades.some(h => h.id === "M_EXP_6" && h.desbloqueada)) {
             recruitmentMultiplier *= 0.75;
@@ -918,11 +919,11 @@ export default function App() {
       currentPaises[id] = pais;
     });
 
-    // Redondear el ingreso del jugador aplicando el multiplicador por expansión por país conquistado
+    
     const numConquistados = Object.values(currentPaises).filter(p => p.conquistado).length;
     totalIngresoJugador = Math.floor(totalIngresoJugador * (1 + numConquistados * sc.conquestBonusPerCountry));
 
-    // D_ULTIMATE: 2% de probabilidad diaria de anexar pacíficamente un país enemigo al azar
+    
     const tieneUltimateDesarrollo = currentHabilidades.some(h => h.id === "D_ULTIMATE" && h.desbloqueada);
     if (tieneUltimateDesarrollo && Math.random() < 0.02) {
       const unconqueredCountries = Object.values(currentPaises).filter(p => !p.conquistado);
@@ -943,10 +944,10 @@ export default function App() {
       }
     }
 
-    // 3. Mantenimiento del Jugador y Crisis de Suministros escalonada (Economía sustentable)
+    
     const totalTropasJugador = currentTropas.infanteria + currentTropas.caballeria + currentTropas.artilleria;
 
-    // Buscar el tier de mantenimiento aplicable según el tamaño del ejército
+    
     const mntTier = maintenanceTiersRef.current.find(t => totalTropasJugador >= t.minTroops)
       || { costInf: 0.005, costCab: 0.015, costArt: 0.04, desertionRate: 0.001, minTroops: 0 };
     const mntInf = mntTier.costInf;
@@ -954,7 +955,7 @@ export default function App() {
     const mntArt = mntTier.costArt;
     const desRate = mntTier.desertionRate;
 
-    // Modificadores de mantenimiento de habilidades
+    
     let maintenanceMultiplier = 1.0;
     if (currentHabilidades.some(h => h.id === "D_EXP_2" && h.desbloqueada)) maintenanceMultiplier -= 0.15;
     if (currentHabilidades.some(h => h.id === "D_CONV_2" && h.desbloqueada)) maintenanceMultiplier -= 0.25;
@@ -970,14 +971,14 @@ export default function App() {
     let nuevasTropas = { ...currentTropas };
     let nuevasTropasDetalle = { ...tropasDetalleRef.current };
 
-    // Restar mantenimiento
+    
     currentPresupuesto -= costoMantenimiento;
 
     if (currentPresupuesto <= 0 && totalTropasJugador > 0) {
       currentPresupuesto = 0;
       huboDesercion = true;
 
-      // Deserción escalonada con penalización mínima de 1 unidad si existe ese tipo
+      
       const desInfanteria = Math.max(nuevasTropas.infanteria > 0 ? 1 : 0, Math.floor(nuevasTropas.infanteria * desRate));
       const desCaballeria = Math.max(nuevasTropas.caballeria > 0 ? 1 : 0, Math.floor(nuevasTropas.caballeria * desRate));
       const desArtilleria = Math.max(nuevasTropas.artilleria > 0 ? 1 : 0, Math.floor(nuevasTropas.artilleria * desRate));
@@ -993,10 +994,10 @@ export default function App() {
       desertoresMsg = `Tasa de deserción logística activa (${(desRate * 100).toFixed(1)}%). Bajas: -${desInfanteria} Inf, -${desCaballeria} Cab, -${desArtilleria} Art.`;
     }
 
-    // Sumar el ingreso diario
+    
     currentPresupuesto += totalIngresoJugador;
 
-    // 4. Diario de Guerra - Eventos de simulación diaria
+    
     if (huboDesercion) {
       nuevosMensajes.push({
         id: Math.random().toString(),
@@ -1007,7 +1008,7 @@ export default function App() {
       });
     }
 
-    // 5. Procesamiento de Eventos Aleatorios
+    
     diasParaEventoRef.current -= 1;
     if (diasParaEventoRef.current <= 0) {
       diasParaEventoRef.current = sc.eventIntervalMin + Math.floor(Math.random() * sc.eventIntervalRandom);
@@ -1015,7 +1016,7 @@ export default function App() {
       if (evts.length > 0) {
         const eventoAzar = evts[Math.floor(Math.random() * evts.length)];
 
-        // Aplicamos el efecto del evento sobre el presupuesto y tropas del momento
+        
         let nuevoOro = currentPresupuesto;
         if (eventoAzar.efecto_oro !== undefined) {
           nuevoOro = Math.max(0, nuevoOro + eventoAzar.efecto_oro);
@@ -1055,14 +1056,14 @@ export default function App() {
       }
     }
 
-    // 5b. Procesamiento de Eventos Especiales (Interactivos o Críticos)
+    
     diasParaEventoEspecialRef.current -= 1;
     if (diasParaEventoEspecialRef.current <= 0) {
       diasParaEventoEspecialRef.current = sc.specialEventIntervalMin + Math.floor(Math.random() * sc.specialEventIntervalRandom);
       lanzarEventoEspecial();
     }
 
-    // 6. Procesar ataques en cola (impactos de combate)
+        // Resolución de combate: calcula la fuerza militar, determina las bajas de ambos bandos y gestiona la conquista de territorios.
     const ataquesPendientes: AtaqueEnCola[] = [];
     const copiaAtaques = [...ataquesEnCola];
 
@@ -1078,7 +1079,7 @@ export default function App() {
 
         if (totalTropasEnviadas <= 0) return;
 
-        // Poder del Jugador (multiplicadores desde config y habilidades)
+        
         
         let multInf = 1.0;
         if (currentHabilidades.some(h => h.id === "M_B1_1" && h.desbloqueada)) multInf += 0.15;
@@ -1105,7 +1106,7 @@ export default function App() {
                              calcularFuerzaTotal(detalleJugadorEnviado, catalogoTropasRef.current, 'caballeria') * multCab +
                              calcularFuerzaTotal(detalleJugadorEnviado, catalogoTropasRef.current, 'artilleria') * multArt;
 
-        // Poder de la IA defensora (debuffs de defensa enemiga)
+        
         let iaDefenseMultiplier = 1.0;
         if (currentHabilidades.some(h => h.id === "M_EXP_2" && h.desbloqueada)) iaDefenseMultiplier -= 0.15;
         if (currentHabilidades.some(h => h.id === "M_PROTO_2" && h.desbloqueada)) iaDefenseMultiplier -= 0.50;
@@ -1121,7 +1122,7 @@ export default function App() {
         const basePoderIA = calcularFuerzaTotal(detailIANuevo, catalogoTropasRef.current);
         const poderIA = basePoderIA * iaDefenseMultiplier;
 
-        // Tasa de bajas (basada en el ratio de poder con margen aleatorio y reducciones del jugador)
+        
         const ratioIA = poderIA / (poderJugador || 1);
         const ratioJugador = poderJugador / (poderIA || 1);
 
@@ -1134,7 +1135,7 @@ export default function App() {
         const rateJugador = Math.min(0.95, (0.1 + Math.random() * 0.3) * ratioIA * casualtyMultiplier);
         const rateIA = Math.min(0.95, (0.2 + Math.random() * 0.4) * ratioJugador);
 
-        // Bajas
+        
         const bajasInfJugador = Math.min(infEnviada, Math.floor(infEnviada * rateJugador));
         const bajasCabJugador = Math.min(cabEnviada, Math.floor(cabEnviada * rateJugador));
         const bajasArtJugador = Math.min(artEnviada, Math.floor(artEnviada * rateJugador));
@@ -1144,12 +1145,12 @@ export default function App() {
         const bajasCabIA = Math.min(detailIA.caballeria, Math.floor(detailIA.caballeria * rateIA));
         const bajasArtIA = Math.min(detailIA.artilleria, Math.floor(detailIA.artilleria * rateIA));
 
-        // Sobrevivientes del jugador
+        
         const survInfJugador = infEnviada - bajasInfJugador;
         const survCabJugador = cabEnviada - bajasCabJugador;
         const survArtJugador = artEnviada - bajasArtJugador;
 
-        // Sobrevivientes de la IA
+        
         const survInfIA = detailIA.infanteria - bajasInfIA;
         const survCabIA = detailIA.caballeria - bajasCabIA;
         const survArtIA = detailIA.artilleria - bajasArtIA;
@@ -1187,7 +1188,7 @@ export default function App() {
           nuevasTropas.caballeria += survCabJugador;
           nuevasTropas.artilleria += survArtJugador;
 
-          // Integrar sobrevivientes al inventario del jugador
+          
           const detalleSurv = distribuirTropasDetalle(survInfJugador, survCabJugador, survArtJugador);
           Object.entries(detalleSurv).forEach(([tIdStr, qty]) => {
             const tId = Number(tIdStr);
@@ -1216,7 +1217,7 @@ export default function App() {
       }
     });
 
-    // 6b. Procesar cola de investigación (I+D)
+    
     let habilidadesCambiadas = false;
     const updatedHabilidades = currentHabilidades.map(hab => {
       if (hab.enDesarrollo) {
@@ -1246,12 +1247,12 @@ export default function App() {
       return hab;
     });
 
-    // Si hay nuevos mensajes, agregarlos al Diario de Guerra
+    
     if (nuevosMensajes.length > 0) {
       setDiarioGuerra(prevDiario => [...nuevosMensajes, ...prevDiario]);
     }
 
-    // 7. Guardar todos los estados actualizados
+    
     setPaises(currentPaises);
     setTropas(nuevasTropas);
     setTropasDetalle(nuevasTropasDetalle);
@@ -1326,6 +1327,7 @@ export default function App() {
     setArtilleriaAEnviar(0);
   };
 
+  // Movilización de unidad específica: valida los costos y límites de población, realiza la transacción y recluta la unidad en la base de datos.
   const handleMovilizarUnidadEspecifica = async (tropa: Tropa, cantidad: number) => {
     if (!paisSeleccionado || !paisSeleccionado.conquistado) return;
     const livePais = paises[paisSeleccionado.id] || paisSeleccionado;
@@ -1366,8 +1368,8 @@ export default function App() {
       return;
     }
 
-    // ── TRANSACCIÓN EN DB (si hay partida activa) ──────────────
-    // reclutar_tropas valida oro, aplica el descuento y suma tropas de forma ACID.
+    
+    
     if (activePartida) {
       const { error: rpcError } = await supabase.rpc('reclutar_tropas', {
         p_jugador_id: activePartida.id,
@@ -1384,7 +1386,7 @@ export default function App() {
 
     const esMasiva = cantidad >= livePais.poblacion * scm.massiveMobilizationThreshold;
 
-    // Actualizar país (población)
+    
     setPaises(prev => {
       const copy = { ...prev };
       if (copy[livePais.id]) {
@@ -1397,10 +1399,10 @@ export default function App() {
       return copy;
     });
 
-    // Descontar presupuesto
+    
     setPresupuesto(prev => prev - costoTotal);
 
-    // Añadir a las tropas del jugador (totales y detalles)
+    
     setTropas(prev => {
       const copy = { ...prev };
       copy[tropa.subtipo] += cantidad;
@@ -1412,7 +1414,7 @@ export default function App() {
       return copy;
     });
 
-    // Registrar en Diario de Guerra
+    
     setDiarioGuerra(prev => [{
       id: Math.random().toString(),
       fecha: fechaVirtual,
@@ -1421,7 +1423,7 @@ export default function App() {
       tipo: "success"
     }, ...prev]);
 
-    // Resetear contador local para esta tropa
+    
     setCantidadesReclutar(prev => ({
       ...prev,
       [tropa.tropa_id]: 0
@@ -1429,22 +1431,23 @@ export default function App() {
     setPaisSeleccionado(null);
   };
 
+  // Transacción de desbloqueo de habilidad: valida costos con multiplicadores de burocracia, comprueba requisitos e inicia el desarrollo en la DB.
   const handleDesbloquearHabilidad = async (habilidad: Habilidad) => {
     if (habilidad.desbloqueada || habilidad.enDesarrollo) return;
 
-    // Multiplicador de burocracia: +5% por cada país conquistado
+    
     const conqueredCount = Object.values(paises).filter(p => p.conquistado).length;
     const multiplicadorBurocracia = 1 + 0.05 * conqueredCount;
     const costoFinal = Math.floor(habilidad.costo * multiplicadorBurocracia);
     const tiempoFinal = Math.max(1, Math.floor((habilidad.tiempo_investigacion_dias || 30) * multiplicadorBurocracia));
 
-    // Validación de presupuesto (client-side fast-fail)
+    
     if (presupuesto < costoFinal) {
       alert("No hay suficiente presupuesto.");
       return;
     }
 
-    // Regla especial de UI: M_SEC requiere al menos 2 de los 3 finales militares
+    
     if (habilidad.id === "M_SEC") {
       const finalesMilitares = habilidades.filter(
         h => ["M_13", "M_23", "M_33"].includes(h.id) && h.desbloqueada
@@ -1455,9 +1458,9 @@ export default function App() {
       }
     }
 
-    // ── TRANSACCIÓN EN DB ───────────────────────────────────────
-    // comprar_habilidad valida: ownership, prerrequisitos en cadena
-    // y duplicados — todo de forma ACID en el servidor.
+    
+    
+    
     if (activePartida) {
       const { error: rpcError } = await supabase.rpc('comprar_habilidad', {
         p_jugador_id:   activePartida.id,
@@ -1472,7 +1475,7 @@ export default function App() {
     }
 
 
-    // Descontar presupuesto y activar el temporizador de investigación (estado de UI local)
+    
     setPresupuesto(prev => prev - costoFinal);
     setHabilidades(prev =>
       prev.map(h =>
@@ -1576,10 +1579,11 @@ export default function App() {
   if (currentScreen === 'select_hq') {
     return (
       <SelectHQ
+        // Despliegue de HQ: inicializa el presupuesto y tropas iniciales del jugador según el nivel de importancia (Tier) del país seleccionado.
         onDeploy={(pais) => {
           setPlayerHQ(pais);
 
-          // Buscar tier del HQ desde la tabla de presets cargada
+          
           const norm = pais.nombre.toLowerCase();
           const presets = hqPresetsRef.current;
           const matched = presets.find(p => p.countries.some(c => norm.includes(c)));
@@ -1591,7 +1595,7 @@ export default function App() {
             setPresupuesto(preset.presupuesto);
             setTropasDetalle(distribuirTropasDetalle(preset.tropas.infanteria, preset.tropas.caballeria, preset.tropas.artilleria));
           } else {
-            // Safety fallback (should never happen if DB is loaded)
+            
             setTropas({ infanteria: 3000, caballeria: 500, artilleria: 100 });
             setPresupuesto(5000);
             setTropasDetalle(distribuirTropasDetalle(3000, 500, 100));
@@ -1668,12 +1672,11 @@ export default function App() {
     }
   };
 
-  // Leer refs una sola vez antes del render para satisfacer react-hooks/refs
+  
   const simConsts = simConstantsRef.current;
 
   return (
     <div className="h-[100dvh] w-full flex flex-col bg-[#030712] text-slate-200 overflow-hidden select-none" onMouseMove={handleMouseMove}>
-      {/* HUD preaviso parpadeante */}
       {criticalCountdown !== null && (
         <div className="fixed right-4 top-20 z-[100] w-[320px] bg-red-950/85 border border-red-700 shadow-[0_0_40px_rgba(220,38,38,0.25)] backdrop-blur-sm animate-fade-in pointer-events-none select-none font-mono">
           <div className="p-4 space-y-3">
@@ -1687,7 +1690,6 @@ export default function App() {
           </div>
         </div>
       )}
-      {/* TOPBAR TÁCTICO - Con shrink-0 para evitar deformaciones */}
       <header className="min-h-16 md:h-16 border-b border-slate-800/80 bg-slate-950/80 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-0 py-4 md:py-0 px-6 shrink-0 z-20 shadow-[0_4px_30px_rgba(0,0,0,0.5)] backdrop-blur-md">
         <div className="flex items-center gap-2 md:gap-4 shrink-0">
           <div className="relative w-8 h-8 flex items-center justify-center shrink-0">
@@ -1772,9 +1774,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* SECCIÓN CENTRAL FLEXIBLE (Diario + Mapa) - Uso de flex-1 y min-h-0 */}
       <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden z-10">
-        {/* PANEL IZQUIERDO: Diario de Guerra */}
         <div className="w-full md:w-[35%] flex-1 md:flex-initial shrink-0 border-b md:border-b-0 md:border-r border-slate-800/80 bg-slate-950/60 flex flex-col overflow-hidden relative backdrop-blur-sm">
           <div className="p-4 border-b border-cyan-900/30 bg-[#02040a] shadow-lg shadow-cyan-950/20 shrink-0">
             <h2 className="text-xs font-bold text-cyan-500 tracking-[0.25em] uppercase flex items-center gap-2.5 font-mono">
@@ -1782,7 +1782,6 @@ export default function App() {
               REGISTRO DE SUCESOS GLOBALES // SYS.LOG
             </h2>
           </div>
-          {/* Scrollable Alerts Container */}
           <div className="flex-1 p-4 overflow-y-auto min-h-0 space-y-3 pb-8 custom-scrollbar relative">
             <TacticalNotifications />
             {diarioGuerra.map(ev => {
@@ -1798,10 +1797,8 @@ export default function App() {
                       : 'bg-gradient-to-r from-cyan-950/30 via-slate-950/80 to-slate-950/60 border-cyan-800/30 hover:border-cyan-600/50 shadow-[inset_0_0_30px_rgba(6,182,212,0.03)]'
                     }`}
                 >
-                  {/* Scanline overlay */}
                   <div className="absolute inset-0 opacity-[0.015] pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)', backgroundSize: '100% 4px' }} />
 
-                  {/* Accent glow stripe */}
                   <div className={`absolute left-0 top-0 bottom-0 w-[3px] ${isAlert ? 'bg-gradient-to-b from-rose-500 via-rose-600 to-rose-500/30'
                     : isSuccess ? 'bg-gradient-to-b from-emerald-400 via-emerald-500 to-emerald-400/30'
                       : 'bg-gradient-to-b from-cyan-400 via-cyan-500 to-cyan-400/30'
@@ -1814,7 +1811,6 @@ export default function App() {
                   )}
 
                   <div className="relative z-10 font-mono pl-2">
-                    {/* Header row */}
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.15em] leading-tight ${isAlert ? 'text-rose-400' : isSuccess ? 'text-emerald-400' : 'text-cyan-400'
                         }`}>
@@ -1828,9 +1824,7 @@ export default function App() {
                       </div>
                       <span className="text-[9px] text-slate-500 font-semibold shrink-0 tabular-nums tracking-wider">{ev.fecha.toLocaleDateString('es-ES')}</span>
                     </div>
-                    {/* Body */}
                     <p className="text-[11px] leading-[1.6] text-slate-400 group-hover:text-slate-300 transition-colors">{ev.mensaje}</p>
-                    {/* Separator line */}
                     <div className={`mt-2.5 h-px w-full ${isAlert ? 'bg-gradient-to-r from-rose-800/30 via-rose-800/10 to-transparent'
                       : isSuccess ? 'bg-gradient-to-r from-emerald-800/30 via-emerald-800/10 to-transparent'
                         : 'bg-gradient-to-r from-cyan-800/20 via-cyan-800/10 to-transparent'
@@ -1842,7 +1836,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* PANEL DERECHO: Mapa Global - Eliminación del h-[calc(100vh-154px)] problemático */}
         <div className="flex-1 relative min-h-0 overflow-hidden flex items-center justify-center bg-transparent map-container">
           <TransformWrapper
             ref={transformComponentRef}
@@ -1915,7 +1908,6 @@ export default function App() {
             )}
           </TransformWrapper>
 
-          {/* TOOLTIP FLOTANTE */}
           {hoveredPais && !paisSeleccionado && (() => {
             const livePais = paises[hoveredPais.id] || hoveredPais;
             const demo = getDemographicsInfo(livePais, presupuesto, ataquesEnCola, habilidades);
@@ -1953,9 +1945,8 @@ export default function App() {
                   </span>
                 </div>
 
-                {/* Reporte Demográfico en Tooltip */}
                 <div className="mt-2 pt-2 border-t border-slate-800 text-[10px] font-mono space-y-1 text-slate-400">
-                  <div className="text-[9px] text-slate-500 uppercase tracking-wider font-bold">// REPORTE DEMOGRÁFICO</div>
+                  <div className="text-[9px] text-slate-500 uppercase tracking-wider font-bold">REPORTE DEMOGRÁFICO</div>
                   <div className="flex justify-between">
                     <span>Natalidad:</span>
                     <span className="text-cyan-400 font-bold">
@@ -1989,7 +1980,6 @@ export default function App() {
             );
           })()}
 
-          {/* ATAQUES EN CAMINO OVERLAY */}
           <div className="absolute top-6 right-6 pointer-events-none flex flex-col gap-3">
             {ataquesEnCola.map(atk => {
               const p = paises[atk.pais_destino_id];
@@ -2009,8 +1999,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* DRAWER LATERAL */}
-      {/* eslint-disable-next-line react-hooks/refs */}
       {paisSeleccionado && (() => {
         const livePais = paises[paisSeleccionado.id] || paisSeleccionado;
         const demo = getDemographicsInfo(livePais, presupuesto, ataquesEnCola, habilidades);
@@ -2050,7 +2038,6 @@ export default function App() {
                   {livePais.conquistado ? <ShieldCheck className="w-6 h-6 text-blue-500 opacity-50" /> : <ShieldAlert className="w-6 h-6 text-rose-600 opacity-50" />}
                 </div>
 
-                {/* Tarjeta de Demografía Detallada */}
                 <div className="bg-slate-900/80 p-3.5 rounded-sm border border-slate-800 col-span-2 space-y-2 font-mono text-xs">
                   <div className="text-slate-500 text-[9px] uppercase tracking-widest font-bold border-b border-slate-800 pb-1 flex justify-between items-center">
                     <span>SITUACIÓN DEMOGRÁFICA</span>
@@ -2123,7 +2110,6 @@ export default function App() {
                 <div className="pt-5 border-t border-slate-800 mt-2 space-y-4">
                   <div className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Distribución de la Ofensiva</div>
 
-                  {/* Selector de Infantería */}
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-[9px] text-slate-400 font-mono">
                       <span className="flex items-center gap-1">👤 Infantería (1.0x)</span>
@@ -2148,7 +2134,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Selector de Caballería */}
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-[9px] text-slate-400 font-mono">
                       <span className="flex items-center gap-1">⚡ Caballería (1.5x)</span>
@@ -2173,7 +2158,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Selector de Artillería */}
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-[9px] text-slate-400 font-mono">
                       <span className="flex items-center gap-1">💀 Artillería (3.0x)</span>
@@ -2198,7 +2182,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Resumen del Poder y Botón de Ataque */}
                   <div className="pt-3 border-t border-slate-800 space-y-3">
                     <div className="flex justify-between items-center text-xs font-mono">
                       <span className="text-slate-400">Poder de Ataque Total:</span>
@@ -2236,7 +2219,6 @@ export default function App() {
                         Convierta población local en fuerzas de reserva. Costo deducido de su oro global.
                       </div>
 
-                      {/* Límite de movilización */}
                       {(() => {
                         const mobPopLimit = habilidades.some(h => h.id === "D_CONV_3" && h.desbloqueada)
                           ? 0.10
@@ -2255,7 +2237,6 @@ export default function App() {
                         );
                       })()}
 
-                      {/* Grid de Tarjetas Tácticas de Unidades */}
                       <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
                         {catalogoTropas.map((tropa) => {
                           let unitCost = tropa.costo_base;
@@ -2284,14 +2265,12 @@ export default function App() {
 
                           return (
                             <div key={tropa.tropa_id} className="font-mono text-xs border border-slate-800 bg-slate-900/40 p-2.5 rounded hover:border-slate-700 transition-all space-y-2">
-                              {/* Nombre de la unidad con degradado */}
                               <div className="font-bold flex items-center justify-between text-[10px]">
                                 <span className="bg-gradient-to-r from-cyan-400 to-amber-400 bg-clip-text text-transparent truncate pr-1">
                                   {emoji} [{subtipoLabel}] - {tropa.nombre_tropa}
                                 </span>
                               </div>
 
-                              {/* Atributos y Costo unitario */}
                               <div className="flex justify-between items-center text-[10px]">
                                 <div className="flex gap-2 text-[9px]">
                                   <span className="text-slate-400">ATK: <span className="text-cyan-400 font-bold">{tropa.multiplicador_combate * 10}</span></span>
@@ -2302,9 +2281,7 @@ export default function App() {
                                 </div>
                               </div>
 
-                              {/* Contador y confirmación */}
                               <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-800/60">
-                                {/* Controles [ - ] [ + ] */}
                                 <div className="flex items-center gap-1 bg-slate-950/60 px-1.5 py-0.5 rounded border border-slate-800">
                                   <button 
                                     type="button"
@@ -2335,7 +2312,6 @@ export default function App() {
                                   </button>
                                 </div>
 
-                                {/* Confirmar e inyectar */}
                                 <button
                                   type="button"
                                   onClick={() => handleMovilizarUnidadEspecifica(tropa, cantidad)}
@@ -2358,7 +2334,6 @@ export default function App() {
         );
       })()}
 
-      {/* FOOTER (BARRA INFERIOR) - Con h-[90px] y shrink-0 fijado */}
       <footer className="min-h-[90px] md:h-[90px] py-4 md:py-0 border-t border-slate-800/80 bg-slate-950/90 flex flex-col md:flex-row gap-4 md:gap-0 items-center justify-between px-6 shrink-0 z-20 backdrop-blur-md shadow-[0_-4px_30px_rgba(0,0,0,0.5)]">
         <div className="flex flex-col sm:flex-row gap-4 h-auto md:h-14 w-full md:w-auto items-center">
           <div className="bg-slate-900 border border-slate-700/80 rounded-sm px-5 flex flex-col justify-center shadow-inner relative overflow-hidden group">
@@ -2421,7 +2396,6 @@ export default function App() {
         </button>
       </footer>
 
-      {/* MODAL ÁRBOL DE HABILIDADES */}
       {mostrarArbol && (() => {
         const conqueredCount = Object.values(paises).filter(p => p.conquistado).length;
         const multiplicadorBurocracia = 1 + 0.05 * conqueredCount;
@@ -2541,7 +2515,6 @@ export default function App() {
                               : 'text-cyan-500/80'
                             }`}>{hab.tipo_bono}</div>
 
-                          {/* Progress Bar inside card if enDesarrollo */}
                           {hab.enDesarrollo && (
                             <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden mb-2 border border-slate-800/50">
                               <div className="bg-purple-500 h-full transition-all duration-300" style={{ width: `${progressPercent}%` }} />
@@ -2618,7 +2591,7 @@ export default function App() {
 
             <div className="font-mono text-slate-300 uppercase tracking-widest text-center">
               <h2 className="text-sm font-black text-rose-500 mb-6 tracking-[0.2em] animate-pulse">
-                OVERRIDE DE SISTEMA // PAUSADO
+                OVERRIDE DE SISTEMA - PAUSADO
               </h2>
 
               <div className="flex flex-col gap-4 text-xs">

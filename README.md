@@ -27,13 +27,10 @@ Un simulador estratégico interactivo de geopolítica global en tiempo real ambi
 
 1. **Protocolo de Acceso y Operarios:** Interfaz de login holográfica que permite inicio de sesión seguro mediante base de datos remota en Supabase o modo de simulación local offline.
 2. **Terminal de Sede Central (HQ):** Selección táctica de inicio con análisis de variables geo-políticas y geográficas de cada país disponible.
-3. **Gestión Presupuestaria y de Fuerzas:** Control de recursos (créditos dorados) y tres tipos de fuerzas de combate:
-   - 🛡️ **Infantería Ligera**
-   - 🏎️ **Caballería Motorizada / Blindada**
-   - 🚀 **Artillería de Plasma / Precisión**
-4. **Planisferio de Operaciones:** Mapa táctico interactivo con hover detallado de países, representación visual del estado (aliado, neutral, enemigo) y ventana de progreso cinemático de conquistas de 5 días.
-5. **SYS.LOG — Registro de Sucesos:** Consola dinámica de eventos probabilísticos (sabotajes corporativos, subsidios del mercado, ciberataques, etc.) que afectan el transcurso diario de la simulación.
-6. **Árbol de Patentes I+D:** Árbol tecnológico dinámico en SVG con dependencias cruzadas de prerrequisitos (Militares y de Desarrollo) para desbloquear bonificaciones globales permanentes.
+3. **Gestión Presupuestaria y de Fuerzas:** Control de recursos (créditos dorados) y reclutamiento dinámico de tropas con un catálogo relacional de 15 unidades de combate divididas en tres categorías tácticas (Infantería Ligera, Caballería Motorizada, Artillería de Precisión).
+4. **Planisferio de Operaciones:** Mapa táctico interactivo con hover detallado de países, representación visual del estado (aliado, neutral, enemigo) y simulación en tiempo real de convoyes militares de invasión.
+5. **SYS.LOG — Registro de Sucesos:** Consola dinámica de eventos probabilísticos y de desgaste que afectan el transcurso diario de la simulación.
+6. **Árbol de Patentes I+D Dinámico:** Árbol tecnológico SVG sincronizado en tiempo real con Supabase. Permite el desarrollo modular de habilidades con costos burocráticos exponenciales y prerrequisitos en cadena.
 
 ---
 
@@ -54,13 +51,22 @@ CONQUEST_FRONTEND/
 │   │   └── UserProfile.tsx           # Hoja de servicio del operario con estadísticas
 │   │
 │   ├── database/
-│   │   ├── api.ts                    # Interfaz unificada de comunicación del simulador
 │   │   ├── auth.ts                   # Lógica interna y flujos de autenticación
 │   │   ├── authService.ts            # Gestor de llamadas y sesiones de Supabase
+│   │   ├── countries.ts              # Servicios y lógica de consulta de datos de países (Supabase / local)
+│   │   ├── game.ts                   # Servicio del árbol tecnológico y transacciones de habilidades
 │   │   ├── gameService.ts            # Servicio de guardado y carga de campañas
-│   │   ├── mockAPI.ts                # Base de datos local, eventos aleatorios y países
-│   │   ├── saves.ts                  # Persistencia local y lógica de partidas guardadas
+│   │   ├── mockAPI.ts                # Configuración de constantes y templates de simulación locales
+│   │   ├── saves.ts                  # Persistencia remota e inicialización de partidas guardadas
+│   │   ├── troops.ts                 # Lógica relacional de tropas y cálculo de poder de combate
 │   │   └── supabaseClient.ts         # Cliente singleton inicializado para Supabase
+│   │
+│   ├── types/
+│   │   ├── habilidades.ts            # Definiciones de tipo para el árbol de habilidades de Supabase
+│   │   ├── paises.ts                 # Definiciones de tipo para países, presets y estadísticas
+│   │   ├── tacticalEvents.ts         # Definiciones de tipo para eventos críticos y recurrentes
+│   │   ├── tropas.ts                 # Definiciones de tipo para el catálogo relacional de unidades
+│   │   └── user.ts                   # Definición de tipos para operarios y perfiles de usuario
 │   │
 │   ├── App.tsx                       # Núcleo del juego: bucle principal, HUD e hilos de simulación
 │   ├── index.css                     # Sistema de tokens CSS, custom scrollbars y efectos CRT
