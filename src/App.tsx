@@ -20,8 +20,9 @@ import {
 } from "./database/mockAPI";
 import type { OperarioUser } from "./types/user";
 import { logoutOperator, getPersistedOperator, refreshAuthSession } from "./database/auth";
-import { saveGame, initializeNewGame, unlockHabilidad } from "./database/saves";
+import { saveGame, initializeNewGame } from "./database/saves";
 import type { DBGameSave } from "./database/saves";
+import { supabase } from "./database/supabaseClient";
 import type {
   Habilidad, Tropas,
   HQStartingPreset, TroopBaseCosts, CombatPowerMultipliers,
@@ -101,7 +102,7 @@ const getDemographicsInfo = (
 
   // Crecimiento Neto Diario
   const netRate = tasaNatalidadEfectiva - tasaMortalidadEfectiva;
-  
+
   let tendencia = "Estable / Lineal";
   let tendenciaColor = "text-cyan-400";
 
@@ -448,7 +449,7 @@ export default function App() {
       if (criticalTemplatesRef.current.length === 0) return;
       // Elegir una plantilla aleatoria
       const template = criticalTemplatesRef.current[Math.floor(Math.random() * criticalTemplatesRef.current.length)];
-      
+
       // Validar requisitos de plantilla
       if ((template.code === "BORDER_MOBILIZATION" || template.code === "BORDER_SMUGGLING_RAID" || template.code === "DISSIDENT_TREATY") && (allied.length === 0 || hostile.length === 0)) return;
       if (template.code === "TACTICAL_ALLIANCE_OFFER" || template.code === "SPY_NETWORK_LEAK") {
@@ -1116,7 +1117,7 @@ export default function App() {
     setArtilleriaAEnviar(0);
   };
 
-  const handleMovilizarFuerzas = () => {
+  const handleMovilizarFuerzas = async () => {
     if (!paisSeleccionado || !paisSeleccionado.conquistado) return;
     const livePais = paises[paisSeleccionado.id] || paisSeleccionado;
 
@@ -1153,7 +1154,24 @@ export default function App() {
       return;
     }
 
-    // Aplicar los cambios
+    // ── TRANSACCIÓN EN DB (si hay partida activa) ──────────────
+    // reclutar_tropas valida oro, aplica el descuento y suma tropas de forma ACID.
+    // Si falla, abortamos antes de tocar el estado local.
+    if (activePartida) {
+      const { error: rpcError } = await supabase.rpc('reclutar_tropas', {
+        p_jugador_id: activePartida.id,
+        p_costo_oro:  costoTotal,
+        p_infanteria: infanteriaAMovilizar,
+        p_caballeria: caballeriaAMovilizar,
+        p_artilleria: artilleriaAMovilizar,
+      });
+      if (rpcError) {
+        alert(`ERROR DE RECLUTAMIENTO: ${rpcError.message}`);
+        return;
+      }
+    }
+
+    // Aplicar los cambios en el estado local (UI)
     const esMasiva = totalMovilizado >= livePais.poblacion * scm.massiveMobilizationThreshold;
     setPaises(prev => {
       const updated = { ...prev };
@@ -1214,15 +1232,23 @@ export default function App() {
       }
     }
 
-    // --- Delegar al backend: él valida prerrequisitos, duplicados y existencia ---
-    // Usamos partida_id = 1 como identificador de sesión actual.
-    // TODO: reemplazar 1 por el ID de partida real cuando se implemente la gestión de partidas.
-    const PARTIDA_ACTUAL_ID = 1;
+    // ── TRANSACCIÓN EN DB ───────────────────────────────────────
+    // comprar_habilidad valida: ownership, puntos suficientes,
+    // prerrequisitos en cadena y duplicados — todo de forma ACID.
+    if (!activePartida) {
+      alert("SISTEMA: Guardá la partida primero antes de investigar tecnologías.");
+      return;
+    }
 
-    const resultado = await unlockHabilidad(PARTIDA_ACTUAL_ID, habilidad.id);
+    const { error: rpcError } = await supabase.rpc('comprar_habilidad', {
+      p_jugador_id:   activePartida.id,
+      p_partida_id:   activePartida.partida_id,
+      p_habilidad_id: habilidad.id,
+      p_costo_oro:    costoFinal,
+    });
 
-    if (!resultado.success) {
-      alert(`No se puede investigar: ${resultado.error}`);
+    if (rpcError) {
+      alert(`No se puede investigar: ${rpcError.message}`);
       return;
     }
 
