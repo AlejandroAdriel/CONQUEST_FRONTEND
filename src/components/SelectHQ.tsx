@@ -3,7 +3,7 @@ import {
   Globe, Shield, Users, DollarSign, Swords, Crosshair,
   ChevronRight, X, Hexagon, MapPin, Zap, Search
 } from "lucide-react";
-import { fetchCountryStats, getRealEconomy, getRealEjercitoDetalle } from "../database/mockAPI";
+import { fetchCountryStats, getRealEconomy, getRealEjercitoDetalle } from "../database/countries";
 
 interface CountryData {
   id: string;

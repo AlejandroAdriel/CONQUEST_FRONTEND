@@ -12,13 +12,15 @@ import {
   ChevronsRight, Globe, Cpu
 } from "lucide-react";
 import {
-  fetchInitialGameState, fetchRandomEvents, fetchCountryStats,
+  fetchInitialGameState, fetchRandomEvents,
   fetchHQStartingPresets,
   fetchMaintenanceTiers, fetchSimulationConstants,
   fetchCriticalEventTemplates, fetchDecayEventTemplates,
-  translateCountry, getPresetForCountry,
-  normalizeName, getRealPopulation, getRealEconomy, getRealEjercitoDetalle,
 } from "./database/mockAPI";
+import {
+  fetchCountryStats, translateCountry, getPresetForCountry,
+  normalizeName, getRealPopulation, getRealEconomy, getRealEjercitoDetalle,
+} from "./database/countries";
 import type { OperarioUser } from "./types/user";
 import { logoutOperator, getPersistedOperator, refreshAuthSession } from "./database/auth";
 import { saveGame, initializeNewGame } from "./database/saves";
@@ -35,10 +37,11 @@ import type { Tropa } from "./types/tropas";
 import { supabase } from "./database/supabaseClient";
 import type {
   HQStartingPreset,
-  MaintenanceTier, SimulationConstants, Pais,
-  DBCriticalEvent, DBDecayingNotification, PaisBase,
+  MaintenanceTier, SimulationConstants,
+  DBCriticalEvent, DBDecayingNotification,
   DBRandomEvent
 } from "./database/mockAPI";
+import type { Pais, PaisBase } from "./types/paises";
 import Login from "./components/Login";
 import StartMenu from "./components/StartMenu";
 import SaveFilesMenu from "./components/SaveFilesMenu";
