@@ -133,7 +133,7 @@ export const signIn = async (
     // O pedimos al usuario que use su email directamente
     // Por ahora usamos el campo email del auth buscando por el perfil
     const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user?.id === perfil.id) {
+    if (session && session.user?.id === perfil.id) {
       email = session.user.email ?? '';
     } else {
       // No podemos obtener el email sin service_role. 
