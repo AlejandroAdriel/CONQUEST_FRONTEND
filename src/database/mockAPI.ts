@@ -4,16 +4,17 @@
 // Ningún dato se exporta directamente. Solo funciones async.
 // ============================================================
 import { supabase } from './supabaseClient';
+import type { Tropas, TroopBaseCosts, CombatPowerMultipliers } from './troops';
+import type { TropasDetalle } from '../types/tropas';
+
+// Los tipos de tropa viven en troops.ts y types/tropas.ts — se re-exportan aquí
+// para no romper importaciones existentes.
+export type { Tropas, TroopBaseCosts, CombatPowerMultipliers, TropasDetalle };
 
 // ─── TIPOS ───────────────────────────────────────────────────
 
-
-
-export type Tropas = {
-  infanteria: number;
-  caballeria: number;
-  artilleria: number;
-};
+/** Alias de EventoAleatorio para imports que usen DBRandomEvent */
+export type DBRandomEvent = EventoAleatorio;
 
 export type Pais = {
   id: string;
@@ -24,6 +25,7 @@ export type Pais = {
   conquistado: boolean;
   oro_ia: number;
   ejercito_ia_detalle: Tropas;
+  ejercito_ia_detalle_nuevo?: TropasDetalle;
   tasa_natalidad: number;
   tasa_mortalidad: number;
   dias_reclutamiento_agresivo?: number;
@@ -102,17 +104,6 @@ export interface HQStartingPreset {
   tropas: Tropas;
 }
 
-export interface TroopBaseCosts {
-  infanteria: number;
-  caballeria: number;
-  artilleria: number;
-}
-
-export interface CombatPowerMultipliers {
-  infanteria: number;
-  caballeria: number;
-  artilleria: number;
-}
 
 export interface MaintenanceTier {
   minTroops: number;

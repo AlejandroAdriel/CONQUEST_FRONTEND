@@ -23,16 +23,20 @@ import type { OperarioUser } from "./types/user";
 import { logoutOperator, refreshAuthSession } from "./database/auth";
 import { saveGame, initializeNewGame } from "./database/saves";
 import { unlockHabilidad, fetchTechTree } from "./database/game";
-import { fetchCatalogoTropas, distribuirTropasDetalle, deducirTropasDetalle, calcularFuerzaTotal, ajustarTropasDetalle } from "./database/troops";
+import {
+  fetchCatalogoTropas, distribuirTropasDetalle, deducirTropasDetalle,
+  calcularFuerzaTotal, ajustarTropasDetalle,
+  derivarTroopBaseCosts, derivarCombatMultipliers
+} from "./database/troops";
+import type { Tropas, TroopBaseCosts, CombatPowerMultipliers } from "./database/troops";
 import type { DBGameSave } from "./database/saves";
 import type { Habilidad } from "./types/habilidades";
 import type { Tropa } from "./types/tropas";
 import type {
-  Tropas,
   HQStartingPreset,
   MaintenanceTier, SimulationConstants, Pais,
   DBCriticalEvent, DBDecayingNotification, PaisBase,
-  TroopBaseCosts, CombatPowerMultipliers
+  DBRandomEvent
 } from "./database/mockAPI";
 import Login from "./components/Login";
 import StartMenu from "./components/StartMenu";
@@ -244,7 +248,7 @@ export default function App() {
   ]);
 
   const [isDbLoading, setIsDbLoading] = useState(true);
-  const eventosAleatoriosRef = useRef<import('./database/mockAPI').DBRandomEvent[]>([]);
+  const eventosAleatoriosRef = useRef<DBRandomEvent[]>([]);
   const criticalTemplatesRef = useRef<DBCriticalEvent[]>([]);
   const decayTemplatesRef = useRef<DBDecayingNotification[]>([]);
   const countryStatsRef = useRef<PaisBase[]>([]);
@@ -364,7 +368,12 @@ export default function App() {
         ]);
         setPresupuesto(gameState.presupuesto);
         setTropas(gameState.tropas);
-        setTropasDetalle(distribuirTropasDetalle(gameState.tropas.infanteria, gameState.tropas.caballeria, gameState.tropas.artilleria));
+        setTropasDetalle(distribuirTropasDetalle(
+          gameState.tropas.infanteria,
+          gameState.tropas.caballeria,
+          gameState.tropas.artilleria,
+          catalogo
+        ));
         setCatalogoTropas(catalogo);
         eventosAleatoriosRef.current = events;
         criticalTemplatesRef.current = critTemplates;
@@ -372,17 +381,8 @@ export default function App() {
         countryStatsRef.current = countryData;
         setHabilidades(techTree);
         hqPresetsRef.current = hqPresets;
-        // Derived base costs and combat multipliers for backwards compatibility in event modifiers if any
-        troopCostsRef.current = {
-          infanteria: catalogo.find(c => c.subtipo === 'infanteria')?.costo_base || 10,
-          caballeria: catalogo.find(c => c.subtipo === 'caballeria')?.costo_base || 25,
-          artilleria: catalogo.find(c => c.subtipo === 'artilleria')?.costo_base || 60,
-        };
-        combatMultipliersRef.current = {
-          infanteria: catalogo.find(c => c.subtipo === 'infanteria')?.multiplicador_combate || 1.0,
-          caballeria: catalogo.find(c => c.subtipo === 'caballeria')?.multiplicador_combate || 1.5,
-          artilleria: catalogo.find(c => c.subtipo === 'artilleria')?.multiplicador_combate || 3.0,
-        };
+        troopCostsRef.current = derivarTroopBaseCosts(catalogo);
+        combatMultipliersRef.current = derivarCombatMultipliers(catalogo);
         maintenanceTiersRef.current = mntTiers;
         simConstantsRef.current = simConsts;
         // Actualizar intervalos de eventos con constantes cargadas
@@ -903,9 +903,10 @@ export default function App() {
               pais.ejercito_ia_detalle.artilleria - addArt
             );
           }
+          const detNuevo = pais.ejercito_ia_detalle_nuevo!;
           Object.entries(detailedReclutas).forEach(([tIdStr, qty]) => {
             const tId = Number(tIdStr);
-            pais.ejercito_ia_detalle_nuevo[tId] = (pais.ejercito_ia_detalle_nuevo[tId] || 0) + qty;
+            detNuevo[tId] = (detNuevo[tId] || 0) + qty;
           });
         }
       }
