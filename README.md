@@ -55,12 +55,41 @@ graph TD
 
 ## Estructura del Proyecto
 
-- [src/components/](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/components): Componentes HUD (Login, SelectHQ, ActionLog, etc.).
-- [src/context/](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/context): Proveedor global (`GameContext.tsx`) para la sincronización de estado.
-- [src/database/](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/database): Capa de persistencia (módulos Supabase y mock API local).
-- [src/types/](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/types): Definiciones de TypeScript para países, tropas y usuarios.
-- [src/App.tsx](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/App.tsx): Componente principal, bucle de simulación y contenedor HUD.
-- [src/index.css](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/index.css): Estilos globales, tokens de diseño y filtros estéticos CRT.
+```bash
+src/
+├── components/          # Componentes visuales de la interfaz táctica (HUD)
+│   ├── Login.tsx        # Acceso de operarios (Supabase / Local)
+│   ├── SelectHQ.tsx     # Selector geográfico de sede central (HQ)
+│   ├── UserProfile.tsx  # Estadísticas de servicio del usuario
+│   ├── StartMenu.tsx    # Menú principal holográfico
+│   ├── SaveFilesMenu.tsx# Gestor de perfiles y campañas
+│   └── ActionLog.tsx    # Historial de logs tácticos (SYS.LOG)
+├── context/             # Proveedores de estado y contextos globales
+│   └── GameContext.tsx  # Eventos, notificaciones y estado del simulador
+├── database/            # Capa de datos y lógica del simulador
+│   ├── auth.ts          # Lógica interna y flujos de autenticación
+│   ├── countries.ts     # Carga, traducción y estadísticas geopolíticas
+│   ├── troops.ts        # Catálogo relacional y fórmulas de combate
+│   ├── game.ts          # Integración del árbol tecnológico de Supabase
+│   ├── saves.ts         # Inicialización y persistencia de partidas
+│   └── mockAPI.ts       # Constantes y plantillas de simulación local
+├── types/               # Tipados estrictos de TypeScript
+│   ├── user.ts          # Modelos de usuario y operarios
+│   ├── paises.ts        # Modelos de países y estadísticas base
+│   ├── tropas.ts        # Definiciones de tipos del catálogo militar
+│   └── tacticalEvents.ts# Estructuras para eventos temporales y de crisis
+├── App.tsx              # Componente raíz, game loop y mapas reactivos
+└── index.css            # Estilos globales y tokens estéticos Cyberpunk/CRT
+```
+
+### Detalle de Directorios y Archivos Clave
+
+- **[src/components/](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/components):** Contiene los menús de navegación e indicadores en pantalla (HUD). Destacan [Login.tsx](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/components/Login.tsx) para inicio de sesión, [SelectHQ.tsx](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/components/SelectHQ.tsx) para selección de cuartel general y [ActionLog.tsx](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/components/ActionLog.tsx) que actúa como terminal táctico.
+- **[src/context/](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/context):** Define [GameContext.tsx](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/context/GameContext.tsx), que coordina las notificaciones tácticas, el control temporal del juego y la pausa forzada durante crisis críticas.
+- **[src/database/](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/database):** Conexión con Supabase y lógica de combate. Incluye [supabaseClient.ts](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/database/supabaseClient.ts) para base de datos remota, [troops.ts](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/database/troops.ts) para fórmulas matemáticas de combate y [mockAPI.ts](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/database/mockAPI.ts) como fallback local offline.
+- **[src/types/](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/types):** Interfaces de datos que aseguran la robustez del tipado a lo largo de la simulación.
+- **[src/App.tsx](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/App.tsx):** Punto central del flujo; administra el game loop diario (finanzas, desgaste, invasiones) y el renderizado del mapa Miller.
+- **[src/index.css](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/index.css):** Define los esquemas de color temáticos y efectos CRT (scanlines y parpadeos).
 
 ---
 
