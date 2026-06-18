@@ -768,29 +768,29 @@ const HQ_STARTING_PRESETS: HQStartingPreset[] = [
 
 
 const MAINTENANCE_TIERS: MaintenanceTier[] = [
-  { minTroops: 100001, costInf: 0.02,  costCab: 0.05,  costArt: 0.15, desertionRate: 0.015 },
-  { minTroops: 50001,  costInf: 0.015, costCab: 0.04,  costArt: 0.10, desertionRate: 0.01  },
-  { minTroops: 15001,  costInf: 0.01,  costCab: 0.025, costArt: 0.07, desertionRate: 0.005 },
-  { minTroops: 0,      costInf: 0.005, costCab: 0.015, costArt: 0.04, desertionRate: 0.001 }
+  { minTroops: 100001, costInf: 0.018, costCab: 0.045, costArt: 0.10,  desertionRate: 0.012 },
+  { minTroops: 50001,  costInf: 0.012, costCab: 0.032, costArt: 0.08,  desertionRate: 0.008 },
+  { minTroops: 15001,  costInf: 0.008, costCab: 0.020, costArt: 0.055, desertionRate: 0.004 },
+  { minTroops: 0,      costInf: 0.004, costCab: 0.012, costArt: 0.032, desertionRate: 0.001 }
 ];
 
 const SIMULATION_CONSTANTS: SimulationConstants = {
-  dailyEconomicGrowthRate: 0.00005,
-  incomeFormulaEcoFactor: 0.1,
-  incomeFormulaPopFactor: 0.001,
-  incomeDivisor: 2000,
-  conquestBonusPerCountry: 0.05,
-  iaRecruitmentCost: 100,
-  iaRecruitMinReclutas: 5,
-  iaRecruitMaxReclutas: 15,
-  eventIntervalMin: 10,
-  eventIntervalRandom: 6,
-  specialEventIntervalMin: 30,
+  dailyEconomicGrowthRate:    0.00005,  // crecimiento orgánico diario de la economía de cada país
+  incomeFormulaEcoFactor:     0.1,      // peso del GDP en la fórmula de ingresos
+  incomeFormulaPopFactor:     0.001,    // peso de la población en la fórmula de ingresos
+  incomeDivisor:              800,      // divisor global (↓ = más ingresos); era 2000 → muy bajo
+  conquestBonusPerCountry:    0.02,     // bonus por país conquistado (era 0.05 → snowball fuerte)
+  iaRecruitmentCost:          150,      // oro que gasta la IA por ronda de reclutamiento (era 100)
+  iaRecruitMinReclutas:       5,
+  iaRecruitMaxReclutas:       15,
+  eventIntervalMin:           10,
+  eventIntervalRandom:        6,
+  specialEventIntervalMin:    30,
   specialEventIntervalRandom: 20,
-  mobilizationPopLimit: 0.05,
+  mobilizationPopLimit:       0.05,
   massiveMobilizationThreshold: 0.01,
   aggressiveRecruitmentPenaltyDays: 90,
-  attackTransitDays: 17
+  attackTransitDays:          8         // era 17 → muy lento; 8 días es más ágil
 };
 
 // ─── SIMULADOR DE DELAY DE RED ──────────────────────────────
