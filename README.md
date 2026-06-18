@@ -82,15 +82,6 @@ src/
 └── index.css            # Estilos globales y tokens estéticos Cyberpunk/CRT
 ```
 
-### Detalle de Directorios y Archivos Clave
-
-- **[src/components/](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/components):** Contiene los menús de navegación e indicadores en pantalla (HUD). Destacan [Login.tsx](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/components/Login.tsx) para inicio de sesión, [SelectHQ.tsx](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/components/SelectHQ.tsx) para selección de cuartel general y [ActionLog.tsx](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/components/ActionLog.tsx) que actúa como terminal táctico.
-- **[src/context/](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/context):** Define [GameContext.tsx](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/context/GameContext.tsx), que coordina las notificaciones tácticas, el control temporal del juego y la pausa forzada durante crisis críticas.
-- **[src/database/](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/database):** Conexión con Supabase y lógica de combate. Incluye [supabaseClient.ts](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/database/supabaseClient.ts) para base de datos remota, [troops.ts](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/database/troops.ts) para fórmulas matemáticas de combate y [mockAPI.ts](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/database/mockAPI.ts) como fallback local offline.
-- **[src/types/](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/types):** Interfaces de datos que aseguran la robustez del tipado a lo largo de la simulación.
-- **[src/App.tsx](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/App.tsx):** Punto central del flujo; administra el game loop diario (finanzas, desgaste, invasiones) y el renderizado del mapa Miller.
-- **[src/index.css](file:///d:/CONQUEST/CONQUEST_FRONTEND/src/index.css):** Define los esquemas de color temáticos y efectos CRT (scanlines y parpadeos).
-
 ---
 
 ## Guía de Instalación y Ejecución
