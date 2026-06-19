@@ -55,6 +55,45 @@
   100% { opacity: 0.9; }
 }
 
+@keyframes cyberFlicker {
+  0%, 18%, 22%, 25%, 53%, 57%, 100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.8));
+  }
+  20% {
+    opacity: 0.2;
+    filter: none;
+  }
+  24% {
+    opacity: 0.4;
+    filter: none;
+  }
+  55% {
+    opacity: 0.1;
+    filter: none;
+  }
+}
+
+@keyframes cyberFlickerSub {
+  0%, 34%, 38%, 40%, 78%, 82%, 100% {
+    opacity: 0.9;
+  }
+  36% {
+    opacity: 0.1;
+  }
+  79% {
+    opacity: 0.3;
+  }
+}
+
+.animate-flicker-ciber {
+  animation: cyberFlicker 6s infinite;
+}
+
+.animate-flicker-ciber-sub {
+  animation: cyberFlickerSub 6s infinite;
+}
+
 .text-digital {
   font-family: 'Courier New', Courier, monospace;
   animation: flicker 3s infinite;

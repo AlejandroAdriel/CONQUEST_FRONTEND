@@ -272,6 +272,7 @@ export default function App() {
 
   const [paisSeleccionado, setPaisSeleccionado] = useState<Pais | null>(null);
   const [hoveredPais, setHoveredPais] = useState<Pais | null>(null);
+  const [isTooltipFrozen, setIsTooltipFrozen] = useState(false);
   const [, setMousePos] = useState({ x: 0, y: 0 });
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -509,6 +510,7 @@ export default function App() {
     setPendingCriticalEvent(null);
     setPaisSeleccionado(null);
     setHoveredPais(null);
+    setIsTooltipFrozen(false);
     setInfanteriaAEnviar(0);
     setCaballeriaAEnviar(0);
     setArtilleriaAEnviar(0);
@@ -1725,10 +1727,10 @@ export default function App() {
           </div>
 
           <div className="flex flex-col justify-center shrink-0">
-            <h1 className="text-2xl font-black tracking-[0.3em] text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]">
+            <h1 className="text-2xl font-black tracking-[0.3em] text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)] animate-flicker-ciber">
               CONQUEST
             </h1>
-            <span className="text-[9px] font-mono font-bold text-cyan-500 tracking-[0.25em] -mt-1">
+            <span className="text-[9px] font-mono font-bold text-cyan-500 tracking-[0.25em] -mt-1 animate-flicker-ciber-sub">
               [ CORE EN LÍNEA ]
             </span>
           </div>
@@ -1872,7 +1874,7 @@ export default function App() {
             centerOnInit
             doubleClick={{ disabled: true }}
             limitToBounds={false}
-            onPanningStart={() => { isPanningRef.current = true; }}
+            onPanningStart={() => {}}
             onPanning={() => { isPanningRef.current = true; }}
             onPanningStop={() => { setTimeout(() => { isPanningRef.current = false; }, 50); }}
           >
@@ -1905,16 +1907,29 @@ export default function App() {
                               key={geo.rsmKey}
                               id={getDomId(pais.nombre)}
                               geography={geo}
-                              onClick={() => { if (!isPanningRef.current) setPaisSeleccionado(pais); }}
+                              onClick={(e) => {
+                                if (isPanningRef.current) return;
+                                if (isTooltipFrozen && hoveredPais?.id === pais.id) {
+                                  setIsTooltipFrozen(false);
+                                  setHoveredPais(null);
+                                } else {
+                                  setIsTooltipFrozen(true);
+                                  setHoveredPais(pais);
+                                  setTooltipPos({ x: e.clientX, y: e.clientY });
+                                }
+                              }}
                               onMouseEnter={(e) => {
+                                if (isTooltipFrozen) return;
                                 if (timeoutRef.current) clearTimeout(timeoutRef.current);
                                 setHoveredPais(pais);
                                 setTooltipPos({ x: e.clientX, y: e.clientY });
                               }}
                               onMouseMove={(e) => {
+                                if (isTooltipFrozen) return;
                                 setTooltipPos({ x: e.clientX, y: e.clientY });
                               }}
                               onMouseLeave={() => {
+                                if (isTooltipFrozen) return;
                                 timeoutRef.current = setTimeout(() => {
                                   setHoveredPais(null);
                                 }, 300);
@@ -1935,7 +1950,7 @@ export default function App() {
             )}
           </TransformWrapper>
 
-          {hoveredPais && !paisSeleccionado && (() => {
+          {hoveredPais && (() => {
             const livePais = paises[hoveredPais.id] || hoveredPais;
             const demo = getDemographicsInfo(livePais, presupuesto, ataquesEnCola, habilidades);
             const isNearBottom = window.innerHeight - tooltipPos.y < 320;
@@ -1950,10 +1965,27 @@ export default function App() {
                   if (timeoutRef.current) clearTimeout(timeoutRef.current);
                 }}
                 onMouseLeave={() => {
-                  setHoveredPais(null);
+                  if (!isTooltipFrozen) {
+                    setHoveredPais(null);
+                  }
                 }}
               >
-                <div className="text-slate-400 text-xs font-mono mb-2 uppercase tracking-widest border-b border-slate-800 pb-1">Datos Geométricos</div>
+                <div className="text-slate-400 text-xs font-mono mb-2 uppercase tracking-widest border-b border-slate-800 pb-1 flex justify-between items-center">
+                  <span>Datos Geométricos</span>
+                  {isTooltipFrozen && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsTooltipFrozen(false);
+                        setHoveredPais(null);
+                      }}
+                      className="text-slate-500 hover:text-rose-400 transition font-black text-xs cursor-pointer select-none px-1"
+                      title="Cerrar"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
                 <div className="font-bold text-slate-100 text-sm mb-1 truncate">{livePais.nombre}</div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mt-2">
                   <span className="text-slate-500">Población:</span>
@@ -1995,13 +2027,15 @@ export default function App() {
                   onClick={(e) => {
                     e.stopPropagation();
                     setPaisSeleccionado(livePais);
+                    setIsTooltipFrozen(false);
+                    setHoveredPais(null);
                   }}
                   className={`w-full mt-3 text-[10px] font-bold text-center py-1 uppercase tracking-widest ${livePais.conquistado
                     ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-700 hover:text-white cursor-pointer'
                     : 'bg-rose-900/30 text-rose-400 hover:bg-rose-700 hover:text-white cursor-pointer transition-all active:scale-95'
                     }`}
                 >
-                  {livePais.conquistado ? 'ALIADO' : 'HOSTIL'}
+                  {livePais.conquistado ? 'RECLUTAR' : 'ATACAR'}
                 </button>
               </div>
             );
@@ -2039,9 +2073,18 @@ export default function App() {
                 <MapIcon className="w-4 h-4 text-blue-500" />
                 {livePais.nombre}
               </h3>
-              <button onClick={() => setPaisSeleccionado(null)} className="text-slate-500 hover:text-rose-400 transition">
+              <button onClick={() => { setPaisSeleccionado(null); setIsTooltipFrozen(false); setHoveredPais(null); }} className="text-slate-500 hover:text-rose-400 transition">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
+            </div>
+
+            <div className={`px-4 py-2.5 text-center font-bold tracking-widest text-[11px] border-b border-slate-800/80 flex items-center justify-center gap-2 ${
+              livePais.conquistado 
+                ? 'bg-blue-950/25 text-blue-400' 
+                : 'bg-rose-950/20 text-rose-400'
+            }`}>
+              {livePais.conquistado ? <ShieldCheck className="w-4 h-4 text-blue-500" /> : <ShieldAlert className="w-4 h-4 text-rose-500" />}
+              {livePais.conquistado ? 'TERRITORIO ALIADO' : 'TERRITORIO HOSTIL'}
             </div>
 
             <div className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0 custom-scrollbar">
@@ -2053,16 +2096,6 @@ export default function App() {
                 <div className="bg-slate-900/80 p-3 rounded-sm border border-slate-800">
                   <div className="text-slate-500 text-[10px] uppercase tracking-widest mb-1">Economía</div>
                   <div className="font-mono text-emerald-400">{formatEconomy(livePais.economia)}</div>
-                </div>
-
-                <div className="bg-slate-900/80 p-3 rounded-sm border border-slate-800 col-span-2 flex justify-between items-center">
-                  <div>
-                    <div className="text-slate-500 text-[10px] uppercase tracking-widest mb-1">Estatus Táctico</div>
-                    <div className={`font-bold tracking-wider text-xs ${livePais.conquistado ? 'text-blue-500' : 'text-rose-600'}`}>
-                      {livePais.conquistado ? 'TERRITORIO ALIADO' : 'CONTROL HOSTIL'}
-                    </div>
-                  </div>
-                  {livePais.conquistado ? <ShieldCheck className="w-6 h-6 text-blue-500 opacity-50" /> : <ShieldAlert className="w-6 h-6 text-rose-600 opacity-50" />}
                 </div>
 
                 <div className="bg-slate-900/80 p-3.5 rounded-sm border border-slate-800 col-span-2 space-y-2 font-mono text-xs">
@@ -2293,7 +2326,7 @@ export default function App() {
                           return (
                             <div key={tropa.tropa_id} className="font-mono text-xs border border-slate-800 bg-slate-900/40 p-2.5 rounded hover:border-slate-700 transition-all space-y-2">
                               <div className="font-bold flex items-center justify-between text-[10px]">
-                                <span className="bg-gradient-to-r from-cyan-400 to-amber-400 bg-clip-text text-transparent truncate pr-1">
+                                <span className="text-fuchsia-500 animate-pulse truncate pr-1">
                                   {emoji} [{subtipoLabel}] - {tropa.nombre_tropa}
                                 </span>
                               </div>
