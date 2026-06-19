@@ -50,7 +50,7 @@ import UserProfile from "./components/UserProfile";
 import { ActionLog } from "./components/ActionLog";
 import { geoMiller } from "d3-geo-projection";
 
-const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json";
 
 type AtaqueEnCola = {
   id: string;
