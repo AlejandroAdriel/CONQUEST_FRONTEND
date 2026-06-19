@@ -29,6 +29,7 @@ interface GameContextType {
   criticalCountdown: number | null;
   triggerCriticalEventModal: (event: CriticalEvent) => void;
   logAction: (action: string, details: string) => void;
+  resetContext: () => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -111,6 +112,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsPaused(false); 
   };
 
+  const resetContext = () => {
+    setIsPaused(false);
+    setNotifications([]);
+    setActiveCriticalEvent(null);
+    setActionLog([]);
+  };
+
   const contextValue = {
     get oro() { return bridgeRef.current?.presupuesto ?? 0; },
     get tropas() { return bridgeRef.current?.tropas ?? { infanteria: 0, caballeria: 0, artilleria: 0 }; },
@@ -139,7 +147,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (bridgeRef.current?.setPendingCriticalEvent) {
         bridgeRef.current.setPendingCriticalEvent(null);
       }
-    }
+    },
+    resetContext
   };
 
   return <GameContext.Provider value={contextValue}>{children}</GameContext.Provider>;

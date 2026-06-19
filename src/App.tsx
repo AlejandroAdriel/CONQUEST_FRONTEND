@@ -500,6 +500,45 @@ export default function App() {
     return Math.max(value, minValue);
   };
 
+  const resetSessionState = () => {
+    gameState.resetContext();
+    setPaises({});
+    setPaisesInicializados(false);
+    setAtaquesEnCola([]);
+    setCriticalCountdown(null);
+    setPendingCriticalEvent(null);
+    setPaisSeleccionado(null);
+    setHoveredPais(null);
+    setInfanteriaAEnviar(0);
+    setCaballeriaAEnviar(0);
+    setArtilleriaAEnviar(0);
+    setDiarioGuerra([
+      {
+        id: "inicio",
+        fecha: new Date(2099, 10, 12),
+        titulo: "SISTEMA TÁCTICO INICIADO",
+        mensaje: "Núcleo de inteligencia y comunicaciones satelitales en línea. Iniciando simulación y mapeo geopolítico...",
+        tipo: "info"
+      }
+    ]);
+  };
+
+  const loadSaveGameData = async (save: DBGameSave) => {
+    setActivePartida(save);
+    setPresupuesto(save.budget);
+    setTropas({ infanteria: save.tropas_infanteria, caballeria: save.tropas_caballeria, artilleria: save.tropas_artilleria });
+    setTropasDetalle(distribuirTropasDetalle(save.tropas_infanteria, save.tropas_caballeria, save.tropas_artilleria));
+    setPlayerHQ({ id: save.hq, nombre: translateCountry(save.hq) });
+    setFechaVirtual(new Date(new Date(2099, 10, 12).getTime() + (save.campaignDays - 1) * 24 * 3600 * 1000));
+    setSpeedLevel(save.velocidad as 1 | 2 | 3 || 1);
+    setIsPlaying(!save.pausado);
+    resetSessionState();
+    const techTree = await fetchTechTree(save.partida_id);
+    setHabilidades(techTree);
+    setCurrentScreen('game');
+    setShowSaves(false);
+  };
+
   const lanzarEventoEspecial = () => {
     const isCritical = Math.random() < 0.125; 
 
@@ -1516,34 +1555,8 @@ export default function App() {
         {showSaves && (
           <SaveFilesMenu
             onClose={() => setShowSaves(false)}
-            onLoadSave={async (save) => {
-              setActivePartida(save);
-              setPresupuesto(save.budget);
-              setTropas({ infanteria: save.tropas_infanteria, caballeria: save.tropas_caballeria, artilleria: save.tropas_artilleria });
-              setTropasDetalle(distribuirTropasDetalle(save.tropas_infanteria, save.tropas_caballeria, save.tropas_artilleria));
-              setPlayerHQ({ id: save.hq, nombre: translateCountry(save.hq) });
-              setFechaVirtual(new Date(new Date(2099, 10, 12).getTime() + (save.campaignDays - 1) * 24 * 3600 * 1000));
-              setSpeedLevel(save.velocidad as 1 | 2 | 3 || 1);
-              setIsPlaying(!save.pausado);
-              const techTree = await fetchTechTree(save.partida_id);
-              setHabilidades(techTree);
-              setCurrentScreen('game');
-              setShowSaves(false);
-            }}
-            onNewGame={async (save) => {
-              setActivePartida(save);
-              setPresupuesto(save.budget);
-              setTropas({ infanteria: save.tropas_infanteria, caballeria: save.tropas_caballeria, artilleria: save.tropas_artilleria });
-              setTropasDetalle(distribuirTropasDetalle(save.tropas_infanteria, save.tropas_caballeria, save.tropas_artilleria));
-              setPlayerHQ({ id: save.hq, nombre: translateCountry(save.hq) });
-              setFechaVirtual(new Date(new Date(2099, 10, 12).getTime() + (save.campaignDays - 1) * 24 * 3600 * 1000));
-              setSpeedLevel(save.velocidad as 1 | 2 | 3 || 1);
-              setIsPlaying(!save.pausado);
-              const techTree = await fetchTechTree(save.partida_id);
-              setHabilidades(techTree);
-              setCurrentScreen('game');
-              setShowSaves(false);
-            }}
+            onLoadSave={loadSaveGameData}
+            onNewGame={loadSaveGameData}
           />
         )}
         {showUserProfile && currentUser && (
@@ -1582,8 +1595,23 @@ export default function App() {
         // Despliegue de HQ: inicializa el presupuesto y tropas iniciales del jugador según el nivel de importancia (Tier) del país seleccionado.
         onDeploy={(pais) => {
           setPlayerHQ(pais);
+          setActivePartida(null);
 
+          // Reset all skills to locked/not researchable
+          setHabilidades(prev => prev.map(h => ({
+            ...h,
+            desbloqueada: false,
+            enDesarrollo: false,
+            tiempoRestante: undefined
+          })));
+
+          // Reset game session states
+          resetSessionState();
           
+          setFechaVirtual(new Date(2099, 10, 12));
+          setIsPlaying(false);
+          setSpeedLevel(1);
+
           const norm = pais.nombre.toLowerCase();
           const presets = hqPresetsRef.current;
           const matched = presets.find(p => p.countries.some(c => norm.includes(c)));
@@ -1595,7 +1623,6 @@ export default function App() {
             setPresupuesto(preset.presupuesto);
             setTropasDetalle(distribuirTropasDetalle(preset.tropas.infanteria, preset.tropas.caballeria, preset.tropas.artilleria));
           } else {
-            
             setTropas({ infanteria: 3000, caballeria: 500, artilleria: 100 });
             setPresupuesto(5000);
             setTropasDetalle(distribuirTropasDetalle(3000, 500, 100));
@@ -2552,32 +2579,8 @@ export default function App() {
       {showSaves && (
         <SaveFilesMenu
           onClose={() => setShowSaves(false)}
-          onLoadSave={async (save) => {
-            setActivePartida(save);
-            setPresupuesto(save.budget);
-            setTropas({ infanteria: save.tropas_infanteria, caballeria: save.tropas_caballeria, artilleria: save.tropas_artilleria });
-            setPlayerHQ({ id: save.hq, nombre: translateCountry(save.hq) });
-            setFechaVirtual(new Date(new Date(2099, 10, 12).getTime() + (save.campaignDays - 1) * 24 * 3600 * 1000));
-            setSpeedLevel(save.velocidad as 1 | 2 | 3 || 1);
-            setIsPlaying(!save.pausado);
-            const techTree = await fetchTechTree(save.partida_id);
-            setHabilidades(techTree);
-            setCurrentScreen('game');
-            setShowSaves(false);
-          }}
-          onNewGame={async (save) => {
-            setActivePartida(save);
-            setPresupuesto(save.budget);
-            setTropas({ infanteria: save.tropas_infanteria, caballeria: save.tropas_caballeria, artilleria: save.tropas_artilleria });
-            setPlayerHQ({ id: save.hq, nombre: translateCountry(save.hq) });
-            setFechaVirtual(new Date(new Date(2099, 10, 12).getTime() + (save.campaignDays - 1) * 24 * 3600 * 1000));
-            setSpeedLevel(save.velocidad as 1 | 2 | 3 || 1);
-            setIsPlaying(!save.pausado);
-            const techTree = await fetchTechTree(save.partida_id);
-            setHabilidades(techTree);
-            setCurrentScreen('game');
-            setShowSaves(false);
-          }}
+          onLoadSave={loadSaveGameData}
+          onNewGame={loadSaveGameData}
         />
       )}
 
