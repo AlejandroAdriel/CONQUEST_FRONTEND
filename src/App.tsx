@@ -193,6 +193,7 @@ export default function App() {
   const [showSaves, setShowSaves] = useState(false);
   const [isSystemMenuOpen, setIsSystemMenuOpen] = useState(false);
   const [showActionLog, setShowActionLog] = useState(false);
+  const [showReservasPanel, setShowReservasPanel] = useState(false);
   const [fechaVirtual, setFechaVirtual] = useState(new Date(2099, 10, 12));
   const [isPlaying, setIsPlaying] = useState(false);
   const [speedLevel, setSpeedLevel] = useState<1 | 2 | 3>(1);
@@ -2394,67 +2395,262 @@ export default function App() {
         );
       })()}
 
-      <footer className="min-h-[90px] md:h-[90px] py-4 md:py-0 border-t border-slate-800/80 bg-slate-950/90 flex flex-col md:flex-row gap-4 md:gap-0 items-center justify-between px-6 shrink-0 z-20 backdrop-blur-md shadow-[0_-4px_30px_rgba(0,0,0,0.5)]">
-        <div className="flex flex-col sm:flex-row gap-4 h-auto md:h-14 w-full md:w-auto items-center">
-          <div className="bg-slate-900 border border-slate-700/80 rounded-sm px-5 flex flex-col justify-center shadow-inner relative overflow-hidden group">
-            <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Presupuesto Global</span>
-            <div className="flex items-center gap-2">
-              <span className="text-amber-500 font-black">€</span>
-              <span className="text-xl font-mono text-emerald-400 font-bold tracking-tight">{presupuesto.toLocaleString()}</span>
-            </div>
-          </div>
+      {/* ── BOTTOM HUD ─────────────────────────────────────────────────────────── */}
+      <footer className="relative shrink-0 z-20 border-t border-slate-700/50 bg-[#030812] shadow-[0_-4px_24px_rgba(0,0,0,0.6)] backdrop-blur-xl">
+        <div className="absolute top-0 left-0 right-0 h-px bg-slate-700/40" />
 
-          <div className="hidden sm:block w-px bg-gradient-to-b from-transparent via-slate-700 to-transparent my-1"></div>
+        {/* h-[90px] fixed — cards fill height via h-full */}
+        <div className="flex flex-col md:flex-row gap-2 md:gap-0 items-stretch md:items-center justify-between px-4 md:px-6 py-3 md:py-0 md:h-[90px]">
 
-          <div className="bg-slate-900 border border-slate-700/80 rounded-sm px-5 flex flex-col justify-center shadow-inner">
-            <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1.5">Fuerzas de Reserva</span>
-            <div className="flex gap-6 font-mono text-sm">
-              <div className="flex items-center gap-2" title="Infantería">
-                <Flag className="w-4 h-4 text-slate-400" />
-                <span className="text-slate-300">{tropas.infanteria.toLocaleString()}</span>
-              </div>
-              <div className="flex items-center gap-2" title="Caballería">
-                <Zap className="w-4 h-4 text-amber-600" />
-                <span className="text-slate-300">{tropas.caballeria.toLocaleString()}</span>
-              </div>
-              <div className="flex items-center gap-2" title="Artillería">
-                <Skull className="w-4 h-4 text-rose-700" />
-                <span className="text-slate-300">{tropas.artilleria.toLocaleString()}</span>
+          {/* ── STAT CARDS ── */}
+          <div className="flex flex-nowrap gap-0 items-center">
+
+            {/* ── Presupuesto Global ── */}
+            <div className="relative bg-slate-900 border border-slate-800 hover:border-emerald-700/60 transition-colors duration-200 px-4 flex flex-col justify-center w-[170px] shrink-0 h-[64px]">
+              <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-emerald-500/70" />
+              <span className="text-[10px] font-mono font-semibold text-slate-500 uppercase tracking-widest mb-1">PRESUPUESTO GLOBAL</span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-emerald-500 font-bold text-sm font-mono leading-none">€</span>
+                <span className="text-2xl font-mono text-emerald-400 font-bold leading-none">{presupuesto.toLocaleString()}</span>
               </div>
             </div>
-          </div>
 
-          <div className="hidden sm:block w-px bg-gradient-to-b from-transparent via-slate-700 to-transparent my-1"></div>
+            <div className="w-px self-stretch bg-slate-800/80" />
 
-          <div className="bg-slate-900 border border-slate-700/80 rounded-sm px-5 flex flex-col justify-center shadow-inner">
-            <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Población Aliada</span>
-            <div className="flex items-center gap-2">
-              <span className="text-xl font-mono text-blue-400 font-bold tracking-tight">
-                {Object.values(paises)
-                  .filter(p => p.conquistado)
-                  .reduce((sum, p) => sum + p.poblacion, 0)
-                  .toLocaleString()}
+            {/* ── Fuerzas de Reserva (clickable) ── */}
+            <button
+              onClick={() => setShowReservasPanel(true)}
+              className="relative bg-slate-900 border border-slate-800 hover:border-slate-500 hover:bg-slate-800/60 transition-colors duration-200 px-4 flex flex-col justify-center w-[210px] shrink-0 h-[64px] text-left cursor-pointer group"
+            >
+              <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-slate-500/70" />
+              <span className="text-[10px] font-mono font-semibold text-slate-500 group-hover:text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1 transition-colors">
+                <Swords className="w-3 h-3" />
+                FUERZAS DE RESERVA
+                <span className="ml-auto text-[8px] text-slate-700 group-hover:text-slate-500 transition-colors">▶</span>
+              </span>
+              <div className="flex gap-4 font-mono">
+                <div className="flex items-center gap-1.5" title="Infantería">
+                  <Flag className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span className="text-slate-100 font-bold text-base">{tropas.infanteria.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center gap-1.5" title="Caballería">
+                  <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="text-slate-100 font-bold text-base">{tropas.caballeria.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center gap-1.5" title="Artillería">
+                  <Skull className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                  <span className="text-slate-100 font-bold text-base">{tropas.artilleria.toLocaleString()}</span>
+                </div>
+              </div>
+            </button>
+
+            <div className="w-px self-stretch bg-slate-800/80" />
+
+            {/* ── Fuerza de Combate ── */}
+            {(() => {
+              const fuerzaTotal = Math.floor(calcularFuerzaTotal(tropasDetalle, catalogoTropas));
+              const fuerzaStr = fuerzaTotal >= 1_000_000
+                ? `${(fuerzaTotal / 1_000_000).toFixed(2)}M`
+                : fuerzaTotal >= 1_000
+                  ? `${(fuerzaTotal / 1_000).toFixed(1)}K`
+                  : fuerzaTotal.toLocaleString();
+              return (
+                <div className="relative bg-slate-900 border border-slate-800 hover:border-rose-700/60 transition-colors duration-200 px-4 flex flex-col justify-center w-[170px] shrink-0 h-[64px]">
+                  <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-rose-600/70" />
+                  <span className="text-[10px] font-mono font-semibold text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1">
+                    <Zap className="w-3 h-3 text-rose-500/80" />
+                    FUERZA DE COMBATE
+                  </span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-mono text-rose-400 font-bold leading-none">{fuerzaStr}</span>
+                    <span className="text-[10px] text-slate-600 font-mono uppercase">pts</span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className="w-px self-stretch bg-slate-800/80" />
+
+            {/* ── Población Aliada ── */}
+            <div className="relative bg-slate-900 border border-slate-800 hover:border-blue-700/60 transition-colors duration-200 px-4 flex flex-col justify-center w-[170px] shrink-0 h-[64px]">
+              <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-blue-500/70" />
+              <span className="text-[10px] font-mono font-semibold text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1">
+                <Globe className="w-3 h-3 text-blue-500/80" />
+                POBLACIÓN ALIADA
+              </span>
+              <span className="text-2xl font-mono text-blue-400 font-bold leading-none">
+                {(() => {
+                  const pop = Object.values(paises).filter(p => p.conquistado).reduce((s, p) => s + p.poblacion, 0);
+                  return pop >= 1_000_000_000
+                    ? `${(pop / 1_000_000_000).toFixed(2)}B`
+                    : pop >= 1_000_000
+                      ? `${(pop / 1_000_000).toFixed(1)}M`
+                      : pop.toLocaleString();
+                })()}
               </span>
             </div>
+
+            <div className="w-px self-stretch bg-slate-800/80" />
+
+            {/* ── Dominio Global ── */}
+            {(() => {
+              const pct = (Object.values(paises).filter(p => p.conquistado).length / 177) * 100;
+              return (
+                <div className="relative bg-slate-900 border border-slate-800 hover:border-purple-700/60 transition-colors duration-200 px-4 flex flex-col justify-center w-[170px] shrink-0 h-[64px]">
+                  <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-purple-500/70" />
+                  <span className="text-[10px] font-mono font-semibold text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1">
+                    <Hexagon className="w-3 h-3" />
+                    DOMINIO GLOBAL
+                  </span>
+                  <span className="text-2xl font-mono font-bold leading-none text-purple-400">{pct.toFixed(1)}%</span>
+                  <div className="mt-1.5 w-full h-[3px] bg-slate-800 overflow-hidden">
+                    <div className="h-full bg-purple-500 transition-all duration-1000" style={{ width: `${Math.min(100, pct)}%` }} />
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
-          <div className="hidden sm:block w-px bg-gradient-to-b from-transparent via-slate-700 to-transparent my-1"></div>
-
-          <div className="bg-slate-900 border border-slate-700/80 rounded-sm px-5 flex flex-col justify-center shadow-inner">
-            <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Dominio Global</span>
-            <div className="flex items-center gap-2">
-              <span className="text-xl font-mono text-cyan-400 font-bold tracking-tight">
-                {((Object.values(paises).filter(p => p.conquistado).length / 177) * 100).toFixed(1)}%
-              </span>
+          {/* ── MATRIZ DE PROTOCOLOS BUTTON ── */}
+          <button
+            onClick={() => setMostrarArbol(true)}
+            className="w-full md:w-auto justify-center group relative bg-slate-900 border border-cyan-800/60 hover:border-cyan-500 hover:bg-slate-800 text-cyan-300 md:h-[64px] px-7 transition-all duration-200 flex items-center gap-3"
+          >
+            <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-cyan-600/70 group-hover:border-cyan-400 transition-colors" />
+            <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-cyan-600/70 group-hover:border-cyan-400 transition-colors" />
+            <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-cyan-600/70 group-hover:border-cyan-400 transition-colors" />
+            <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-cyan-600/70 group-hover:border-cyan-400 transition-colors" />
+            <Cpu className="w-5 h-5 text-cyan-500 group-hover:text-cyan-300 transition-colors shrink-0" />
+            <div className="flex flex-col items-start">
+              <span className="font-black uppercase tracking-[0.2em] text-sm text-cyan-300 group-hover:text-cyan-100 transition-colors leading-none">MATRIZ DE PROTOCOLOS</span>
+              <span className="text-[10px] font-mono text-slate-500 group-hover:text-slate-400 tracking-widest mt-0.5 uppercase leading-none">I+D · Árbol de Tecnología</span>
             </div>
-          </div>
+          </button>
         </div>
-
-        <button onClick={() => setMostrarArbol(true)} className="w-full md:w-auto justify-center group relative bg-slate-900 hover:bg-slate-800 border border-cyan-900/50 hover:border-cyan-500 text-cyan-100 h-14 px-8 rounded-sm shadow-md transition-all flex items-center gap-3">
-          <Cpu className="w-5 h-5 text-cyan-400 group-hover:text-cyan-300" />
-          <span className="font-bold uppercase tracking-[0.2em] text-xs">[ MATRIZ DE PROTOCOLOS ]</span>
-        </button>
       </footer>
+
+      {/* ── PANEL DE RESERVAS ─────────────────────────────────────────────────── */}
+      {showReservasPanel && (() => {
+        const fuerzaTotal = Math.floor(calcularFuerzaTotal(tropasDetalle, catalogoTropas));
+        const fuerzaInf   = Math.floor(calcularFuerzaTotal(tropasDetalle, catalogoTropas, 'infanteria'));
+        const fuerzaCab   = Math.floor(calcularFuerzaTotal(tropasDetalle, catalogoTropas, 'caballeria'));
+        const fuerzaArt   = Math.floor(calcularFuerzaTotal(tropasDetalle, catalogoTropas, 'artilleria'));
+
+        const grupos: Array<{
+          subtipo: 'infanteria' | 'caballeria' | 'artilleria';
+          label: string;
+          icon: React.ReactNode;
+          accentBorder: string;
+          accentText: string;
+          accentBar: string;
+          fuerza: number;
+        }> = [
+          { subtipo: 'infanteria', label: 'Infantería', icon: <Flag className="w-4 h-4" />, accentBorder: 'border-slate-600', accentText: 'text-slate-300', accentBar: 'bg-slate-400', fuerza: fuerzaInf },
+          { subtipo: 'caballeria', label: 'Caballería', icon: <Zap className="w-4 h-4" />,  accentBorder: 'border-amber-700', accentText: 'text-amber-400',  accentBar: 'bg-amber-500',  fuerza: fuerzaCab },
+          { subtipo: 'artilleria', label: 'Artillería', icon: <Skull className="w-4 h-4" />, accentBorder: 'border-rose-700',  accentText: 'text-rose-400',   accentBar: 'bg-rose-500',   fuerza: fuerzaArt },
+        ];
+
+        return (
+          <div
+            className="fixed inset-0 z-[70] flex items-end justify-start"
+            onClick={() => setShowReservasPanel(false)}
+          >
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+
+            {/* Panel — arranca desde abajo izquierda */}
+            <div
+              className="relative z-10 bg-[#030812] border-t border-r border-slate-700/60 shadow-[4px_-4px_40px_rgba(0,0,0,0.8)] w-full max-w-3xl flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+                <div className="flex items-center gap-3">
+                  <Swords className="w-5 h-5 text-slate-400" />
+                  <div>
+                    <h2 className="text-sm font-black uppercase tracking-[0.25em] text-slate-100">INVENTARIO DE RESERVAS</h2>
+                    <p className="text-[10px] font-mono text-slate-500 mt-0.5 uppercase tracking-widest">
+                      Fuerza total: <span className="text-rose-400 font-bold">{fuerzaTotal.toLocaleString()} pts</span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowReservasPanel(false)}
+                  className="text-slate-600 hover:text-slate-300 transition-colors p-1"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+
+              {/* Body — 3 columnas una por subtipo */}
+              <div className="grid grid-cols-3 divide-x divide-slate-800">
+                {grupos.map(({ subtipo, label, icon, accentBorder, accentText, accentBar, fuerza }) => {
+                  const unidades = catalogoTropas.filter(t => t.subtipo === subtipo);
+                  const pctFuerza = fuerzaTotal > 0 ? (fuerza / fuerzaTotal) * 100 : 0;
+                  return (
+                    <div key={subtipo} className="flex flex-col">
+                      {/* Subheader del grupo */}
+                      <div className={`flex items-center gap-2 px-4 py-3 border-b ${accentBorder} border-opacity-50 bg-slate-900/40`}>
+                        <span className={accentText}>{icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-xs font-bold uppercase tracking-widest ${accentText}`}>{label}</p>
+                          <p className="text-[10px] font-mono text-slate-500">{fuerza.toLocaleString()} pts ({pctFuerza.toFixed(1)}%)</p>
+                        </div>
+                      </div>
+                      {/* Barra de contribución */}
+                      <div className="h-[2px] bg-slate-800">
+                        <div className={`h-full ${accentBar} transition-all duration-700`} style={{ width: `${pctFuerza}%` }} />
+                      </div>
+                      {/* Lista de unidades */}
+                      <div className="flex flex-col divide-y divide-slate-800/60 flex-1">
+                        {unidades.map(tropa => {
+                          const qty = tropasDetalle[tropa.tropa_id] || 0;
+                          const poderUnidad = Math.floor(qty * tropa.multiplicador_combate);
+                          const pctUnidad = fuerzaTotal > 0 ? (poderUnidad / fuerzaTotal) * 100 : 0;
+                          return (
+                            <div key={tropa.tropa_id} className={`px-4 py-2.5 ${qty === 0 ? 'opacity-30' : ''}`}>
+                              <div className="flex items-start justify-between gap-2 mb-1">
+                                <span className="text-[11px] font-mono text-slate-300 leading-tight">{tropa.nombre_tropa}</span>
+                                <span className={`text-[11px] font-mono font-bold shrink-0 ${qty > 0 ? accentText : 'text-slate-600'}`}>
+                                  {qty.toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 flex-1">
+                                  <div className="flex-1 h-[2px] bg-slate-800/80">
+                                    <div className={`h-full ${accentBar} opacity-60`} style={{ width: `${Math.min(100, pctUnidad * 4)}%` }} />
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <span className="text-[10px] font-mono text-slate-500">x{tropa.multiplicador_combate} = </span>
+                                  <span className={`text-[10px] font-mono font-bold ${qty > 0 ? accentText : 'text-slate-700'}`}>
+                                    {poderUnidad.toLocaleString()} pts
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Footer del panel */}
+              <div className="border-t border-slate-800 px-6 py-3 flex items-center justify-between bg-slate-900/30">
+                <span className="text-[10px] font-mono text-slate-600 uppercase tracking-widest">Haz click fuera para cerrar</span>
+                <div className="flex gap-6 text-[11px] font-mono">
+                  <span className="text-slate-400">INF: <span className="text-slate-200 font-bold">{tropas.infanteria.toLocaleString()}</span></span>
+                  <span className="text-amber-500">CAV: <span className="text-slate-200 font-bold">{tropas.caballeria.toLocaleString()}</span></span>
+                  <span className="text-rose-400">ART: <span className="text-slate-200 font-bold">{tropas.artilleria.toLocaleString()}</span></span>
+                  <span className="text-slate-500">TOTAL: <span className="text-rose-400 font-bold">{fuerzaTotal.toLocaleString()} pts</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {mostrarArbol && (() => {
         const conqueredCount = Object.values(paises).filter(p => p.conquistado).length;
