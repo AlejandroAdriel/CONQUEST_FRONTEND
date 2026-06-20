@@ -2850,9 +2850,25 @@ export default function App() {
                 </button>
                 <button
                   onClick={async () => {
-                    await logoutOperator();
+                    setIsPlaying(false);
+                    // Guardar automáticamente si hay partida activa y usuario logueado
+                    if (activePartida && currentUser?.dbId) {
+                      const days = Math.floor(
+                        (fechaVirtual.getTime() - new Date(2099, 10, 12).getTime()) / (1000 * 3600 * 24)
+                      ) + 1;
+                      await saveGame(activePartida.partida_id, {
+                        dias_campana:       days,
+                        porcentaje_dominio: 2.1,
+                        oro:                presupuesto,
+                        tropas_infanteria:  tropas.infanteria,
+                        tropas_caballeria:  tropas.caballeria,
+                        tropas_artilleria:  tropas.artilleria,
+                        habilidad_puntos:   0,
+                        velocidad:          speedLevel,
+                        pausado:            true,
+                      });
+                    }
                     setIsSystemMenuOpen(false);
-                    setCurrentUser(null);
                     setCurrentScreen('start');
                   }}
                   className="w-full border border-slate-800 hover:border-rose-500 bg-slate-950/50 hover:bg-rose-950/20 text-slate-500 hover:text-rose-500 py-3 px-4 transition-all duration-300 rounded-sm font-bold"
