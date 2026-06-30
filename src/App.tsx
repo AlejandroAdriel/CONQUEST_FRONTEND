@@ -9,7 +9,7 @@ import {
   Play, Pause, FastForward, Terminal,
   ShieldAlert, ShieldCheck, Info,
   Flag, Swords, Hexagon, Zap, Skull, Map as MapIcon,
-  ChevronsRight, Globe, Cpu
+  ChevronsRight, Globe, Cpu, User, ChevronDown
 } from "lucide-react";
 import {
   fetchInitialGameState, fetchRandomEvents,
@@ -1739,11 +1739,19 @@ export default function App() {
           {currentUser ? (
             <button
               onClick={() => setShowUserProfile(true)}
-              className="group flex items-center text-xs font-mono tracking-widest text-slate-400
-                border-l border-slate-800 pl-2 ml-1 md:pl-3 md:ml-2 hover:text-cyan-400 transition-colors whitespace-nowrap gap-1"
+              className="group flex items-center gap-2 text-xs font-mono tracking-widest
+                border border-slate-700 hover:border-cyan-500
+                bg-slate-900/60 hover:bg-cyan-950/30
+                text-slate-400 hover:text-cyan-400
+                px-3 py-1.5 rounded-sm
+                transition-all duration-200
+                hover:shadow-[0_0_12px_rgba(34,211,238,0.2)]
+                whitespace-nowrap ml-2"
               title="Ver perfil de operario"
             >
-              OPERARIO: [ <span className="text-cyan-400 font-bold group-hover:drop-shadow-[0_0_6px_rgba(34,211,238,0.6)] transition-all max-w-[80px] md:max-w-[100px] truncate">{currentUser.username}</span> ]
+              <User className="w-3 h-3 shrink-0" />
+              <span>OPERARIO:&nbsp;<span className="text-cyan-400 font-bold group-hover:drop-shadow-[0_0_6px_rgba(34,211,238,0.6)] transition-all max-w-[80px] md:max-w-[100px] truncate inline-block align-bottom">{currentUser.username}</span></span>
+              <ChevronDown className="w-3 h-3 shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />
             </button>
           ) : (
             <div className="text-xs font-mono tracking-widest text-slate-400 border-l border-slate-800 pl-2 ml-1 md:pl-3 md:ml-2 whitespace-nowrap">
@@ -2850,9 +2858,25 @@ export default function App() {
                 </button>
                 <button
                   onClick={async () => {
-                    await logoutOperator();
+                    setIsPlaying(false);
+                    // Guardar automáticamente si hay partida activa y usuario logueado
+                    if (activePartida && currentUser?.dbId) {
+                      const days = Math.floor(
+                        (fechaVirtual.getTime() - new Date(2099, 10, 12).getTime()) / (1000 * 3600 * 24)
+                      ) + 1;
+                      await saveGame(activePartida.partida_id, {
+                        dias_campana:       days,
+                        porcentaje_dominio: 2.1,
+                        oro:                presupuesto,
+                        tropas_infanteria:  tropas.infanteria,
+                        tropas_caballeria:  tropas.caballeria,
+                        tropas_artilleria:  tropas.artilleria,
+                        habilidad_puntos:   0,
+                        velocidad:          speedLevel,
+                        pausado:            true,
+                      });
+                    }
                     setIsSystemMenuOpen(false);
-                    setCurrentUser(null);
                     setCurrentScreen('start');
                   }}
                   className="w-full border border-slate-800 hover:border-rose-500 bg-slate-950/50 hover:bg-rose-950/20 text-slate-500 hover:text-rose-500 py-3 px-4 transition-all duration-300 rounded-sm font-bold"
