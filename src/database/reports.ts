@@ -15,7 +15,6 @@ export interface UserRanking {
 export interface HQRanking {
   pais_base: string;
   veces_elegido: number;
-  oro_total_acumulado: number;
 }
 
 export interface ArmyReport {
@@ -30,6 +29,24 @@ export interface TechBranchReport {
   costo_total_para_completar: number;
   costo_promedio: number;
 }
+
+export interface GlobalCommanderRanking {
+  comandante: string;
+  partida_id: number;
+  pais_seleccionado: string;
+  total_oro: number;
+  total_tropas: number;
+}
+
+export interface CombatPowerRanking {
+  comandante: string;
+  partida_id: number;
+  pais_seleccionado: string;
+  total_oro: number;
+  fuerza_total_combate: number;
+}
+
+
 
 /**
  * Endpoint 1: Obtiene la lista de usuarios y la cantidad de partidas jugadas (Ranking)
@@ -110,3 +127,45 @@ export const fetchTechBranchReports = async (): Promise<TechBranchReport[]> => {
     return [];
   }
 };
+
+/**
+ * Obtiene el ranking global de comandantes ordenado por oro/tropas
+ */
+export const fetchGlobalCommanderRankings = async (): Promise<GlobalCommanderRanking[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('ranking_comandantes_global')
+      .select('*');
+
+    if (error) {
+      console.error('[fetchGlobalCommanderRankings] Error:', error);
+      return [];
+    }
+    return data || [];
+  } catch (e) {
+    console.error('[fetchGlobalCommanderRankings] Exception:', e);
+    return [];
+  }
+};
+
+/**
+ * Obtiene el ranking global de fuerza de combate/poder militar
+ */
+export const fetchCombatPowerRankings = async (): Promise<CombatPowerRanking[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('reporte_ranking_fuerza_combate')
+      .select('*');
+
+    if (error) {
+      console.error('[fetchCombatPowerRankings] Error:', error);
+      return [];
+    }
+    return data || [];
+  } catch (e) {
+    console.error('[fetchCombatPowerRankings] Exception:', e);
+    return [];
+  }
+};
+
+

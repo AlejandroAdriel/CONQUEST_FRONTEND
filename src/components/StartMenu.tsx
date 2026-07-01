@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { 
-  Terminal, ShieldAlert, ShieldCheck, Play, Key, Database, Cpu, Wifi, Activity, User, Trophy
+  Terminal, ShieldAlert, ShieldCheck, Play, Key, Database, Cpu, Wifi, Activity, User, Trophy, Globe, Coins, Swords
 } from "lucide-react";
 import type { OperarioUser } from '../types/user';
-import { fetchUserRankings, fetchHQRankings } from '../database/reports';
-import type { UserRanking, HQRanking } from '../database/reports';
+import { fetchUserRankings, fetchHQRankings, fetchGlobalCommanderRankings, fetchCombatPowerRankings } from '../database/reports';
+import type { UserRanking, HQRanking, GlobalCommanderRanking, CombatPowerRanking } from '../database/reports';
 
 interface StartMenuProps {
   onStartGame: () => void;
@@ -23,7 +23,9 @@ export default function StartMenu({ onStartGame, onOpenLogin, onOpenSaves, onOpe
 
   const [userRankings, setUserRankings] = useState<UserRanking[]>([]);
   const [hqRankings, setHqRankings] = useState<HQRanking[]>([]);
-  const [rankTab, setRankTab] = useState<"operarios" | "hqs">("operarios");
+  const [commanderRankings, setCommanderRankings] = useState<GlobalCommanderRanking[]>([]);
+  const [combatPowerRankings, setCombatPowerRankings] = useState<CombatPowerRanking[]>([]);
+  const [rankTab, setRankTab] = useState<"operarios" | "hqs" | "oro" | "fuerza">("operarios");
   const [isLoadingRankings, setIsLoadingRankings] = useState(true);
   const [showRankings, setShowRankings] = useState(false);
 
@@ -31,12 +33,16 @@ export default function StartMenu({ onStartGame, onOpenLogin, onOpenSaves, onOpe
     const getRankings = async () => {
       try {
         setIsLoadingRankings(true);
-        const [users, hqs] = await Promise.all([
+        const [users, hqs, commanders, combatPower] = await Promise.all([
           fetchUserRankings(),
-          fetchHQRankings()
+          fetchHQRankings(),
+          fetchGlobalCommanderRankings(),
+          fetchCombatPowerRankings()
         ]);
         setUserRankings(users.slice(0, 5));
         setHqRankings(hqs.slice(0, 5));
+        setCommanderRankings(commanders);
+        setCombatPowerRankings(combatPower);
       } catch (err) {
         console.error("Error al obtener clasificaciones:", err);
       } finally {
@@ -214,7 +220,7 @@ export default function StartMenu({ onStartGame, onOpenLogin, onOpenSaves, onOpe
       {/* MODAL DE RANKINGS Y CLASIFICACIONES */}
       {showRankings && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#030712]/95 backdrop-blur-xl animate-in fade-in duration-300">
-          <div className="relative w-full max-w-2xl bg-[#050915]/95 border-t border-b border-cyan-500/30 p-1 rounded-sm shadow-[0_0_50px_rgba(6,182,212,0.15)] font-mono text-slate-300">
+          <div className="relative w-full max-w-4xl bg-[#050915]/95 border-t border-b border-cyan-500/30 p-1 rounded-sm shadow-[0_0_50px_rgba(6,182,212,0.15)] font-mono text-slate-300">
             {/* Esquinas HUD */}
             <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-cyan-400" />
             <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-cyan-400" />
@@ -236,26 +242,50 @@ export default function StartMenu({ onStartGame, onOpenLogin, onOpenSaves, onOpe
                 </button>
               </div>
 
-              <div className="flex gap-4 mb-6 shrink-0">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6 shrink-0 font-bold">
                 <button
                   onClick={() => setRankTab("operarios")}
-                  className={`px-4 py-2.5 border transition-all text-[9px] md:text-xs rounded-sm font-black ${
+                  className={`flex items-center justify-center gap-2 px-3 py-3 border transition-all text-[9px] md:text-xs rounded-sm font-black tracking-widest uppercase ${
                     rankTab === "operarios"
-                      ? "border-cyan-500 bg-cyan-950/30 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.2)]"
-                      : "border-slate-800 text-slate-500 hover:text-slate-400 hover:bg-slate-900/30"
+                      ? "border-cyan-500 bg-cyan-950/40 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.25)]"
+                      : "border-slate-800 text-slate-500 hover:text-slate-400 hover:bg-slate-900/20"
                   }`}
                 >
-                  [ 👤 OPERARIOS CON MÁS PARTIDAS ]
+                  <User className="w-3.5 h-3.5 shrink-0 text-cyan-400" />
+                  <span>OPERARIOS</span>
                 </button>
                 <button
                   onClick={() => setRankTab("hqs")}
-                  className={`px-4 py-2.5 border transition-all text-[9px] md:text-xs rounded-sm font-black ${
+                  className={`flex items-center justify-center gap-2 px-3 py-3 border transition-all text-[9px] md:text-xs rounded-sm font-black tracking-widest uppercase ${
                     rankTab === "hqs"
-                      ? "border-cyan-500 bg-cyan-950/30 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.2)]"
-                      : "border-slate-800 text-slate-500 hover:text-slate-400 hover:bg-slate-900/30"
+                      ? "border-cyan-500 bg-cyan-950/40 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.25)]"
+                      : "border-slate-800 text-slate-500 hover:text-slate-400 hover:bg-slate-900/20"
                   }`}
                 >
-                  [ 🏢 SEDES HQ MÁS ELEGIDAS ]
+                  <Globe className="w-3.5 h-3.5 shrink-0 text-cyan-400" />
+                  <span>SEDES HQ</span>
+                </button>
+                <button
+                  onClick={() => setRankTab("oro")}
+                  className={`flex items-center justify-center gap-2 px-3 py-3 border transition-all text-[9px] md:text-xs rounded-sm font-black tracking-widest uppercase ${
+                    rankTab === "oro"
+                      ? "border-cyan-500 bg-cyan-950/40 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.25)]"
+                      : "border-slate-800 text-slate-500 hover:text-slate-400 hover:bg-slate-900/20"
+                  }`}
+                >
+                  <Coins className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+                  <span>RIQUEZA ORO</span>
+                </button>
+                <button
+                  onClick={() => setRankTab("fuerza")}
+                  className={`flex items-center justify-center gap-2 px-3 py-3 border transition-all text-[9px] md:text-xs rounded-sm font-black tracking-widest uppercase ${
+                    rankTab === "fuerza"
+                      ? "border-cyan-500 bg-cyan-950/40 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.25)]"
+                      : "border-slate-800 text-slate-500 hover:text-slate-400 hover:bg-slate-900/20"
+                  }`}
+                >
+                  <Swords className="w-3.5 h-3.5 shrink-0 text-rose-500" />
+                  <span>PODER MILITAR</span>
                 </button>
               </div>
 
@@ -267,23 +297,32 @@ export default function StartMenu({ onStartGame, onOpenLogin, onOpenSaves, onOpe
               ) : rankTab === "operarios" ? (
                 <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                   {userRankings.length === 0 ? (
-                    <div className="text-center py-12 text-slate-650 text-xs">SIN REGISTROS EN LA RED TÁCTICA</div>
+                    <div className="text-center py-12 text-slate-655 text-xs">SIN REGISTROS EN LA RED TÁCTICA</div>
                   ) : (
                     userRankings.map((ur, idx) => (
                       <div
                         key={ur.correo}
-                        className="flex items-center justify-between p-4 border border-slate-800/80 bg-slate-900/10 hover:border-cyan-500/30 hover:bg-cyan-955/5 transition-all duration-300"
+                        className="group/row relative flex items-center justify-between p-4 border border-slate-800/60 bg-slate-950/20 hover:border-cyan-500/30 hover:bg-cyan-950/10 transition-all duration-300"
                       >
+                        <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-transparent group-hover/row:bg-cyan-500/60 transition-colors" />
                         <div className="flex items-center gap-4 text-left">
-                          <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black ${
-                            idx === 0 ? "bg-amber-500/25 text-amber-400 border border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.25)]" :
-                            idx === 1 ? "bg-slate-300/25 text-slate-200 border border-slate-300/50" :
-                            idx === 2 ? "bg-orange-600/25 text-orange-400 border border-orange-600/50" :
-                            "bg-slate-950 border border-slate-850 text-slate-500"
-                          }`}>
-                            {idx + 1}
-                          </span>
-                          <div className="flex flex-col text-left">
+                          <div className="relative flex items-center justify-center w-8 h-8 shrink-0">
+                            <div className={`absolute inset-0 border rotate-45 transition-all duration-300 ${
+                              idx === 0 ? "bg-amber-500/10 border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]" :
+                              idx === 1 ? "bg-slate-300/10 border-slate-300/50" :
+                              idx === 2 ? "bg-orange-600/10 border-orange-600/50" :
+                              "bg-slate-950/50 border-slate-800"
+                            }`} />
+                            <span className={`relative z-10 text-xs font-black ${
+                              idx === 0 ? "text-amber-400" :
+                              idx === 1 ? "text-slate-350" :
+                              idx === 2 ? "text-orange-400" :
+                              "text-slate-500"
+                            }`}>
+                              {idx + 1}
+                            </span>
+                          </div>
+                          <div className="flex flex-col text-left ml-1">
                             <span className="text-slate-100 font-black tracking-wider text-xs md:text-sm">{ur.username}</span>
                             <span className="text-[10px] text-slate-500 normal-case font-semibold mt-1 tracking-normal">{ur.correo}</span>
                           </div>
@@ -296,7 +335,7 @@ export default function StartMenu({ onStartGame, onOpenLogin, onOpenSaves, onOpe
                     ))
                   )}
                 </div>
-              ) : (
+              ) : rankTab === "hqs" ? (
                 <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                   {hqRankings.length === 0 ? (
                     <div className="text-center py-12 text-slate-655 text-xs">SIN REGISTROS EN LA RED TÁCTICA</div>
@@ -304,31 +343,141 @@ export default function StartMenu({ onStartGame, onOpenLogin, onOpenSaves, onOpe
                     hqRankings.map((hq, idx) => (
                       <div
                         key={hq.pais_base}
-                        className="flex items-center justify-between p-4 border border-slate-800/80 bg-slate-900/10 hover:border-cyan-500/30 hover:bg-cyan-955/5 transition-all duration-300"
+                        className="group/row relative flex items-center justify-between p-4 border border-slate-800/60 bg-slate-950/20 hover:border-cyan-500/30 hover:bg-cyan-955/10 transition-all duration-300"
                       >
+                        <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-transparent group-hover/row:bg-cyan-500/60 transition-colors" />
                         <div className="flex items-center gap-4">
-                          <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black ${
-                            idx === 0 ? "bg-amber-500/25 text-amber-400 border border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.25)]" :
-                            idx === 1 ? "bg-slate-300/25 text-slate-200 border border-slate-300/50" :
-                            idx === 2 ? "bg-orange-600/25 text-orange-400 border border-orange-600/50" :
-                            "bg-slate-950 border border-slate-850 text-slate-500"
-                          }`}>
-                            {idx + 1}
-                          </span>
-                          <span className="text-slate-100 font-black tracking-wider text-xs md:text-sm">{hq.pais_base}</span>
+                          <div className="relative flex items-center justify-center w-8 h-8 shrink-0">
+                            <div className={`absolute inset-0 border rotate-45 transition-all duration-300 ${
+                              idx === 0 ? "bg-amber-500/10 border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]" :
+                              idx === 1 ? "bg-slate-300/10 border-slate-300/50" :
+                              idx === 2 ? "bg-orange-600/10 border-orange-600/50" :
+                              "bg-slate-950/50 border-slate-800"
+                            }`} />
+                            <span className={`relative z-10 text-xs font-black ${
+                              idx === 0 ? "text-amber-400" :
+                              idx === 1 ? "text-slate-350" :
+                              idx === 2 ? "text-orange-400" :
+                              "text-slate-500"
+                            }`}>
+                              {idx + 1}
+                            </span>
+                          </div>
+                          <span className="text-slate-100 font-black tracking-wider text-xs md:text-sm ml-1">{hq.pais_base}</span>
                         </div>
-                        <div className="flex gap-6 items-center">
-                          <div className="text-right border-r border-slate-800/80 pr-6">
-                            <div className="text-cyan-400 font-bold font-mono text-sm md:text-base">{hq.veces_elegido}</div>
-                            <div className="text-[8px] text-slate-500 font-semibold tracking-widest mt-1">SELECCIONES</div>
-                          </div>
-                          <div className="text-right min-w-[100px]">
-                            <div className="text-emerald-400 font-bold font-mono text-sm md:text-base">${hq.oro_total_acumulado.toLocaleString()}</div>
-                            <div className="text-[8px] text-slate-500 font-semibold tracking-widest mt-1">RECURSOS ORO</div>
-                          </div>
+                        <div className="text-right">
+                          <div className="text-cyan-400 font-bold font-mono text-base md:text-lg">{hq.veces_elegido}</div>
+                          <div className="text-[8px] text-slate-500 font-semibold tracking-widest mt-1">SELECCIONES REGISTRADAS</div>
                         </div>
                       </div>
                     ))
+                  )}
+                </div>
+              ) : rankTab === "oro" ? (
+                <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                  {commanderRankings.length === 0 ? (
+                    <div className="text-center py-12 text-slate-655 text-xs">SIN COMANDANTES REGISTRADOS EN LA RED</div>
+                  ) : (
+                    [...commanderRankings]
+                      .sort((a, b) => b.total_oro - a.total_oro)
+                      .slice(0, 10)
+                      .map((cmd, idx) => (
+                        <div
+                          key={`${cmd.comandante}-${cmd.partida_id}`}
+                          className="group/row relative flex items-center justify-between p-4 border border-slate-800/60 bg-slate-950/20 hover:border-cyan-500/30 hover:bg-cyan-955/10 transition-all duration-300"
+                        >
+                          <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-transparent group-hover/row:bg-cyan-500/60 transition-colors" />
+                          <div className="flex items-center gap-4 text-left">
+                            <div className="relative flex items-center justify-center w-8 h-8 shrink-0">
+                              <div className={`absolute inset-0 border rotate-45 transition-all duration-300 ${
+                                idx === 0 ? "bg-amber-500/10 border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]" :
+                                idx === 1 ? "bg-slate-300/10 border-slate-300/50" :
+                                idx === 2 ? "bg-orange-600/10 border-orange-600/50" :
+                                "bg-slate-950/50 border-slate-800"
+                              }`} />
+                              <span className={`relative z-10 text-xs font-black ${
+                                idx === 0 ? "text-amber-400" :
+                                idx === 1 ? "text-slate-355" :
+                                idx === 2 ? "text-orange-400" :
+                                "text-slate-500"
+                              }`}>
+                                {idx + 1}
+                              </span>
+                            </div>
+                            <div className="flex flex-col text-left ml-1">
+                              <span className="text-slate-100 font-black tracking-wider text-xs md:text-sm">{cmd.comandante}</span>
+                              <span className="text-[10px] text-slate-500 mt-1">HQ: <span className="text-slate-400 font-bold">{cmd.pais_seleccionado}</span> // SIM_ID: #{cmd.partida_id}</span>
+                            </div>
+                          </div>
+                          <div className="flex gap-6 items-center">
+                            <div className="text-right border-r border-slate-800/80 pr-6">
+                              <div className="text-emerald-400 font-bold font-mono text-sm md:text-base">${cmd.total_oro.toLocaleString()}</div>
+                              <div className="text-[8px] text-slate-500 font-semibold tracking-widest mt-1">PRESUPUESTO ORO</div>
+                            </div>
+                            <div className="text-right min-w-[100px]">
+                              <div className="text-cyan-400 font-bold font-mono text-sm md:text-base">{cmd.total_tropas.toLocaleString()}</div>
+                              <div className="text-[8px] text-slate-500 font-semibold tracking-widest mt-1">TROPAS GLOBALES</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                  {combatPowerRankings.length === 0 ? (
+                    <div className="text-center py-12 text-slate-655 text-xs">SIN COMANDANTES REGISTRADOS EN LA RED</div>
+                  ) : (
+                    [...combatPowerRankings]
+                      .sort((a, b) => b.fuerza_total_combate - a.fuerza_total_combate)
+                      .slice(0, 10)
+                      .map((cmd, idx) => (
+                        <div
+                          key={`${cmd.comandante}-${cmd.partida_id}`}
+                          className="group/row relative flex items-center justify-between p-4 border border-slate-800/60 bg-slate-950/20 hover:border-cyan-500/30 hover:bg-cyan-955/10 transition-all duration-300"
+                        >
+                          <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-transparent group-hover/row:bg-cyan-500/60 transition-colors" />
+                          <div className="flex items-center gap-4 text-left">
+                            <div className="relative flex items-center justify-center w-8 h-8 shrink-0">
+                              <div className={`absolute inset-0 border rotate-45 transition-all duration-300 ${
+                                idx === 0 ? "bg-amber-500/10 border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]" :
+                                idx === 1 ? "bg-slate-300/10 border-slate-300/50" :
+                                idx === 2 ? "bg-orange-600/10 border-orange-600/50" :
+                                "bg-slate-950/50 border-slate-800"
+                              }`} />
+                              <span className={`relative z-10 text-xs font-black ${
+                                idx === 0 ? "text-amber-400" :
+                                idx === 1 ? "text-slate-355" :
+                                idx === 2 ? "text-orange-400" :
+                                "text-slate-500"
+                              }`}>
+                                {idx + 1}
+                              </span>
+                            </div>
+                            <div className="flex flex-col text-left ml-1">
+                              <span className="text-slate-100 font-black tracking-wider text-xs md:text-sm">{cmd.comandante}</span>
+                              <span className="text-[10px] text-slate-500 mt-1">HQ: <span className="text-slate-400 font-bold">{cmd.pais_seleccionado}</span> // SIM_ID: #{cmd.partida_id}</span>
+                            </div>
+                          </div>
+                          <div className="flex gap-6 items-center">
+                            <div className="text-right border-r border-slate-800/80 pr-6">
+                              <div className="text-cyan-400 font-bold font-mono text-sm md:text-base">
+                                {cmd.fuerza_total_combate >= 1_000_000
+                                  ? `${(cmd.fuerza_total_combate / 1_000_000).toFixed(2)}M`
+                                  : cmd.fuerza_total_combate >= 1_000
+                                    ? `${(cmd.fuerza_total_combate / 1_000).toFixed(1)}K`
+                                    : cmd.fuerza_total_combate.toLocaleString()
+                                }
+                              </div>
+                              <div className="text-[8px] text-slate-500 font-semibold tracking-widest mt-1">PODER DE COMBATE</div>
+                            </div>
+                            <div className="text-right min-w-[100px]">
+                              <div className="text-emerald-400 font-bold font-mono text-sm md:text-base">${cmd.total_oro.toLocaleString()}</div>
+                              <div className="text-[8px] text-slate-500 font-semibold tracking-widest mt-1">PRESUPUESTO ORO</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
                   )}
                 </div>
               )}
