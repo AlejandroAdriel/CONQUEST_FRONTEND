@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { 
-  Terminal, ShieldAlert, ShieldCheck, Play, Key, Database, Cpu, Wifi, Activity, User
+  Terminal, ShieldAlert, ShieldCheck, Play, Key, Database, Cpu, Wifi, Activity, User, Trophy
 } from "lucide-react";
 import type { OperarioUser } from '../types/user';
+import { fetchUserRankings, fetchHQRankings } from '../database/reports';
+import type { UserRanking, HQRanking } from '../database/reports';
 
 interface StartMenuProps {
   onStartGame: () => void;
@@ -18,6 +20,31 @@ export default function StartMenu({ onStartGame, onOpenLogin, onOpenSaves, onOpe
   const [alertType, setAlertType] = useState<"success" | "error" | null>(null);
   const [isStartHovered, setIsStartHovered] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  const [userRankings, setUserRankings] = useState<UserRanking[]>([]);
+  const [hqRankings, setHqRankings] = useState<HQRanking[]>([]);
+  const [rankTab, setRankTab] = useState<"operarios" | "hqs">("operarios");
+  const [isLoadingRankings, setIsLoadingRankings] = useState(true);
+  const [showRankings, setShowRankings] = useState(false);
+
+  useEffect(() => {
+    const getRankings = async () => {
+      try {
+        setIsLoadingRankings(true);
+        const [users, hqs] = await Promise.all([
+          fetchUserRankings(),
+          fetchHQRankings()
+        ]);
+        setUserRankings(users.slice(0, 5));
+        setHqRankings(hqs.slice(0, 5));
+      } catch (err) {
+        console.error("Error al obtener clasificaciones:", err);
+      } finally {
+        setIsLoadingRankings(false);
+      }
+    };
+    getRankings();
+  }, []);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const x = e.clientX - window.innerWidth / 2;
@@ -140,7 +167,6 @@ export default function StartMenu({ onStartGame, onOpenLogin, onOpenSaves, onOpe
           </button>
         </div>
       )}
-
       {/* ÁREA CENTRAL: BOTÓN PRINCIPAL START */}
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center">
         <div className="text-center mb-10">
@@ -185,15 +211,155 @@ export default function StartMenu({ onStartGame, onOpenLogin, onOpenSaves, onOpe
         </div>
       </main>
 
-      {/* BARRA INFERIOR (CONTROLES ADICIONALES) */}
+      {/* MODAL DE RANKINGS Y CLASIFICACIONES */}
+      {showRankings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#030712]/95 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="relative w-full max-w-2xl bg-[#050915]/95 border-t border-b border-cyan-500/30 p-1 rounded-sm shadow-[0_0_50px_rgba(6,182,212,0.15)] font-mono text-slate-300">
+            {/* Esquinas HUD */}
+            <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-cyan-400" />
+            <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-cyan-400" />
+            <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-cyan-400" />
+            <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-cyan-400" />
+
+            <div className="bg-[#050915] border border-slate-900 px-6 py-6 md:px-8 md:py-8 flex flex-col flex-1 min-h-0 uppercase tracking-widest">
+              
+              <div className="flex justify-between items-center border-b border-cyan-900/50 pb-4 mb-6">
+                <span className="text-cyan-400 font-black flex items-center gap-3 text-xs md:text-sm">
+                  <Activity className="w-5 h-5 text-cyan-400 animate-pulse" />
+                  [ INFORME DE INTELIGENCIA DE LA RED ]
+                </span>
+                <button 
+                  onClick={() => setShowRankings(false)} 
+                  className="group flex items-center gap-2 text-[10px] font-bold text-slate-500 hover:text-rose-500 transition-colors border border-transparent hover:border-rose-900/50 py-1.5 px-3 bg-slate-950/50"
+                >
+                  <span>[ VOLVER ]</span>
+                </button>
+              </div>
+
+              <div className="flex gap-4 mb-6 shrink-0">
+                <button
+                  onClick={() => setRankTab("operarios")}
+                  className={`px-4 py-2.5 border transition-all text-[9px] md:text-xs rounded-sm font-black ${
+                    rankTab === "operarios"
+                      ? "border-cyan-500 bg-cyan-950/30 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.2)]"
+                      : "border-slate-800 text-slate-500 hover:text-slate-400 hover:bg-slate-900/30"
+                  }`}
+                >
+                  [ 👤 OPERARIOS CON MÁS PARTIDAS ]
+                </button>
+                <button
+                  onClick={() => setRankTab("hqs")}
+                  className={`px-4 py-2.5 border transition-all text-[9px] md:text-xs rounded-sm font-black ${
+                    rankTab === "hqs"
+                      ? "border-cyan-500 bg-cyan-950/30 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.2)]"
+                      : "border-slate-800 text-slate-500 hover:text-slate-400 hover:bg-slate-900/30"
+                  }`}
+                >
+                  [ 🏢 SEDES HQ MÁS ELEGIDAS ]
+                </button>
+              </div>
+
+              {isLoadingRankings ? (
+                <div className="flex flex-col items-center justify-center py-20 gap-4 text-slate-500 animate-pulse">
+                  <span className="w-6 h-6 border-2 border-slate-800 border-t-cyan-400 rounded-full animate-spin" />
+                  <span className="text-xs">ENLAZANDO CON SERVIDOR CENTRAL...</span>
+                </div>
+              ) : rankTab === "operarios" ? (
+                <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                  {userRankings.length === 0 ? (
+                    <div className="text-center py-12 text-slate-650 text-xs">SIN REGISTROS EN LA RED TÁCTICA</div>
+                  ) : (
+                    userRankings.map((ur, idx) => (
+                      <div
+                        key={ur.correo}
+                        className="flex items-center justify-between p-4 border border-slate-800/80 bg-slate-900/10 hover:border-cyan-500/30 hover:bg-cyan-955/5 transition-all duration-300"
+                      >
+                        <div className="flex items-center gap-4 text-left">
+                          <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black ${
+                            idx === 0 ? "bg-amber-500/25 text-amber-400 border border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.25)]" :
+                            idx === 1 ? "bg-slate-300/25 text-slate-200 border border-slate-300/50" :
+                            idx === 2 ? "bg-orange-600/25 text-orange-400 border border-orange-600/50" :
+                            "bg-slate-950 border border-slate-850 text-slate-500"
+                          }`}>
+                            {idx + 1}
+                          </span>
+                          <div className="flex flex-col text-left">
+                            <span className="text-slate-100 font-black tracking-wider text-xs md:text-sm">{ur.username}</span>
+                            <span className="text-[10px] text-slate-500 normal-case font-semibold mt-1 tracking-normal">{ur.correo}</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-cyan-400 font-bold font-mono text-base md:text-lg">{ur.total_partidas_jugadas}</div>
+                          <div className="text-[8px] text-slate-500 font-semibold tracking-widest mt-1">SIMULACIONES</div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                  {hqRankings.length === 0 ? (
+                    <div className="text-center py-12 text-slate-655 text-xs">SIN REGISTROS EN LA RED TÁCTICA</div>
+                  ) : (
+                    hqRankings.map((hq, idx) => (
+                      <div
+                        key={hq.pais_base}
+                        className="flex items-center justify-between p-4 border border-slate-800/80 bg-slate-900/10 hover:border-cyan-500/30 hover:bg-cyan-955/5 transition-all duration-300"
+                      >
+                        <div className="flex items-center gap-4">
+                          <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black ${
+                            idx === 0 ? "bg-amber-500/25 text-amber-400 border border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.25)]" :
+                            idx === 1 ? "bg-slate-300/25 text-slate-200 border border-slate-300/50" :
+                            idx === 2 ? "bg-orange-600/25 text-orange-400 border border-orange-600/50" :
+                            "bg-slate-950 border border-slate-850 text-slate-500"
+                          }`}>
+                            {idx + 1}
+                          </span>
+                          <span className="text-slate-100 font-black tracking-wider text-xs md:text-sm">{hq.pais_base}</span>
+                        </div>
+                        <div className="flex gap-6 items-center">
+                          <div className="text-right border-r border-slate-800/80 pr-6">
+                            <div className="text-cyan-400 font-bold font-mono text-sm md:text-base">{hq.veces_elegido}</div>
+                            <div className="text-[8px] text-slate-500 font-semibold tracking-widest mt-1">SELECCIONES</div>
+                          </div>
+                          <div className="text-right min-w-[100px]">
+                            <div className="text-emerald-400 font-bold font-mono text-sm md:text-base">${hq.oro_total_acumulado.toLocaleString()}</div>
+                            <div className="text-[8px] text-slate-500 font-semibold tracking-widest mt-1">RECURSOS ORO</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              <div className="shrink-0 text-left text-[8px] md:text-[9px] text-slate-600 mt-6 border-t border-slate-900 pt-4 tracking-widest leading-relaxed">
+                * LOS DATOS EXPUESTOS REPRESENTAN SIMULACIONES ACTIVAS Y REGISTRADAS EN LA RED DESCENTRALIZADA DE CONQUEST. CLASIFICADO BAJO PROTOCOLO DE COMUNICACIÓN ENCRIPTADA.
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
       <footer className="relative z-10 w-full flex flex-col md:flex-row gap-4 md:gap-0 items-center justify-between border-t border-slate-800/80 pt-4 backdrop-blur-sm bg-slate-950/10 shrink-0">
-        <button 
-          onClick={handleLoadSaves}
-          className="group flex items-center gap-2 text-xs font-bold tracking-widest text-slate-400 hover:text-cyan-400 transition-colors py-2 px-4 border border-transparent hover:border-slate-800 rounded-sm bg-slate-950/20"
-        >
-          <Database className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 transition-colors" />
-          [ ARCHIVOS DE GUARDADO ]
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button 
+            onClick={handleLoadSaves}
+            className="group flex items-center gap-2 text-xs font-bold tracking-widest text-slate-400 hover:text-cyan-400 transition-colors py-2 px-4 border border-transparent hover:border-slate-800 rounded-sm bg-slate-950/20"
+          >
+            <Database className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 transition-colors" />
+            [ ARCHIVOS DE GUARDADO ]
+          </button>
+          
+          <button 
+            onClick={() => setShowRankings(true)}
+            className="group flex items-center gap-2 text-xs font-bold tracking-widest text-slate-400 hover:text-cyan-400 transition-colors py-2 px-4 border border-transparent hover:border-slate-800 rounded-sm bg-slate-950/20"
+          >
+            <Trophy className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 transition-colors" />
+            [ CLASIFICACIONES DE LA RED ]
+          </button>
+        </div>
 
         <div className="text-[9px] text-slate-600 tracking-widest uppercase">
           CLASIFICADO // SOLO PARA PERSONAL AUTORIZADO
@@ -213,6 +379,7 @@ export default function StartMenu({ onStartGame, onOpenLogin, onOpenSaves, onOpe
           }
         </button>
       </footer>
+
     </div>
   );
 }

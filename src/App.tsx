@@ -35,6 +35,8 @@ import type { DBGameSave } from "./database/saves";
 import type { Habilidad } from "./types/habilidades";
 import type { Tropa } from "./types/tropas";
 import { supabase } from "./database/supabaseClient";
+import { fetchTechBranchReports } from "./database/reports";
+import type { TechBranchReport } from "./database/reports";
 import type {
   HQStartingPreset,
   MaintenanceTier, SimulationConstants,
@@ -283,6 +285,9 @@ export default function App() {
   const [cantidadesReclutar, setCantidadesReclutar] = useState<Record<number, number>>({});
   const [mostrarArbol, setMostrarArbol] = useState(false);
   const [tabIyd, setTabIyd] = useState<"desarrollo" | "militar">("desarrollo");
+  const [mostrarReporteCostos, setMostrarReporteCostos] = useState(false);
+  const [reporteCostosData, setReporteCostosData] = useState<TechBranchReport[]>([]);
+  const [isLoadingCostos, setIsLoadingCostos] = useState(false);
   
   const diasParaEventoRef = useRef(10 + Math.floor(Math.random() * 6));
   
@@ -299,6 +304,20 @@ export default function App() {
           techTreeTransformRef.current.setTransform(50, -950, 0.6);
         }
       }, 50);
+
+      const loadCostosReport = async () => {
+        try {
+          setIsLoadingCostos(true);
+          const data = await fetchTechBranchReports();
+          setReporteCostosData(data);
+        } catch (err) {
+          console.error("Error al cargar reporte de costos:", err);
+        } finally {
+          setIsLoadingCostos(false);
+        }
+      };
+      loadCostosReport();
+
       return () => clearTimeout(timer);
     }
   }, [mostrarArbol, tabIyd]);
@@ -2681,9 +2700,18 @@ export default function App() {
               </button>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 mb-4 shrink-0">
-              <button onClick={() => setTabIyd("desarrollo")} className={`px-6 py-3 font-bold text-xs uppercase tracking-widest border rounded-sm transition-all ${tabIyd === "desarrollo" ? "bg-cyan-900/50 border-cyan-500 text-cyan-200" : "bg-slate-900/50 border-slate-800 text-slate-500 hover:text-slate-300"}`}>[ ⚙ REDES DE INFRAESTRUCTURA ]</button>
-              <button onClick={() => setTabIyd("militar")} className={`px-6 py-3 font-bold text-xs uppercase tracking-widest border rounded-sm transition-all ${tabIyd === "militar" ? "bg-rose-900/50 border-rose-500 text-rose-200" : "bg-slate-900/50 border-slate-800 text-slate-500 hover:text-slate-300"}`}>[ ⚔ DOCTRINA DE ANIQUILACIÓN ]</button>
+            <div className="flex flex-col sm:flex-row gap-4 mb-4 shrink-0 justify-between items-center w-full">
+              <div className="flex gap-4">
+                <button onClick={() => setTabIyd("desarrollo")} className={`px-6 py-3 font-bold text-xs uppercase tracking-widest border rounded-sm transition-all ${tabIyd === "desarrollo" ? "bg-cyan-900/50 border-cyan-500 text-cyan-200" : "bg-slate-900/50 border-slate-800 text-slate-500 hover:text-slate-300"}`}>[ ⚙ REDES DE INFRAESTRUCTURA ]</button>
+                <button onClick={() => setTabIyd("militar")} className={`px-6 py-3 font-bold text-xs uppercase tracking-widest border rounded-sm transition-all ${tabIyd === "militar" ? "bg-rose-900/50 border-rose-500 text-rose-200" : "bg-slate-900/50 border-slate-800 text-slate-500 hover:text-slate-300"}`}>[ ⚔ DOCTRINA DE ANIQUILACIÓN ]</button>
+              </div>
+              
+              <button 
+                onClick={() => setMostrarReporteCostos(!mostrarReporteCostos)} 
+                className={`px-6 py-3 font-bold text-xs uppercase tracking-widest border rounded-sm transition-all flex items-center gap-2 ${mostrarReporteCostos ? "bg-indigo-950/60 border-indigo-500 text-indigo-300 shadow-[0_0_15px_rgba(99,102,241,0.25)]" : "bg-slate-900/50 border-slate-800 text-slate-500 hover:text-indigo-400 hover:border-indigo-950"}`}
+              >
+                [ 📊 INFORME CIENTÍFICO ]
+              </button>
             </div>
 
             <div className="flex-1 w-full relative overflow-hidden bg-[#02040a] rounded-lg border border-cyan-900/30 shadow-inner min-h-0">
@@ -2808,6 +2836,66 @@ export default function App() {
                   </div>
                 </TransformComponent>
               </TransformWrapper>
+
+              {/* PANEL FLOTANTE DE INFORME CIENTÍFICO */}
+              {mostrarReporteCostos && (
+                <div className="absolute top-4 right-4 z-20 w-80 md:w-96 bg-slate-950/95 border border-indigo-500/30 p-5 rounded-sm shadow-2xl backdrop-blur-md font-mono text-[10px] uppercase tracking-widest text-slate-300 animate-in slide-in-from-right duration-300">
+                  {/* Esquinas HUD */}
+                  <div className="absolute top-0 left-0 w-2.5 h-2.5 border-t border-l border-indigo-400/50" />
+                  <div className="absolute top-0 right-0 w-2.5 h-2.5 border-t border-r border-indigo-400/50" />
+                  <div className="absolute bottom-0 left-0 w-2.5 h-2.5 border-b border-l border-indigo-400/50" />
+                  <div className="absolute bottom-0 right-0 w-2.5 h-2.5 border-b border-r border-indigo-400/50" />
+
+                  <div className="flex justify-between items-center border-b border-indigo-900/50 pb-2 mb-4">
+                    <span className="text-indigo-400 font-bold flex items-center gap-2">
+                      <Cpu className="w-3.5 h-3.5 animate-pulse text-indigo-400" />
+                      📊 COSTOS GLOBALES DE RAMAS (I+D)
+                    </span>
+                    <button 
+                      onClick={() => setMostrarReporteCostos(false)} 
+                      className="text-slate-500 hover:text-slate-300 text-xs font-bold font-mono px-1 border border-slate-900 hover:border-slate-800 animate-pulse hover:animate-none"
+                    >
+                      [ X ]
+                    </button>
+                  </div>
+
+                  {isLoadingCostos ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-3 text-slate-500 animate-pulse">
+                      <span className="w-4 h-4 border-2 border-slate-700 border-t-indigo-500 rounded-full animate-spin" />
+                      <span>DECODIFICANDO ARCHIVOS DE INVESTIGACIÓN...</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                      <div className="grid grid-cols-12 text-[8px] text-slate-500 font-bold border-b border-slate-900 pb-1 mb-1">
+                        <span className="col-span-4 text-left">RAMA</span>
+                        <span className="col-span-2 text-center">HAB.</span>
+                        <span className="col-span-3 text-right font-semibold">PROM. COSTO</span>
+                        <span className="col-span-3 text-right font-semibold">COSTO TOTAL</span>
+                      </div>
+                      
+                      {reporteCostosData.length === 0 ? (
+                        <div className="text-center py-6 text-slate-600">INFORME NO DISPOLIBLE</div>
+                      ) : (
+                        reporteCostosData.map((item) => (
+                          <div 
+                            key={item.rama} 
+                            className="grid grid-cols-12 items-center py-1.5 border-b border-slate-900/60 hover:bg-indigo-950/20 transition-colors"
+                          >
+                            <span className="col-span-4 text-slate-200 font-bold text-left truncate">{item.rama}</span>
+                            <span className="col-span-2 text-slate-300 font-bold font-mono text-center">{item.cantidad_habilidades}</span>
+                            <span className="col-span-3 text-amber-500/80 font-mono text-right">${Math.round(item.costo_promedio).toLocaleString()}</span>
+                            <span className="col-span-3 text-indigo-400 font-bold font-mono text-right">${item.costo_total_para_completar.toLocaleString()}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  <div className="border-t border-slate-900 pt-3 mt-4 text-[8px] text-slate-650 text-left leading-normal font-sans">
+                    * NOTA: LOS COSTOS MOSTRADOS SON BASE Y ESTÁN SUJETOS AL MULTIPLICADOR DE BUROCRACIA VIRTUAL DE LA SEDE EN CUESTIÓN (x{multiplicadorBurocracia.toFixed(2)}).
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         );

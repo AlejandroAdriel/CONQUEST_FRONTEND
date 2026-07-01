@@ -5,6 +5,8 @@ import {
 import { fetchSavedGames, initializeNewGame, deleteGame } from "../database/saves";
 import type { DBGameSave } from "../database/saves";
 import { getPersistedOperator } from "../database/auth";
+import { fetchArmyReports } from "../database/reports";
+import type { ArmyReport } from "../database/reports";
 
 interface SaveFilesMenuProps {
   onClose: () => void;
@@ -14,14 +16,19 @@ interface SaveFilesMenuProps {
 
 export default function SaveFilesMenu({ onClose, onLoadSave, onNewGame }: SaveFilesMenuProps) {
   const [saves, setSaves] = useState<(DBGameSave | null)[]>([null]);
+  const [armyReports, setArmyReports] = useState<ArmyReport[]>([]);
 
   useEffect(() => {
     const loadSaves = async () => {
       try {
         const user = getPersistedOperator();
         if (user && user.dbId) {
-          const data = await fetchSavedGames(user.dbId);
+          const [data, reports] = await Promise.all([
+            fetchSavedGames(user.dbId),
+            fetchArmyReports()
+          ]);
           setSaves([...data, null]);
+          setArmyReports(reports);
         } else if (user && !user.dbId) {
           // usuario sin dbId (sesión antigua) — solo mostramos slot vacío
           setSaves([null]);
@@ -155,7 +162,7 @@ export default function SaveFilesMenu({ onClose, onLoadSave, onNewGame }: SaveFi
                 >
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
                     {/* IZQUIERDA: Identidad Comandante */}
-                    <div className="md:col-span-4 flex items-start gap-3">
+                    <div className="md:col-span-3 flex items-start gap-3">
                       <Shield className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
                       <div>
                         <h2 className="text-sm font-black text-slate-100 tracking-wider">
@@ -167,39 +174,59 @@ export default function SaveFilesMenu({ onClose, onLoadSave, onNewGame }: SaveFi
                       </div>
                     </div>
 
-                      <div className="md:col-span-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 border-t border-b md:border-t-0 md:border-b-0 border-slate-800/50 py-3 md:py-0">
-                      <div>
-                        <div className="text-[8px] text-slate-500">DÍAS CAMPAÑA</div>
-                        <div className="text-xs font-bold text-slate-300 font-mono flex items-center gap-1.5 mt-0.5">
-                          <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                          {save.campaignDays}
+                    {/* CENTRO: Estadísticas */}
+                    {(() => {
+                      const gameStats = armyReports.find(r => r.partida_id === save.partida_id);
+                      return (
+                        <div className="md:col-span-7 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 border-t border-b md:border-t-0 md:border-b-0 border-slate-800/50 py-3 md:py-0">
+                          <div>
+                            <div className="text-[8px] text-slate-500 font-bold">DÍAS CAMPAÑA</div>
+                            <div className="text-xs font-bold text-slate-300 font-mono flex items-center gap-1.5 mt-0.5">
+                              <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                              {save.campaignDays}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-[8px] text-slate-500 font-bold font-sans">DOMINIO</div>
+                            <div className="text-xs font-bold text-slate-300 font-mono flex items-center gap-1.5 mt-0.5">
+                              <Award className="w-3.5 h-3.5 text-slate-500" />
+                              {save.dominionPercent}%
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-[8px] text-slate-500 font-bold">PRESUPUESTO</div>
+                            <div className="text-xs font-bold text-emerald-400 font-mono flex items-center gap-1 mt-0.5">
+                              <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
+                              {save.budget.toLocaleString()}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-[8px] text-slate-500 font-bold">FUERZAS PROPIAS</div>
+                            <div className="text-xs font-bold text-slate-300 font-mono flex items-center gap-1.5 mt-0.5">
+                              <Users className="w-3.5 h-3.5 text-slate-500" />
+                              {save.troops.toLocaleString()}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-[8px] text-slate-500 font-bold">CONTENDIENTES</div>
+                            <div className="text-xs font-bold text-cyan-400 font-mono flex items-center gap-1.5 mt-0.5">
+                              <Users className="w-3.5 h-3.5 text-cyan-500/80" />
+                              {gameStats?.total_jugadores ?? 1}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-[8px] text-slate-500 font-bold">FUERZAS MUNDIALES</div>
+                            <div className="text-xs font-bold text-cyan-400 font-mono flex items-center gap-1.5 mt-0.5">
+                              <Users className="w-3.5 h-3.5 text-cyan-500/80 animate-pulse" />
+                              {gameStats?.gran_total_tropas?.toLocaleString() ?? save.troops.toLocaleString()}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <div className="text-[8px] text-slate-500">DOMINIO GLOBAL</div>
-                        <div className="text-xs font-bold text-slate-300 font-mono flex items-center gap-1.5 mt-0.5">
-                          <Award className="w-3.5 h-3.5 text-slate-500" />
-                          {save.dominionPercent}%
-                        </div>
-                      </div>
-                      <div className="mt-2">
-                        <div className="text-[8px] text-slate-500">PRESUPUESTO</div>
-                        <div className="text-xs font-bold text-emerald-400 font-mono flex items-center gap-1 mt-0.5">
-                          <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
-                          {save.budget.toLocaleString()}
-                        </div>
-                      </div>
-                      <div className="mt-2">
-                        <div className="text-[8px] text-slate-500">FUERZAS TOTALES</div>
-                        <div className="text-xs font-bold text-slate-300 font-mono flex items-center gap-1.5 mt-0.5">
-                          <Users className="w-3.5 h-3.5 text-slate-500" />
-                          {save.troops.toLocaleString()}
-                        </div>
-                      </div>
-                    </div>
+                      );
+                    })()}
 
                     {/* DERECHA: Fechas */}
-                    <div className="md:col-span-3 text-left md:text-right text-[9px] text-slate-500 space-y-1">
+                    <div className="md:col-span-2 text-left md:text-right text-[9px] text-slate-500 space-y-1">
                       <div>CREACIÓN: <span className="text-slate-400 font-mono font-semibold">{save.creationDate}</span></div>
                       <div>ACCESO: <span className="text-cyan-400/80 font-mono font-semibold">{save.lastSaveDate}</span></div>
                     </div>
