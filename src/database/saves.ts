@@ -104,71 +104,48 @@ export const initializeNewGame = async (data: {
   pausado?:          boolean;
 }): Promise<DBGameSave | null> => {
   try {
-    // 1. Crear la partida
-    const { data: partida, error: pErr } = await supabase
-      .from('partidas')
-      .insert({
-        commander_id:      data.commander_id,
-        estado_activo:     true,
-        dias_campana:      1,
-        porcentaje_dominio: 0,
-      })
-      .select()
-      .single();
+    // Usa la función RPC transaccional de Supabase (3 INSERTs atómicos en una sola llamada)
+    const { data: result, error } = await supabase.rpc('inicializar_nueva_partida', {
+      p_usuario_id:        data.usuario_id,
+      p_commander_id:      data.commander_id,
+      p_hq_pais_id:        data.hq_pais_id,
+      p_oro:               data.oro               ?? 5000,
+      p_tropas_infanteria: data.tropas_infanteria  ?? 5000,
+      p_tropas_caballeria: data.tropas_caballeria  ?? 2000,
+      p_tropas_artilleria: data.tropas_artilleria  ?? 500,
+      p_velocidad:         data.velocidad          ?? 1,
+    });
 
-    if (pErr || !partida) throw pErr;
+    if (error || !result) {
+      console.error('[initializeNewGame] RPC error:', error);
+      return null;
+    }
 
-    // 2. Crear el jugador vinculado a la partida
-    const { data: jugador, error: jErr } = await supabase
-      .from('jugadores')
-      .insert({
-        usuario_id:       data.usuario_id,
-        partida_id:       partida.partida_id,
-        hq_pais_id:       data.hq_pais_id,
-        oro:              data.oro              ?? 5000,
-        habilidad_puntos: 0,
-        tropas_infanteria: data.tropas_infanteria ?? 5000,
-        tropas_caballeria: data.tropas_caballeria ?? 2000,
-        tropas_artilleria: data.tropas_artilleria ?? 500,
-      })
-      .select()
-      .single();
-
-    if (jErr || !jugador) throw jErr;
-
-    // 3. Crear registro de tiempo
-    const { data: tiempo, error: tErr } = await supabase
-      .from('tiempos')
-      .insert({
-        partida_id:  partida.partida_id,
-        dias_campana: 1,
-        velocidad:   data.velocidad ?? 1,
-        pausado:     data.pausado   ?? false,
-      })
-      .select()
-      .single();
-
-    if (tErr || !tiempo) throw tErr;
+    // Parsear la respuesta JSONB devuelta por inicializar_nueva_partida
+    const inf  = result.tropas_infanteria ?? 0;
+    const cab  = result.tropas_caballeria ?? 0;
+    const art  = result.tropas_artilleria ?? 0;
 
     return {
-      id:               jugador.jugador_id,
-      partida_id:       partida.partida_id,
-      commanderID:      partida.commander_id,
-      hq:               jugador.hq_pais_id,
-      campaignDays:     partida.dias_campana,
-      dominionPercent:  Number(partida.porcentaje_dominio),
-      budget:           jugador.oro,
-      troops:           jugador.tropas_infanteria + jugador.tropas_caballeria + jugador.tropas_artilleria,
-      tropas_infanteria: jugador.tropas_infanteria,
-      tropas_caballeria: jugador.tropas_caballeria,
-      tropas_artilleria: jugador.tropas_artilleria,
-      habilidad_puntos:  jugador.habilidad_puntos,
-      velocidad:         tiempo.velocidad,
-      pausado:           tiempo.pausado,
-      creationDate:     partida.fecha_creacion,
-      lastSaveDate:     partida.ultima_vez_guardado,
+      id:               result.jugador_id,
+      partida_id:       result.partida_id,
+      commanderID:      result.commander_id,
+      hq:               result.hq_pais_id,
+      campaignDays:     1,
+      dominionPercent:  0,
+      budget:           result.oro,
+      troops:           inf + cab + art,
+      tropas_infanteria: inf,
+      tropas_caballeria: cab,
+      tropas_artilleria: art,
+      habilidad_puntos:  0,
+      velocidad:         result.velocidad,
+      pausado:           false,
+      creationDate:     result.fecha_creacion,
+      lastSaveDate:     result.fecha_creacion,
     };
-  } catch {
+  } catch (e) {
+    console.error('[initializeNewGame] Exception:', e);
     return null;
   }
 };
@@ -177,45 +154,44 @@ export const initializeNewGame = async (data: {
 
 export const saveGame = async (
   partidaId: number,
+  jugadorId: number,
   data: {
-    dias_campana:      number;
+    dias_campana:       number;
     porcentaje_dominio: number;
-    oro:               number;
-    tropas_infanteria: number;
-    tropas_caballeria: number;
-    tropas_artilleria: number;
-    habilidad_puntos:  number;
-    velocidad:         number;
-    pausado:           boolean;
+    oro:                number;
+    tropas_infanteria:  number;
+    tropas_caballeria:  number;
+    tropas_artilleria:  number;
+    habilidad_puntos:   number;
+    velocidad:          number;
+    pausado:            boolean;
   }
 ): Promise<boolean> => {
   try {
-    const now = new Date().toISOString();
+    // Usa la función RPC transaccional de Supabase (3 UPDATEs atómicos en una sola llamada)
+    const { data: result, error } = await supabase.rpc('guardar_estado_partida', {
+      p_partida_id:         partidaId,
+      p_jugador_id:         jugadorId,
+      p_oro:                data.oro,
+      p_tropas_infanteria:  data.tropas_infanteria,
+      p_tropas_caballeria:  data.tropas_caballeria,
+      p_tropas_artilleria:  data.tropas_artilleria,
+      p_habilidad_puntos:   data.habilidad_puntos,
+      p_dias_campana:       data.dias_campana,
+      p_porcentaje_dominio: data.porcentaje_dominio,
+      p_velocidad:          data.velocidad,
+      p_pausado:            data.pausado,
+    });
 
-    const [r1, r2, r3] = await Promise.all([
-      supabase.from('partidas').update({
-        dias_campana:       data.dias_campana,
-        porcentaje_dominio: data.porcentaje_dominio,
-        ultima_vez_guardado: now,
-      }).eq('partida_id', partidaId),
+    if (error) {
+      console.error('[saveGame] RPC error:', error);
+      return false;
+    }
 
-      supabase.from('jugadores').update({
-        oro:               data.oro,
-        tropas_infanteria: data.tropas_infanteria,
-        tropas_caballeria: data.tropas_caballeria,
-        tropas_artilleria: data.tropas_artilleria,
-        habilidad_puntos:  data.habilidad_puntos,
-      }).eq('partida_id', partidaId),
-
-      supabase.from('tiempos').update({
-        velocidad: data.velocidad,
-        pausado:   data.pausado,
-        dias_campana: data.dias_campana,
-      }).eq('partida_id', partidaId),
-    ]);
-
-    return !r1.error && !r2.error && !r3.error;
-  } catch {
+    // La respuesta JSONB contiene { success: true, partida_id, jugador_id, guardado_en }
+    return result?.success === true;
+  } catch (e) {
+    console.error('[saveGame] Exception:', e);
     return false;
   }
 };

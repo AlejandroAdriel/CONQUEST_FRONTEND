@@ -1432,7 +1432,8 @@ export default function App() {
     
     
     if (activePartida) {
-      const { error: rpcError } = await supabase.rpc('reclutar_tropas', {
+      // Llamada RPC — el JSONB retornado refleja el estado real en BD
+      const { data: rpcData, error: rpcError } = await supabase.rpc('reclutar_tropas', {
         p_jugador_id: activePartida.id,
         p_costo_oro:  costoTotal,
         p_infanteria: tropa.subtipo === 'infanteria' ? cantidad : 0,
@@ -1443,11 +1444,23 @@ export default function App() {
         alert(`ERROR DE RECLUTAMIENTO: ${rpcError.message}`);
         return;
       }
+      // Sincronizar presupuesto y tropas desde la respuesta JSONB de Supabase
+      if (rpcData) {
+        setPresupuesto(rpcData.oro);
+        setTropas({
+          infanteria: rpcData.tropas_infanteria,
+          caballeria: rpcData.tropas_caballeria,
+          artilleria: rpcData.tropas_artilleria,
+        });
+      }
+    } else {
+      // Sin partida activa: actualización local como fallback
+      setPresupuesto(prev => prev - costoTotal);
+      setTropas(prev => { const c = { ...prev }; c[tropa.subtipo] += cantidad; return c; });
     }
 
     const esMasiva = cantidad >= livePais.poblacion * scm.massiveMobilizationThreshold;
 
-    
     setPaises(prev => {
       const copy = { ...prev };
       if (copy[livePais.id]) {
@@ -1460,15 +1473,7 @@ export default function App() {
       return copy;
     });
 
-    
-    setPresupuesto(prev => prev - costoTotal);
-
-    
-    setTropas(prev => {
-      const copy = { ...prev };
-      copy[tropa.subtipo] += cantidad;
-      return copy;
-    });
+    // tropasDetalle es breakdown local (no viene de la BD) → se actualiza siempre
     setTropasDetalle(prev => {
       const copy = { ...prev };
       copy[tropa.tropa_id] = (copy[tropa.tropa_id] || 0) + cantidad;
@@ -1523,7 +1528,8 @@ export default function App() {
     
     
     if (activePartida) {
-      const { error: rpcError } = await supabase.rpc('comprar_habilidad', {
+      // Llamada RPC — el JSONB retornado incluye oro_restante validado por BD
+      const { data: rpcData, error: rpcError } = await supabase.rpc('comprar_habilidad', {
         p_jugador_id:   activePartida.id,
         p_partida_id:   activePartida.partida_id,
         p_habilidad_id: habilidad.id,
@@ -1533,11 +1539,16 @@ export default function App() {
         alert(`No se puede investigar: ${rpcError.message}`);
         return;
       }
+      // Sincronizar presupuesto desde la respuesta JSONB de Supabase
+      if (rpcData?.oro_restante !== undefined) {
+        setPresupuesto(rpcData.oro_restante);
+      } else {
+        setPresupuesto(prev => prev - costoFinal);
+      }
+    } else {
+      // Sin partida activa: actualización local como fallback
+      setPresupuesto(prev => prev - costoFinal);
     }
-
-
-    
-    setPresupuesto(prev => prev - costoFinal);
     setHabilidades(prev =>
       prev.map(h =>
         h.id === habilidad.id
@@ -1692,7 +1703,7 @@ export default function App() {
       }
     }
 
-    const success = await saveGame(partida.partida_id, {
+    const success = await saveGame(partida.partida_id, partida.id, {
       dias_campana: days,
       porcentaje_dominio: 2.1,
       oro: presupuesto,
@@ -2952,7 +2963,7 @@ export default function App() {
                       const days = Math.floor(
                         (fechaVirtual.getTime() - new Date(2099, 10, 12).getTime()) / (1000 * 3600 * 24)
                       ) + 1;
-                      await saveGame(activePartida.partida_id, {
+                      await saveGame(activePartida.partida_id, activePartida.id, {
                         dias_campana:       days,
                         porcentaje_dominio: 2.1,
                         oro:                presupuesto,
