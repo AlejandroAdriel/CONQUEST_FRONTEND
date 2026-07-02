@@ -65,70 +65,19 @@ La arquitectura del frontend está construida sobre un modelo cliente-servidor d
 ```mermaid
 graph TD
     subgraph Client ["Cliente (React + Vite)"]
-        GL[Game Loop / useEffect] --> App[App.tsx]
-        App --> Map[Mapa Táctico / Miller Projection]
-        App --> HUD[Componentes HUD / UI]
-        App <--> GC[GameContext / Estado Global]
+        Loop[Game Loop] --> App[App.tsx / Componentes HUD]
+        App <--> Context[GameContext / Estado Global]
     end
 
     subgraph Data ["Capa de Datos (src/database)"]
-        GC & App <--> API[API Layer]
-        API <--> Mock[Mock API / Offline Presets]
-        API <--> DB[Servicio Supabase / Auth & Saves]
+        Context <--> API[Servicios API / auth, saves, countries, troops]
+        API <--> Persistencia{Persistencia Híbrida}
+        Persistencia -->|Offline| Mock[mockAPI / Fallback Local]
+        Persistencia -->|Online| Supabase[Cliente Supabase]
     end
 
     subgraph Server ["Backend (Supabase / Postgres)"]
-        DB <--> Postgres[(PostgreSQL DB)]
-    end
-```
-
-### Diagrama de Conectividad y Flujo de Datos Completo
-
-A continuación se detalla cómo se integran el operario, los componentes interactivos de la interfaz de usuario en React, el bucle de juego continuo, los servicios lógicos de la base de datos y las tablas de almacenamiento relacional de Supabase (PostgreSQL):
-
-```mermaid
-graph TD
-    %% Roles de Usuario
-    User[Operario Táctico / Usuario] -->|Interactúa| UI[Capa de Interfaz de Usuario HUD]
-
-    %% Componentes UI
-    subgraph HUD [HUD & Componentes React]
-        UI --> LoginView[Login.tsx]
-        UI --> StartView[StartMenu.tsx]
-        UI --> HQView[SelectHQ.tsx]
-        UI --> MapView[Mapa Interactivo - Miller Projection]
-        UI --> TechView[Árbol Tecnológico SVG]
-        UI --> LogView[ActionLog.tsx / SYS.LOG]
-        UI --> SaveView[SaveFilesMenu.tsx]
-    end
-
-    %% Estado Global y Loop
-    LoginView & StartView & HQView & MapView & TechView & LogView & SaveView <-->|Consumen / Modifican| Context[GameContext.tsx / Estado Global]
-    Loop[Game Loop / Temporizador Diario] -->|Actualiza cada tic| Context
-
-    %% Servicios de Capa de Datos
-    Context <-->|Orquesta operaciones| Services[Capa de Servicios de Base de Datos /src/database]
-    subgraph DB_Services [Servicios de Datos]
-        Services --> AuthService[auth.ts / Autenticación]
-        Services --> SavesService[saves.ts / Partidas Guardadas]
-        Services --> CountryService[countries.ts / Demografía y Geopolítica]
-        Services --> TechService[game.ts / Árbol de Habilidades]
-        Services --> TroopService[troops.ts / Catálogo de Unidades e IA]
-    end
-
-    %% Capa de Persistencia e Integración Externa
-    AuthService & SavesService & CountryService & TechService & TroopService <-->|Consultas e Inserciones| ClientAPI{API de Persistencia Híbrida}
-    ClientAPI -->|Modo Offline / Fallback| Mock[mockAPI.ts / Constantes y Presets Locales]
-    ClientAPI -->|Modo Online / Sincronizado| Supabase[supabaseClient.ts / Cliente Supabase]
-
-    %% Base de Datos Relacional
-    subgraph Backend [Servidor Supabase / PostgreSQL]
-        Supabase <-->|Lectura/Escritura de Tablas| PG[(Base de Datos PostgreSQL)]
-        PG -.->|Usuarios| T_Users[usuarios]
-        PG -.->|Campañas| T_Saves[partidas / jugadores]
-        PG -.->|Geografía| T_Geo[paises_base]
-        PG -.->|Investigación| T_Tech[habilidades / partida_habilidades]
-        PG -.->|Fuerzas Armadas| T_Troops[tropas / infanterias / caballerias / artillerias]
+        Supabase <--> PG[(PostgreSQL DB)]
     end
 ```
 
