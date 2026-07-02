@@ -213,7 +213,7 @@ export default function StartMenu({ onStartGame, onOpenLogin, onOpenSaves, onOpe
 
         <div className="mt-8 flex items-center gap-3 text-[10px] text-slate-500 tracking-wider">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-          <span>TEATRO DE OPERACIONES GLOBAL ACTUALIZADO (v2.7.4)</span>
+          <span>NÚCLEO TÁCTICO EN LÍNEA — SATELLITE_LINK: ESTABLE</span>
         </div>
       </main>
 
